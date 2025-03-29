@@ -1,0 +1,250 @@
+﻿@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions.Canvas.Canvas2D
+@using System.Diagnostics
+@inject IJSRuntime JS
+
+<div class="waveform-container">
+    <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
+    <div class="cursor" style="@GetCursorCss()"></div>
+</div>
+
+@code {
+    public enum Modes {
+        AudioSynced,
+        Full
+    }
+
+    private BECanvas canvas;
+    private Canvas2DContext ctx;
+
+    public bool IsMouseDown { get; internal set; } = false;
+
+    private long canvasWidth = 0;
+    private long canvasHeight = 0;
+    private double canvasRatio = 1.0;
+
+    private long waveformId = 0;
+    private long lastWaveformId = 0;
+    private bool forceRenderWaveformFull = false;
+
+    [Parameter]
+    public string CssColor { get; set; } = "#444";
+
+    [Parameter]
+    public int WaveformBarWidth { get; set; }
+
+    [Parameter]
+    public double[] Peaks { get; set; } = [];
+
+    [Parameter]
+    public double MaxPeak { get; set; }
+
+    public long PlaybackHead { get; set; }
+
+    [Parameter]
+    public double SecondsToPosX { get; set; }
+
+    [Parameter]
+    public double WaveformWidth { get; set; }
+
+    [Parameter]
+    public double DownbeatAt { get; set; }
+
+    [Parameter]
+    public List<(double X, double Seconds)> BeatMarkers { get; set; } = [];
+
+    [Parameter]
+    public Modes Mode { get; set; } = Modes.AudioSynced;
+
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
+    private Bounds? canvasBounds;
+
+    public async Task Refresh() {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void UpdateFullWaveform() {
+        waveformId = DateTime.Now.Ticks;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas.CanvasReference));
+            canvasWidth = (long)canvasSize[0];
+            canvasHeight = (long)canvasSize[1];
+            canvasRatio = canvasSize[2];
+
+            double lastMousePosX = 0;
+            canvasBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", canvas.CanvasReference));
+            await Task.Run(async () => {
+                while(true) {
+                    if(!IsMouseDown && mouseState != null && canvasBounds != null &&
+                        !mouseState.IsCaptured &&
+                        mouseState.ButtonsDown == 1 &&
+                        canvasBounds.Contains(mouseState.X, mouseState.Y)) {
+
+                        lastMousePosX = mouseState.X;
+                        mouseState.IsCaptured = true;
+                        IsMouseDown = true;
+                    }
+
+                    if(IsMouseDown) {
+                        if(mouseState?.ButtonsDown == 1) {
+                            switch(Mode) {
+                                case Modes.AudioSynced:
+                                    PlaybackHead -= (long)(mouseState.X - lastMousePosX);
+                                    lastMousePosX = mouseState.X;
+                                    break;
+                                case Modes.Full:
+                                    PlaybackHead = (long)((mouseState.X - canvasBounds.X) * WaveformWidth / canvasWidth);
+                                    break;
+                            }
+                        } else {
+                            mouseState!.IsCaptured = false;
+                            IsMouseDown = false;
+                        }
+                    }
+
+                    await Task.Delay(50);
+                }
+            });
+        }
+
+        if(ctx == null) ctx = await canvas.CreateCanvas2DAsync();
+        if(ctx != null) {
+            try {
+                switch(Mode) {
+                    case Modes.AudioSynced:
+                        await RenderWaveform();
+                        break;
+                    case Modes.Full:
+                        if(forceRenderWaveformFull) {
+                            forceRenderWaveformFull = false;
+                            await RenderWaveformFull();
+                        }
+                        break;
+                }
+            } catch(Exception e) {
+                // Just ignore it - usually this is caused by the BeatMarkers collection being modified while rendering
+                Debugger.Break();
+            }
+        }
+    }
+
+    private string GetCursorCss() {
+        if(Mode == Modes.AudioSynced) {
+            return "";
+        } else {
+            if(WaveformWidth == 0) return "display: none;";
+            return $"left: {PlaybackHead / WaveformWidth * canvasWidth}px;";
+        }
+    }
+
+    protected override void OnParametersSet() {
+        if(waveformId != lastWaveformId) {
+            lastWaveformId = waveformId;
+            forceRenderWaveformFull = true;
+        }
+
+        base.OnParametersSet();
+    }
+
+    private async Task RenderWaveformFull() {
+        double cw = canvasWidth / canvasRatio;
+        double ch = canvasHeight / canvasRatio;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double ch2 = canvasHeight / (canvasRatio * 2);
+
+        await ctx.BeginBatchAsync();
+        await ctx.SetTransformAsync(canvasRatio, 0, 0, canvasRatio, 0, 0);
+        await ctx.SetLineWidthAsync(1);
+        await ctx.ClearRectAsync(0, 0, cw, ch);
+
+        await ctx.SetFillStyleAsync("#000");
+        await ctx.FillRectAsync(0, 0, cw, ch);
+
+        await ctx.SetFillStyleAsync(CssColor);
+
+        double lastX = -1;
+        double step = cw / Peaks.Length;
+        double w = step < 1 ? 1 : step - 1;
+        for(int i = 0; i < Peaks.Length; i++) {
+            double x = i * step;
+            if(lastX == x) continue;
+            lastX = x;
+            if(x < 0 || x >= cw) continue;
+            double y = ch2 - Peaks[i] / MaxPeak * ch2;
+            await ctx.FillRectAsync(x, y, w, ch - y * 2);
+        }
+
+        // await ctx.BeginPathAsync();
+        // await ctx.SetStrokeStyleAsync("#f00");
+        // await ctx.MoveToAsync(PlaybackHead / WaveformWidth * cw, 0);
+        // await ctx.LineToAsync(PlaybackHead / WaveformWidth * cw, ch);
+        // await ctx.StrokeAsync();
+
+        await ctx.EndBatchAsync();
+    }
+
+    private async Task RenderWaveform() {
+        double cw = canvasWidth / canvasRatio;
+        double ch = canvasHeight / canvasRatio;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double ch2 = canvasHeight / (canvasRatio * 2);
+
+        await ctx.BeginBatchAsync();
+        await ctx.SetTransformAsync(canvasRatio, 0, 0, canvasRatio, 0, 0);
+        await ctx.SetLineWidthAsync(1);
+        await ctx.ClearRectAsync(0, 0, cw, ch);
+
+        await ctx.SetFillStyleAsync("#000");
+        await ctx.FillRectAsync(0, 0, cw, ch);
+
+        await ctx.BeginPathAsync();
+        await ctx.SetStrokeStyleAsync("#ccc");
+        await ctx.MoveToAsync(0, ch2);
+        await ctx.LineToAsync(cw, ch2);
+        await ctx.StrokeAsync();
+
+        // Render waveform
+        await ctx.SetFillStyleAsync(CssColor);
+        for(int i = (int)Math.Max(0, (PlaybackHead - cw2) / WaveformBarWidth - 1); i < Peaks.Length; i++) {
+            double x = i * WaveformBarWidth + cw2 - PlaybackHead;
+            if(x >= cw) break;
+            double y = ch2 - Peaks[i] / MaxPeak * ch2;
+            await ctx.FillRectAsync(x, y, WaveformBarWidth - 1, ch - y * 2);
+        }
+
+        // Render beat markers
+        if(DownbeatAt != -1) {
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync("#888");
+            BeatMarkers.ForEach(async beatMarker => {
+                double x = beatMarker.X + cw2 - PlaybackHead;
+                if(x >= 0 && x < cw) {
+                    await ctx.MoveToAsync(x, 0);
+                    await ctx.LineToAsync(x, ch);
+                }
+            });
+            await ctx.StrokeAsync();
+
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync("#2ef");
+            await ctx.MoveToAsync(DownbeatAt * SecondsToPosX + cw2 - PlaybackHead, 0);
+            await ctx.LineToAsync(DownbeatAt * SecondsToPosX + cw2 - PlaybackHead, ch);
+            await ctx.StrokeAsync();
+        }
+        // ===================
+
+        // await ctx.BeginPathAsync();
+        // await ctx.SetStrokeStyleAsync("#f00");
+        // await ctx.MoveToAsync(cw2, 0);
+        // await ctx.LineToAsync(cw2, ch);
+        // await ctx.StrokeAsync();
+
+        await ctx.EndBatchAsync();
+    }
+}

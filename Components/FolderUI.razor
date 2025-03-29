@@ -1,0 +1,86 @@
+﻿@using Diyokee.MediaProviders
+@using static Diyokee.IMediaProvider
+
+@foreach(MediaFolder folder in folders) {
+    <div class="folder @(folder.RelativePath == selectedFolder ? "selected" : "")">
+        <div class="name" style="padding-left: calc(0.3rem + @(deep)rem)">
+            @if(folder.IsBusy) {
+                <div class="loading">
+                    <img src="@Assets["/images/waiting.gif"]" hidden="@(!folder.IsBusy)" />
+                </div>
+            } else {
+                 <div
+                    class="icons"
+                    @onclick="() => folder.IsExpanded = !folder.IsExpanded">
+                    <img
+                        class="arrow @(folder.HasSubfolders ? (folder.IsExpanded ? "expanded" : "") : "hidden")"
+                        src="@Assets["/images/arrow.png"]" />
+                    <img
+                        class="folder-icon"
+                        src="@Assets["/images/folder-icon.svg"]" />
+                </div>
+            }
+
+            <span
+                class="ellipsis"
+                @onclick="() => {
+                                selectedFolder = folder.RelativePath;
+                                SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                            }"
+                @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
+                @folder.Name
+            </span>
+        </div>
+    </div>
+    <div class="subfolders">
+        @if(folder.IsExpanded) {
+            <FolderUI Provider="@Provider"
+                RelativePath="@folder.RelativePath"
+                Parent="@this"
+                ParentMediaFolder="@folder"
+                SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)" />
+        }
+    </div>
+}
+
+@code {
+    private static string selectedFolder = "";
+    private List<MediaFolder> folders = [];
+    private string relativePath = "-";
+    private int deep = 0;
+
+    [Parameter]
+    public IMediaProvider? Provider { get; set; }
+
+    [Parameter]
+    public MediaFolder? ParentMediaFolder { get; set; }
+
+    [Parameter]
+    public FolderUI? Parent { get; set; }
+
+    [Parameter]
+    public string RelativePath {
+        get => relativePath;
+        set {
+            if(relativePath == value || Provider == null) return;
+            relativePath = value;
+
+            Task.Run(async () => {
+                folders = Provider.Directories(relativePath);
+                if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
+                if(Parent != null) await InvokeAsync(Parent.StateHasChanged);
+
+                await InvokeAsync(StateHasChanged);
+            });
+            deep = relativePath == "" ? 0 : 1 + relativePath.Count(c => c == '\\');
+        }
+    }
+
+    [Parameter]
+    public EventCallback<string> SelectedFolderChanged { get; set; }
+
+    private async void ChangeSelectedFolder(string folder) {
+        selectedFolder = folder;
+        await SelectedFolderChanged.InvokeAsync(folder);
+    }
+}

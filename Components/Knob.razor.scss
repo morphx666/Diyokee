@@ -1,0 +1,96 @@
+﻿.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;    
+
+    .name {
+        font-size: 0.6rem;
+        margin-top: -0.25rem;
+    }
+
+    .knob-container {
+        position: relative;
+
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+
+        //filter: drop-shadow(0px 0px 2px #000);
+
+        /* https://css-shape.com/arc/ */
+        --width: 6px; /* the border thickness */
+        --angle: 60deg; /* control the progression */
+
+        .arc { /* https://css-shape.com/arc/ */
+            position: absolute;
+        
+            top: 1px;
+            left: 0;
+            width: 100%;
+            aspect-ratio: 1;
+
+            padding: var(--width);
+            border-radius: 50%;
+            background: var(--ctrl-highlight);
+            rotate: 0deg;
+
+            z-index: 1;
+
+            /*--_g:/var(--width) var(--width) no-repeat radial-gradient(50% 50%,#000 97%,#0000);
+            mask: top var(--_g), 
+                  calc(50% + 50% * sin(var(--angle))) 
+                  calc(50% - 50% * cos(var(--angle))) var(--_g), 
+                  linear-gradient(#0000 0 0) content-box intersect, 
+                  conic-gradient(#000 var(--angle),#0000 0);*/
+        }
+
+        .knob {
+                position: absolute;
+                top: calc(var(--width) / 2);
+                left: calc(var(--width) / 2);
+                width: calc(100% - var(--width));
+                height: calc(100% - var(--width));
+
+                border: calc(var(--width) / 2) solid var(--app-background-color);
+                border-radius: 50%;
+
+                background-color: var(--panel-background-color-dark);
+                //background-image: linear-gradient(to bottom, #212123, #121210);
+
+                box-shadow: inset 0px 2px 0px -1px #fff3,
+                            inset -2px 0px 0px -1px #fff0,
+                            inset 0px -2px 0px -1px #000,
+                            inset 2px 0px 0px -2px #000;
+
+            .pointer {
+                position: absolute;
+                top: 2px;
+                left: 50%;
+                width: 2px;
+                height: 50%;
+                background-color: #fff8;
+
+                transform: translateX(-50%);
+                transform-origin: 50% bottom; 
+
+                rotate: 0;
+
+                &:after {
+                    content: "";
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 50%;
+
+                    transform: translate(-50%, calc(-50% + 4px));
+                    
+                    background-color: var(--panel-background-color-dark);
+                    //background-image: linear-gradient(to bottom, #212123, #121210);
+                }
+            }
+        }
+    }
+}

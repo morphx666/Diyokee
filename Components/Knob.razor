@@ -1,0 +1,128 @@
+﻿@inject IJSRuntime JS
+
+<div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
+    <div class="knob-container">
+        <div class="arc" style="@GetRangeCss()"></div>
+        <div class="knob">
+            <div class="pointer" style="@GetPointerCss()"></div>
+        </div>
+    </div>
+    <div class="name">@Name</div>
+</div>
+
+@code {
+    [Parameter]
+    public string Name { get; set; } = "Mid";
+
+    [Parameter]
+    public double Value { get; set; } = 0.5;
+
+    [Parameter]
+    public EventCallback<double> ValueChanged { get; set; }
+
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
+    private ElementReference knobElement;
+    private Bounds? knobBounds;
+    private double knobSize = 0;
+    private double initialValue = 0.5;
+
+    public void SetInitialValue(double value) {
+        Value = value;
+        initialValue = value;
+        UpdateRange();
+    }
+
+    public async Task SetValue(double newValue) {
+        if(Value == newValue) return;
+        Value = newValue;
+        UpdateRange();
+        await ValueChanged.InvokeAsync(newValue);
+    }
+
+    private void UpdateRange() {
+        // if(Value >= 0.5) {
+        //     rangeTop = (1 - Value) * faderSize + gutterOffset;
+        //     rangeHeight = (Value - 0.5) * faderSize;
+        // } else {
+        //     rangeTop = faderSize / 2 + gutterOffset;
+        //     rangeHeight = (0.5 - Value) * faderSize;
+        // }
+    }
+
+    public string GetPointerCss() {
+        // target_value = (source_value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        return $"rotate: {angle}deg";
+    }
+
+    public string GetRangeCss() {
+        return "display: none";
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        const string g = "/4px 4px no-repeat radial-gradient(50% 50%,#000 97%,#0000)";
+        return $@"mask: top {g}, 
+                        calc(50% + 50% * sin({angle}))
+                        calc(50% - 50% * cos({angle})) {g},
+                        linear-gradient(#0000 0 0) content-box intersect, 
+                        conic-gradient(#000 {angle}deg,#0000 0)";
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            knobBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", knobElement));
+            knobSize = knobBounds.Height;
+
+            UpdateRange();
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Run(async () => {
+                bool isValid = false;
+                while(true) {
+                    if(!isValid && mouseState != null && knobBounds != null &&
+                        !mouseState.IsCaptured &&
+                        (mouseState.ButtonsDown == 1) &&
+                        knobBounds.Contains(mouseState.X, mouseState.Y)) {
+
+                        mouseState.IsCaptured = true;
+                        isValid = true;
+                    }
+
+                    if(isValid) {
+                        if(mouseState?.ButtonsDown == 1) {
+                            double offset = mouseState.Y - knobBounds!.Y;
+                            double newValue = (knobSize - offset) / knobSize;
+                            if(newValue < 0) {
+                                newValue = 0;
+                            } else if(newValue > 1) {
+                                newValue = 1;
+                            }
+                            await InvokeAsync(async () => {
+                                await SetValue(newValue);
+                                StateHasChanged();
+                            });
+                        } else {
+                            mouseState!.IsCaptured = false;
+                            isValid = false;
+                        }
+                    } else if(mouseState?.WheelDelta != 0 && knobBounds.Contains(mouseState.X, mouseState.Y)) {
+                        double newValue = Value - (mouseState.WheelDelta / 2_000);
+                        if(newValue < 0) {
+                            newValue = 0;
+                        } else if(newValue > 1) {
+                            newValue = 1;
+                        }
+                        await InvokeAsync(async () => {
+                            await SetValue(newValue);
+                            StateHasChanged();
+                        });
+
+                        mouseState.WheelDelta = 0;
+                    }
+
+                    await Task.Delay(50);
+                }
+            });
+        }
+    }
+}

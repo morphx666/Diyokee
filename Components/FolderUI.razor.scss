@@ -1,0 +1,59 @@
+.folder {
+    user-select: none;
+    cursor: pointer;
+
+    .name {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 0.2rem;
+        padding: calc(0.2rem + 2px) 0.5rem;
+
+        .icons {
+            display: flex;
+            flex-direction: row;
+            gap: 4px;
+            align-items: center;
+
+            .arrow {
+                width: 0.5rem;
+                height: 0.5rem;
+                rotate: 90deg;
+    
+                transition: transform 250ms;
+    
+                &.expanded {
+                    transform: rotate(90deg);
+                }
+    
+                &.hidden {
+                    visibility: hidden;
+                }
+            }
+    
+            .folder-icon {
+                width: 1.2rem;
+                height: 1.2rem;
+                filter: invert(0.6);
+            }
+        }
+
+        .loading {
+            width: calc(0.5rem + 4px + 1.2rem + 2px);
+            height: 1.2rem;
+            img {
+                height: 1.5rem;
+                filter: invert(1) brightness(0.7);
+                margin-top: -0.2rem;
+            }
+        }
+    }
+
+    &.selected {
+        background-color: var(--pale-blue);
+    }
+}
+
+/*.subfolders {
+    padding-left: 2rem;
+}*/

@@ -1,0 +1,9 @@
+.folders {
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+    height: calc(100% - 2.4rem);
+
+    overflow-y: auto;
+}

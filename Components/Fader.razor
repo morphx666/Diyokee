@@ -1,0 +1,154 @@
+﻿@inject IJSRuntime JS
+
+<div class="fader-container">
+    <div class="name">@Name</div>
+    <div class="fader @(ViewMode == Mode.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
+        <div class="knob button-thin"
+        style="@GetKnobCss()"
+        @ondblclick="() => SetValue(initialValue)">
+        </div>
+        <div class="range" style="@GetRangeCss()"></div>
+    </div>
+</div>
+
+@code {
+    public enum Mode {
+        Vertical,
+        Horizontal
+    }
+
+    [Parameter]
+    public Mode ViewMode { get; set; } = Mode.Vertical;
+
+    [Parameter]
+    public double Value { get; set; } = 0.5;
+
+    [Parameter]
+    public double DefaultValue { get; set; } = 0.0;
+
+    [Parameter]
+    public string Name { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<double> ValueChanged { get; set; }
+
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
+    private ElementReference faderElement;
+    private bool isMouseDown = false;
+    private double rangeTop = 0;
+    private double rangeHeight = 0;
+    private Bounds? faderBounds;
+    private double faderSize = 0;
+    private double gutterOffsetTop = 16;
+    private double gutterOffsetBottom = 8;
+    private double initialValue = 0.5;
+
+    public void SetInitialValue(double value) {
+        Value = value;
+        initialValue = value;
+        UpdateRange();
+    }
+
+    public async Task SetValue(double newValue) {
+        if(Value == newValue) return;
+        Value = newValue;
+        UpdateRange();
+        await ValueChanged.InvokeAsync(newValue);
+    }
+
+    private void UpdateRange() {
+        if(Value >= DefaultValue) {
+            rangeTop = (1 - Value) * faderSize + gutterOffsetTop;
+            rangeHeight = (Value - DefaultValue) * faderSize;
+        } else {
+            rangeTop = faderSize / 2 + gutterOffsetTop;
+            rangeHeight = (DefaultValue - Value) * faderSize;
+        }
+    }
+
+    private string GetKnobCss() {
+        string prop = ViewMode == Mode.Vertical ? "top" : "left";
+        return $"{prop}: calc(10px + 100% - {gutterOffsetTop + gutterOffsetBottom}px - (100% - {gutterOffsetTop + gutterOffsetBottom}px) * {Value})";
+    }
+
+    private string GetRangeCss() {
+        string prop1 = ViewMode == Mode.Vertical ? "top" : "left";
+        string prop2 = ViewMode == Mode.Vertical ? "height" : "width";
+        return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
+    }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            switch(ViewMode) {
+                case Mode.Vertical:
+                    gutterOffsetTop = 16;
+                    gutterOffsetBottom = 8;
+                    break;
+                case Mode.Horizontal:
+                    gutterOffsetTop = 16;
+                    gutterOffsetBottom = 16;
+                    break;
+            }
+
+            faderBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", faderElement));
+            faderSize = (ViewMode == Mode.Vertical ? faderBounds.Height : faderBounds.Width) - gutterOffsetTop - gutterOffsetBottom;
+
+            UpdateRange();
+            await InvokeAsync(StateHasChanged);
+
+            await Task.Run(async () => {
+                bool isValid = false;
+                while(true) {
+                    if(!isValid && mouseState != null && faderBounds != null &&
+                        !mouseState.IsCaptured &&
+                        mouseState.ButtonsDown == 1 &&
+                        faderBounds.Contains(mouseState.X, mouseState.Y)) {
+
+                        mouseState.IsCaptured = true;
+                        isValid = true;
+                    }
+
+                    if(isValid) {
+                        if(mouseState?.ButtonsDown == 1) {
+                            double offset = ViewMode == Mode.Vertical ? mouseState.Y - faderBounds!.Y : mouseState.X - faderBounds!.X;
+                            double newValue = (faderSize - (offset - gutterOffsetTop)) / faderSize;
+                            if(newValue < 0) {
+                                newValue = 0;
+                            } else if(newValue > 1) {
+                                newValue = 1;
+                            }
+                            await InvokeAsync(async () => {
+                                await SetValue(newValue);
+                                StateHasChanged();
+                            });
+                        } else {
+                            mouseState!.IsCaptured = false;
+                            isValid = false;
+                        }
+                    } else if(mouseState?.WheelDelta != 0 && faderBounds.Contains(mouseState.X, mouseState.Y)) {
+                        double newValue = Value - (mouseState.WheelDelta / 2_000) * (ViewMode == Mode.Horizontal ? -1 : 1);
+                        if(newValue < 0) {
+                            newValue = 0;
+                        } else if(newValue > 1) {
+                            newValue = 1;
+                        }
+                        await InvokeAsync(async () => {
+                            await SetValue(newValue);
+                            StateHasChanged();
+                        });
+
+                        mouseState.WheelDelta = 0;
+                    }
+
+                    await Task.Delay(50);
+                }
+            });
+        }
+    }
+}

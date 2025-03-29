@@ -1,0 +1,94 @@
+﻿.container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+
+    .header {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        padding: 0.5rem;
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+
+            span:not(:first-child) {
+                height: 1.2rem;
+                filter: brightness(0.9);
+            }
+
+            span:first-child {
+                font-size: 1.2rem;
+                font-weight: 500;
+                height: 1.4rem;
+            }
+        }
+
+        .time, .bpm-key {
+            display: flex;
+            flex-direction: column;
+            padding: 0 1rem;
+            text-align: right;
+            font-family: var(--mono-font-family);
+        }
+
+        .player-name {
+            font-size: 2rem;
+            font-weight: 600;
+            padding: 0 1rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            aspect-ratio: 1;
+        }
+    }
+
+    .waveform-full {
+        display: flex;
+        flex-direction: row;
+        gap: 1px;
+        height: 38px;
+        overflow: hidden;
+        margin-bottom: 1px;
+        
+        background-color: var(--panel-background-color-light);
+    }
+
+    .waveform {
+        display: flex;
+        flex-direction: row;
+        gap: 1px;
+        flex: 1;
+        overflow: hidden;
+        
+        background-color: var(--panel-background-color-light);
+
+        & ::deep > * {
+            background-color: var(--panel-background-color-dark) !important;
+        }
+    }
+
+    .transport {
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 10px;
+        padding: 10px;
+        width: 100%;
+
+        .icon {
+            position: relative;
+            width: 64px;
+            height: 48px;
+            font-weight: 600;
+            padding: 6px 0 0 8px;
+            cursor: pointer;
+
+            &.active {
+                color: #83fa1b;
+            }
+        }
+    }
+}

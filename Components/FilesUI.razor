@@ -1,0 +1,288 @@
+﻿@using System.Diagnostics
+@using Microsoft.EntityFrameworkCore
+@using System.Text
+@using Diyokee.Data
+@using TagLib
+@using Un4seen.Bass
+@using Un4seen.Bass.AddOn.Fx
+@inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
+@inject IJSRuntime JS
+
+<div class="files-container">
+    <div class="files-scrollable scroller">
+        <div class="files-list-container">
+            <div class="column cell">Artist</div>
+            <div class="column cell">Title</div>
+            <div class="column cell">Genre</div>
+            <div class="column cell">Album</div>
+            <div class="column cell">BPM</div>
+            <div class="column cell">Key</div>
+            <div class="column cell">Gain</div>
+            <div class="column cell">Duration</div>
+
+            @foreach(File file in files) {
+                @if(file.Artist == "...") {
+                    <div class="cell @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">
+                        <img src="@Assets["/images/waiting.gif"]" />
+                    </div>
+                } else {
+                    <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Artist</div>
+                }
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Title</div>
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Genre</div>
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Album</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.BPM.ToString("N2")</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@File.FormatTime(file.Duration)</div>
+            }
+        </div>
+    </div>
+
+    <div class="footer-container">
+        <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@HandleKeyUp"></InputText>
+        <div class="button reset-search" @onclick="@ResetSearch">×</div>
+        <div class="button search-button @(isSearching ? "working" : "")" @onclick="@(() => AnalyzeFiles(true))"><span>@searchButtonIcon</span></div>
+        <div class="button" @onclick="@ReAnalyzeFile">⟳</div>
+    </div>
+</div>
+
+<script>
+    window.scrollFilesToTop = () => document.querySelector(".files-list-container").scrollTo({ top: 0 });
+</script>
+
+@code {
+    // Migrations:
+    // dotnet ef migrations add "Added ReplayGain"
+    // dotnet ef database update
+    public class File {
+        public int Id { get; set; }
+        public string Artist { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Genre { get; set; } = "";
+        public string Album { get; set; } = "";
+        public string Filename { get; set; } = "";
+        public double Duration { get; set; } = 0;
+        public string Waveform { get; set; } = ""; // Base64 encoded
+        public float BPM { get; set; } = 0;
+        public double DownbeatAt { get; set; } = -1;
+        public string Key { get; set; } = "";
+        public double ReplayGain { get; set; } = 0;
+        public bool HasReplayGain { get; set; } = false;
+
+        public static string FormatTime(double seconds) {
+            double h = Math.Floor(seconds / 3600);
+            double m = Math.Floor((seconds % 3600) / 60);
+            double s = seconds % 60;
+            StringBuilder sb = new();
+            if(h > 0) sb.Append($"{h:00}:");
+            sb.Append($"{m:00}:");
+            sb.Append($"{s:00}");
+            return sb.ToString();
+        }
+    }
+
+    private List<File> files = [];
+    private string selectedFile = "";
+    private string relativePath = "";
+    private Task? analyzingTask = null;
+    private KeyTools keyTools = new();
+    private string searchText = "";
+    private CancellationTokenSource? cancellationTokenSource = null;
+    private bool isSearching = false;
+    private string searchButtonIcon = "🔎";
+    public const double TimeSlice = 0.05;
+
+    [Parameter]
+    public IMediaProvider? Provider { get; set; } = null;
+
+    [Parameter]
+    public EventCallback<File> SelectedFileChanged { get; set; }
+
+    [Parameter]
+    public string RelativePath {
+        get => relativePath;
+        set {
+            if(relativePath == value) return;
+            relativePath = value;
+            selectedFile = "";
+
+            AnalyzeFiles(false);
+        }
+    }
+
+    private async Task AnalyzeFiles(bool doSearch) {
+        if(doSearch && searchText == "") doSearch = false;
+
+        if(cancellationTokenSource == null) {
+            cancellationTokenSource = new CancellationTokenSource();
+        } else {
+            cancellationTokenSource.Cancel();
+            analyzingTask?.Wait();
+            cancellationTokenSource.Dispose();
+            cancellationTokenSource = new CancellationTokenSource();
+        }
+
+        files.Clear();
+        if(doSearch) {
+            isSearching = true;
+            searchButtonIcon = "↻";
+            Provider?.Search(relativePath, searchText, true).ForEach(file => {
+                string fullFileName = Path.Combine(Provider.RootPath, relativePath, file);
+                files.Add(new File {
+                        Artist = "...",
+                        Filename = fullFileName
+                    });
+            });
+        } else {
+            Provider?.Files(relativePath).ForEach(file => {
+                string fullFileName = Path.Combine(Provider.RootPath, relativePath, file);
+                files.Add(new File {
+                        Artist = "...",
+                        Filename = fullFileName
+                    });
+            });
+        }
+        await JS.InvokeVoidAsync("scrollFilesToTop");
+
+        int counter = 0;
+        CacheDbContext? cache = null;
+        analyzingTask = await Task.Run(async () => {
+            cache ??= await CacheDbContextFactory.CreateDbContextAsync();
+
+            files.ForEach(async file => {
+                if(cancellationTokenSource.IsCancellationRequested) return;
+
+                await AnalyzeFile(file, cache, false);
+
+                if(++counter % 10 == 0) await cache!.SaveChangesAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+        }, cancellationTokenSource.Token).ContinueWith(async _ => {
+            isSearching = false;
+            searchButtonIcon = "🔎";
+
+            await InvokeAsync(StateHasChanged);
+            await cache!.SaveChangesAsync();
+            await cache.DisposeAsync();
+        });
+    }
+
+    private async Task AnalyzeFile(File file, CacheDbContext cache, bool ignoreCache) {
+        var cachedFile = ignoreCache ? null : await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        if(cachedFile == null) {
+            float bpm = 0;
+            double downbeatAt = -1;
+
+            using(TagLib.File tlFile = TagLib.File.Create(file.Filename)) {
+                file.Artist = tlFile.Tag.FirstPerformer ?? "";
+                file.Title = tlFile.Tag.Title ?? "";
+                file.Genre = tlFile.Tag.FirstGenre ?? "";
+                file.Album = tlFile.Tag.Album ?? "";
+                if(!ignoreCache) bpm = tlFile.Tag.BeatsPerMinute;
+                file.Key = tlFile.Tag.InitialKey ?? "";
+                file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
+                file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
+            }
+
+            if((file.Artist == "" || file.Title == "") && file.Filename.Contains(" - ")) {
+                string name = file.Filename;
+                if(name.Contains('\\')) name = name.Split('\\').Last();
+                string[] tokens = name.Split(" - ");
+                if(file.Artist == "") file.Artist = tokens[0];
+                if(file.Title == "") file.Title = tokens[1];
+            }
+
+            int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+            file.Duration = Bass.BASS_ChannelBytes2Seconds(handle, Bass.BASS_ChannelGetLength(handle, BASSMode.BASS_POS_BYTE));
+            if(bpm <= 0) bpm = BassFx.BASS_FX_BPM_DecodeGet(handle, 0, 60, 45 | (130 << 16), BASSFXBpm.BASS_FX_BPM_BKGRND | BASSFXBpm.BASS_FX_BPM_MULT2, null, IntPtr.Zero);
+            if(bpm > 0) file.BPM = bpm;
+
+            BassFx.BASS_FX_BPM_BeatDecodeGet(handle, 0, 60, BASSFXBpm.BASS_FX_BPM_DEFAULT,
+                new BPMBEATPROC((int handle, double beatPosition, IntPtr user) => {
+                    if(downbeatAt == -1) downbeatAt = beatPosition;
+                }),
+                IntPtr.Zero);
+
+            file.DownbeatAt = downbeatAt;
+            file.Waveform = GenerateWaveform(handle);
+
+            BassFx.BASS_FX_BPM_Free(handle);
+            Bass.BASS_StreamFree(handle);
+
+            cache.Files.Add(file);
+        } else {
+            file.Artist = cachedFile.Artist;
+            file.Title = cachedFile.Title;
+            file.Genre = cachedFile.Genre;
+            file.Album = cachedFile.Album;
+            file.Duration = cachedFile.Duration;
+            file.Waveform = cachedFile.Waveform;
+            file.BPM = cachedFile.BPM;
+            file.DownbeatAt = cachedFile.DownbeatAt;
+            file.Key = cachedFile.Key;
+            file.ReplayGain = cachedFile.ReplayGain;
+            file.HasReplayGain = cachedFile.HasReplayGain;
+        }
+    }
+
+    private string GenerateWaveform(int handle) {
+        Bass.BASS_ChannelSetPosition(handle, 0, BASSMode.BASS_POS_BYTE);
+        long bufferLen = Bass.BASS_ChannelSeconds2Bytes(handle, TimeSlice);
+        long stepLen = Bass.BASS_ChannelSeconds2Bytes(handle, TimeSlice);
+        Int16[] buffer = new Int16[bufferLen];
+
+        StringBuilder sb = new();
+        int maxValue = Int16.MaxValue / 2;
+
+        while(true) {
+            if(Bass.BASS_ChannelGetData(handle, buffer, buffer.Length) <= 0) break;
+            double avg = buffer.Average(b => b < 0 ? -b : b) / maxValue;
+            sb.Append(avg.ToString());
+            sb.Append('|');
+
+            bool r = Bass.BASS_ChannelSetPosition(handle, stepLen, BASSMode.BASS_POS_BYTE | BASSMode.BASS_POS_DECODETO | BASSMode.BASS_POS_RELATIVE);
+            stepLen += stepLen;
+        }
+
+        return sb.ToString().TrimEnd('|');
+    }
+
+    private async void ChangeSelectedFile(File? file) {
+        string newFilename = file?.Filename ?? "";
+        if(selectedFile == newFilename) return;
+
+        selectedFile = newFilename;
+        await SelectedFileChanged.InvokeAsync(file);
+    }
+
+    private async void HandleKeyUp(KeyboardEventArgs e) {
+        if(e.Key == "Enter") await AnalyzeFiles(true);
+    }
+
+    private async void ResetSearch() {
+        if(searchText != "") {
+            searchText = "";
+            await AnalyzeFiles(false);
+        }
+    }
+
+    private async void ReAnalyzeFile() {
+        CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
+        File? selFile = await cache.Files.FirstOrDefaultAsync(f => f.Filename == selectedFile);
+        if(selFile != null) {
+            cache.Files.Remove(selFile);
+            await cache!.SaveChangesAsync();
+            
+            int index = files.FindIndex(f => f.Filename == selectedFile);
+            files.RemoveAt(index);
+
+            await AnalyzeFile(selFile, cache, true);
+
+            files.Insert(index, selFile);
+            await cache!.SaveChangesAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        await cache.DisposeAsync();
+    }
+}

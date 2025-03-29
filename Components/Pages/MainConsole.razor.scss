@@ -1,0 +1,67 @@
+﻿.console {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100vh;
+
+    .vertical-resize {
+        width: 100%;
+        min-height: 2px;
+        max-height: 2px;
+        background-color: transparent;
+        cursor: ns-resize;
+    }
+
+    .horizontal-resize {
+        min-width: 2px;
+        max-width: 2px;
+        height: 100%;
+        background-color: transparent;
+        cursor: ew-resize;
+    }
+
+    .panel {
+        ::deep h3 {
+            padding: 0.2em 0.5rem;
+            margin: 0;
+            background-color: var(--header);
+            border-bottom: 1px solid var(--panel-background-color-dark);
+        }
+    }
+
+    .players {
+        display: grid;
+        grid-template-columns: calc(50% - 100px) 200px calc(50% - 100px);
+
+        .player {
+            display: flex;
+            flex-direction: row;
+            flex: 1;
+            background-color: var(--panel-background-color-light);
+        }
+
+        .mixer {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+
+            background-color: var(--panel-background-color-dark);
+
+            .controls {
+                height: calc(5rem - 2px);
+            }
+        }
+    }
+
+    .media {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        max-height: calc(100vh - 315px - 2px); /* FIXME: WHY??? */
+
+        .sources {
+            width: 400px;
+            background-color: var(--panel-background-color-light);
+        }
+    }
+}

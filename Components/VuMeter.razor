@@ -1,0 +1,84 @@
+﻿@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions.Canvas.Canvas2D
+@inject IJSRuntime JS
+
+<div class="vumeter-container">
+    <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
+</div>
+
+
+@code {
+    private BECanvas canvas;
+    private Canvas2DContext ctx;
+
+    private long canvasWidth = 0;
+    private long canvasHeight = 0;
+    private double canvasRatio = 1.0;
+
+    private double levelReal = 0.0;
+    private double levelMonitor = 0.0;
+    private int vuSize = 5;
+
+    public async void SetLevel(double real, double monitor) {
+        levelReal = real;
+        levelMonitor = monitor;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas.CanvasReference));
+            canvasWidth = (long)canvasSize[0];
+            canvasHeight = (long)canvasSize[1];
+            canvasRatio = canvasSize[2];
+        }
+
+        RenderVuMeter();
+    }
+
+    private async void RenderVuMeter() {
+        if(ctx == null) ctx = await canvas.CreateCanvas2DAsync();
+
+        double cw = canvasWidth / canvasRatio;
+        double ch = canvasHeight / canvasRatio;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double ch2 = canvasHeight / (canvasRatio * 2);
+
+        await ctx.BeginBatchAsync();
+        await ctx.SetTransformAsync(canvasRatio, 0, 0, canvasRatio, 0, 0);
+        await ctx.SetLineWidthAsync(1);
+
+        await ctx.ClearRectAsync(0, 0, cw, ch);
+
+        double max_ch = ch - (ch % vuSize);
+        for(int y = (int)((ch - max_ch) / 2); y < max_ch; y += vuSize) {
+            double levelReal2y = (1 - levelReal) * max_ch;
+            double levelMonitor2y = (1 - levelMonitor) * max_ch;
+
+            if(y < levelMonitor2y) {
+                if(y < levelReal2y) {
+                    await ctx.SetFillStyleAsync("#444");
+                } else {
+                    if(y < ch2 * 0.3) {
+                        await ctx.SetFillStyleAsync("#c008");
+                    } else if(y < ch2) {
+                        await ctx.SetFillStyleAsync("#cc08");
+                    } else {
+                        await ctx.SetFillStyleAsync("#0c08");
+                    }
+                }
+            } else if(y < ch2 * 0.3) {
+                await ctx.SetFillStyleAsync("#c00");
+            } else if(y < ch2) {
+                await ctx.SetFillStyleAsync("#cc0");
+            } else {
+                await ctx.SetFillStyleAsync("#0c0");
+            }
+            
+            await ctx.FillRectAsync(0, y, cw, vuSize - 1);
+        }
+
+        await ctx.EndBatchAsync();
+    }
+}

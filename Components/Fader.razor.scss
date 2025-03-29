@@ -1,0 +1,96 @@
+﻿.fader-container {
+    --fader-size: 40px;
+    display: flex;
+    flex-direction: column;
+
+    .name {
+        width: 100%;
+        text-align: center;
+        filter: contrast(0);
+        margin: 0.5rem 0 -0.5rem;
+    }
+
+    .fader {
+        position: relative;
+
+        .knob:hover {
+            opacity: 0.6;
+        }
+
+        &.horizontal {
+            width: 100%;
+            height: var(--fader-size);
+
+            .knob {
+                position: absolute;
+                left: 8px;
+                top: 50%;
+                width: 12px;
+                height: calc(100% - 10px);
+                cursor: pointer;
+                transform: translateY(-50%);
+                z-index: 1;
+            }
+
+            &:after { /* gutter */
+                content: "";
+                position: absolute;
+                left: 16px;
+                right: 16px;
+                bottom: 50%;
+                height: 1px;
+                background-color: #fff6;
+                transform: translateY(50%);
+            }
+
+            .range {
+                position: absolute;
+                left: 0;
+                top: 50%;
+                height: 1px;
+                width: calc(100% - 2rem);
+                background-color: var(--ctrl-highlight);
+                pointer-events: none;
+                transform: translateY(-50%);
+            }
+        }
+
+        &.vertical {
+            width: var(--fader-size);
+            height: 100%;
+
+            .knob {
+                position: absolute;
+                left: 50%;
+                top: 8px;
+                width: calc(100% - 10px);
+                height: 12px;
+                cursor: pointer;
+                transform: translateX(-50%);
+                z-index: 1;
+            }
+
+            &:after { /* gutter */
+                content: "";
+                position: absolute;
+                left: 50%;
+                top: 16px;
+                bottom: 8px;
+                width: 1px;
+                background-color: #fff6;
+                transform: translateX(-50%);
+            }
+
+            .range {
+                position: absolute;
+                left: 50%;
+                top: 0;
+                height: 20px;
+                width: 1px;
+                background-color: var(--ctrl-highlight);
+                pointer-events: none;
+                transform: translateX(-50%);
+            }
+        }
+    }
+}

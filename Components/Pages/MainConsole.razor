@@ -1,0 +1,145 @@
+﻿@using System.Diagnostics
+@using Diyokee.MediaProviders
+
+@page "/"
+
+<PageTitle>Diyokee</PageTitle>
+
+<div
+    class="console"
+    tabindex="0"
+    @onkeydown="HandleKeyDown"
+    @onmousedown="HandleMouseDown"
+    @onmousemove="HandleMouseMove"
+    @onmouseup="HandleMouseUp"
+    @onmousewheel="HandleMouseWheel">
+    <CascadingValue Value="@mouseState">
+        <div class="players">
+            <div class="player">
+                <Player 
+                    PlayerName="A"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    PlayerCssColor="#977696"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
+            </div>
+            <div class="mixer">
+                <div class="controls"></div>
+                <Fader ViewMode="Fader.Mode.Horizontal" ValueChanged="ApplyFader" DefaultValue="0.5" @ref="crossFader" />
+            </div>
+            <div class="player">
+                <Player
+                    PlayerName="B"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    PlayerCssColor="#279597"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
+            </div>
+        </div>
+
+        <div class="vertical-resize">
+        </div>
+
+        <div class="media">
+            <div class="sources panel">
+                <MediaProvider Provider="@mediaProvider" SelectedFolderChanged="SelectedFolderChanged" />
+            </div>
+
+            <div class="horizontal-resize">
+            </div>
+
+            <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
+        </div>
+    </CascadingValue>
+</div>
+
+@code {
+    private IMediaProvider mediaProvider = new MediaProviderLocal("Local", @"Z:\Music");
+    private string selectedFolder = "";
+
+    private FilesUI.File? selectedFile = null;
+    private FilesUI.File? player1File = null;
+    private FilesUI.File? player2File = null;
+
+    private Player? player1;
+    private Player? player2;
+
+    private Fader? crossFader;
+
+    private MouseState mouseState = new();
+
+    private bool shouldRender = true;
+
+    private void LoadSelectedFile(Player? player) {
+        if(player == player1) {
+            player1File = selectedFile;
+        } else if(player == player2) {
+            player2File = selectedFile;
+        }
+        shouldRender = true;
+    }
+
+    private void SelectedFolderChanged(string folder) {
+        selectedFolder = folder;
+        shouldRender = true;
+    }
+
+    private void SelectedFileChanged(FilesUI.File file) {
+        selectedFile = file;
+        shouldRender = true;
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e) {
+        switch(e.Code) {
+            case "KeyA":
+                player1File = selectedFile;
+                break;
+            case "KeyB":
+                player2File = selectedFile;
+                break;
+        }
+    }
+
+    private void HandleMouseDown(MouseEventArgs e) {
+        mouseState.X = e.ClientX;
+        mouseState.Y = e.ClientY;
+        mouseState.ButtonsDown = e.Buttons;
+    }
+
+    private void HandleMouseMove(MouseEventArgs e) {
+        mouseState.X = e.ClientX;
+        mouseState.Y = e.ClientY;
+    }
+
+    private void HandleMouseUp(MouseEventArgs e) {
+        mouseState.X = e.ClientX;
+        mouseState.Y = e.ClientY;
+        mouseState.ButtonsDown = e.Buttons;
+    }
+
+    private void HandleMouseWheel(WheelEventArgs e) {
+        mouseState.WheelDelta = e.DeltaY;
+    }
+
+    private void ApplyFader(double value) {
+        player1?.SetCrossFaderVolume(value >= 0.5 ? 1 : 2 * value);
+        player2?.SetCrossFaderVolume(value <= 0.5 ? 1 : 2 * (1 - value));
+    }
+
+    protected override bool ShouldRender() {
+        if(shouldRender) {
+            shouldRender = false;
+            return true;
+        }
+        return false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            await Task.Delay(500);
+            await InvokeAsync(StateHasChanged); // This updated the SYNC->PLAYER buttons
+        }
+    }
+}

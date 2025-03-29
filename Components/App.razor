@@ -1,0 +1,70 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+
+    <link rel="icon" href="images/app-icon.png" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["Diyokee.styles.css"]" />
+    <link rel="stylesheet" href="@Assets["console.css"]" />
+
+    <script src='_content/Blazor.Extensions.Canvas/blazor.extensions.canvas.js'></script>
+
+    <ImportMap />
+    <HeadOutlet />
+</head>
+
+<body>
+    <Routes @rendermode=RenderMode.InteractiveServer />
+    <script src="_framework/blazor.web.js"></script>
+
+    <script>
+        getElementBounds = (element, param) => {
+            const b = element.getBoundingClientRect();
+            return [b.x, b.y, b.width, b.height];
+        };
+
+        resizeCanvas = (element, param) => {
+            const ctx = element.getContext('2d');
+            const ratio = getPixelRatio(ctx);
+
+            element.width = element.offsetWidth * ratio;
+            element.height = element.offsetHeight * ratio;
+            element.style.width = "100%";
+            element.style.height = "100%";
+            element.style.maxHeight = element.height / ratio + "px";
+
+            const b = getElementBounds(element);
+            return [b[2], b[3], ratio];
+        }
+
+        getPixelRatio = (gc) => {
+            var dpr = window.devicePixelRatio || 1;
+            var bsr = gc.webkitBackingStorePixelRatio ||
+                      gc.mozBackingStorePixelRatio ||
+                      gc.msBackingStorePixelRatio ||
+                      gc.oBackingStorePixelRatio ||
+                      gc.backingStorePixelRatio || 1;
+
+            return dpr / bsr;
+        }
+
+        var notifyHandler = 0;
+        window.onresize = () => {
+            clearTimeout(notifyHandler);
+            notifyHandler = setTimeout(() => {
+                // https://learn.microsoft.com/en-us/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-9.0
+                //DotNet.invokeMethodAsync('Diyokee', 'OnResize');
+            }, 500);
+        };
+    </script>
+</body>
+
+</html>

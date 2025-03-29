@@ -1,0 +1,19 @@
+﻿@using Diyokee.MediaProviders
+@using static Diyokee.IMediaProvider
+
+<h3 class="ellipsis">@Provider?.Name: @Provider?.RootPath</h3>
+
+<div class="folders scroller">
+    <FolderUI
+        Provider="@Provider"
+        RelativePath=""
+        SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)" />
+</div>
+
+@code {
+    [Parameter]
+    public IMediaProvider? Provider { get; set; }
+
+    [Parameter]
+    public EventCallback<string> SelectedFolderChanged { get; set; }
+}

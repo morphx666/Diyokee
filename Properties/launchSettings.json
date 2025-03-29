@@ -1,0 +1,42 @@
+{
+  "profiles": {
+    "https": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "https://xfx.no-ip.org:5000/",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://xfx.no-ip.org:5000/",
+      "dotnetRunMessages": true
+    },
+    "watch": {
+      "commandName": "Project",
+      "commandLineArgs": "watch run",
+      "launchBrowser": true,
+      "launchUrl": "https://xfx.no-ip.org:5000/",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "hotReloadEnabled": true,
+      "hotReloadProfile": "aspnetcore",
+      "applicationUrl": "https://xfx.no-ip.org:5000",
+      "dotnetRunMessages": true
+    },
+    "IIS Express": {
+      "commandName": "IISExpress",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  },
+  "iisSettings": {
+    "windowsAuthentication": false,
+    "anonymousAuthentication": true,
+    "iisExpress": {
+      "applicationUrl": "http://localhost:52968/",
+      "sslPort": 44376
+    }
+  }
+}

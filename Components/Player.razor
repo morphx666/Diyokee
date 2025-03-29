@@ -1,0 +1,430 @@
+﻿@using System.Drawing
+@using System.Diagnostics
+@using Un4seen.Bass
+@using Un4seen.Bass.AddOn.Fx
+@using Un4seen.Bass.AddOn.Mix
+
+@using Blazor.Extensions
+@using Blazor.Extensions.Canvas
+@using Blazor.Extensions.Canvas.Canvas2D
+@inject IJSRuntime JS
+
+<div class="container">
+    <div class="header">
+        <div class="file-info ellipsis">
+            <span class="ellipsis">@file?.Title</span>
+            <span class="ellipsis">@file?.Artist</span>
+            <span class="ellipsis">@file?.Album</span>
+        </div>
+        <div class="time">
+            <span>@FilesUI.File.FormatTime(playbackPosition)</span>
+            <span>-@FilesUI.File.FormatTime(GetRemainingTime())</span>
+            <span>&nbsp;</span>
+        </div>
+        <div class="bpm-key">
+            <span>@CalcBpm()</span>
+            <span>@GetBpmAdjustment()</span>
+            @* <span>@systemBPM.ToString("N2")</span> *@
+            <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
+        </div>
+        <div class="player-name" style="background-color: @PlayerCssColor">
+            @PlayerName
+        </div>
+    </div>
+
+    <div class="waveform-full">
+        <Waveform CssColor="@PlayerCssColor"
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveformFull" />
+    </div>
+
+    <div class="waveform">
+        <Waveform CssColor="@PlayerCssColor"
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+        @ref="waveform" />
+        <VuMeter @ref="vuMeter" />
+        <Fader ViewMode="Fader.Mode.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
+        <Fader ViewMode="Fader.Mode.Vertical" ValueChanged="ApplyTempo" Name="🎶" DefaultValue="0.5" @ref="faderTempo" />
+        <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
+    </div>
+
+    <div class="transport">
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick">▶</div>
+        <div class="button-3d icon" @onmouseup="HandleStopClick">⏹</div>
+        <div class="button-3d icon"
+            @onmousedown="HandlePlayClick"
+            @onmouseup="HandleStopAndSnapClick">
+            CUE
+        </div>
+        <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker">↨</div>
+        <div class="button-3d icon" @onmouseup="HandleRequestedFileCue">⏏</div>
+        <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer">➞ @(OtherPlayer?.PlayerName ?? "")</div>
+    </div>
+</div>
+
+@code {
+    private const int waveformBarWidth = 5;
+
+    private float systemBPM = 128;
+    private double fileBPM = 0;
+
+    private int streamHandle = 0;
+    private int fxHandle = 0;
+    private int eqHandle = 0;
+    private BASS_BFX_PEAKEQ eqParams = new();
+    private string lastFilename = "";
+
+    private double trackGain = 1;
+    private double crossFaderVolume = 1;
+
+    private FilesUI.File? file = null;
+    private Fader? faderVolume;
+    private Fader? faderTempo;
+    private Waveform? waveform;
+    private Waveform? waveformFull;
+    private VuMeter? vuMeter;
+    private Eq? eqCtrls;
+
+    private int waveformWidth = 0;
+    private long trackLengthBytes = 0;
+    private double playbackPosition = 0;
+    private long waveformStepLength = 0;
+    private bool queueAutoSnap = false;
+    private double[] peaks = [];
+    private double maxPeak = 1.0;
+    private double beatsPerSecond;
+    private double secondsToPosX;
+    public List<(double X, double Seconds)> beatMarkers = new();
+    public double cuePoint = 0;
+
+    private KeyTools keyTools = new();
+
+    private bool IsPlaying { get; set; }
+
+    [Parameter]
+    public FilesUI.File? File {
+        get => file;
+        set {
+            file = value;
+            if(file != null && lastFilename != file.Filename) {
+                lastFilename = file.Filename;
+                LoadFile();
+            }
+        }
+    }
+
+    [Parameter]
+    public string PlayerName { get; set; } = "";
+
+    [Parameter]
+    public EventCallback RequestedFileCue { get; set; }
+
+    [Parameter]
+    public string PlayerCssColor { get; set; } = "#444";
+
+    [Parameter]
+    public bool IsMasterClock { get; set; } = false;
+
+    [Parameter]
+    public Player? OtherPlayer { get; set; } = null;
+
+    public Player() {
+        Task.Run(MonitorPlayback);
+    }
+
+    //private SYNCPROC syncProc;
+    private void HandlePlayClick(MouseEventArgs e) {
+        if(e.Button == 0) Play();
+    }
+
+    private void HandleStopClick(MouseEventArgs e) {
+        if(e.Button == 0) Stop(false);
+    }
+
+    private void HandleStopAndSnapClick(MouseEventArgs e) {
+        if(e.Button == 0) Stop(true);
+    }
+
+    private void HandleSnapToClosestBeatMarker(MouseEventArgs e) {
+        if(e.Button == 0) SnapToClosestBeatMarker();
+    }
+
+    private void HandleRequestedFileCue(MouseEventArgs e) {
+        if(e.Button == 0) RequestedFileCue.InvokeAsync();
+    }
+
+    private void HandleSyncBPMToOtherPlayer(MouseEventArgs e) {
+        if(e.Button == 0) SyncBPMToOtherPlayer();
+    }
+
+    private void Play() {
+        if(fxHandle == 0) return;
+
+        // ******************* This might be useful for syncing the two players and playing loops *******************
+        //
+        // syncProc = new SYNCPROC(Play2);
+        //
+        // Bass.BASS_ChannelLock(Program.BassMixHandle, true);
+        // long mixerPos = Bass.BASS_ChannelGetPosition(Program.BassMixHandle, BASSMode.BASS_POS_BYTE | BASSMode.BASS_POS_DECODE);
+        // var r = Bass.BASS_ChannelSetSync(Program.BassMixHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_ONETIME, mixerPos+1000, syncProc, IntPtr.Zero);
+        // var err = Bass.BASS_ErrorGetCode();
+        // Bass.BASS_ChannelLock(Program.BassMixHandle, false);
+
+        if(IsPlaying) {
+            BassMix.BASS_Mixer_ChannelPause(fxHandle);
+            IsPlaying = false;
+        } else {
+            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
+            IsPlaying = true;
+        }
+    }
+
+    private void Stop(bool resetToCuePoint) {
+        if(fxHandle == 0) return;
+        BassMix.BASS_Mixer_ChannelPause(fxHandle);
+        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, resetToCuePoint ? cuePoint : 0));
+        IsPlaying = false;
+    }
+
+    private void ApplyVolume(double value) {
+        if(fxHandle == 0) return;
+        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume));
+    }
+
+    public void SetCrossFaderVolume(double value) {
+        crossFaderVolume = value;
+        ApplyVolume(faderVolume?.Value ?? 0);
+    }
+
+    private void ApplyTempo() {
+        if(fxHandle == 0) return;
+        // tempo = ((1 + X) / 1.5 - 1) * 100
+        // X = (tempo / 100 * 1.5) - 1
+        double tempo = ((1.0 + (faderTempo?.Value ?? 0.5)) / 1.5 - 1.0) * 100.0;
+
+        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
+        //OtherPlayer?.SyncBPMToOtherPlayer(); // TODO: Add option to enable/disable this feature
+    }
+
+    private void ApplyEq(Eq.EqValues eqValues) {
+        // Lo
+        eqParams.lBand = 0;
+        eqParams.fCenter = 125;
+        eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+        // Mid
+        eqParams.lBand = 1;
+        eqParams.fCenter = 1000;
+        eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+        // Hi
+        eqParams.lBand = 2;
+        eqParams.fCenter = 8000;
+        eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+    }
+
+    private string CalcBpm() {
+        double bpm = (file?.BPM ?? 0) * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
+        return bpm.ToString("N2");
+    }
+
+    private string GetBpmAdjustment() {
+        double bpm = fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
+        double adjustment = bpm > 0 ? 100.0 - fileBPM / bpm * 100.0 : 0;
+        return $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
+    }
+
+    private double GetRemainingTime() {
+        if(file?.Duration > 0) return (file?.Duration - playbackPosition) ?? 0;
+        return 0;
+    }
+
+    private async void SyncBPMToOtherPlayer() {
+        if(OtherPlayer?.File == null || fileBPM == 0) return;
+
+        double tempo = (OtherPlayer?.AdjustedBPM ?? 0) / fileBPM * 1.5 - 1.0;
+        await faderTempo?.SetValue(tempo);
+    }
+
+    public double AdjustedBPM {
+        get => fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
+    }
+
+    private void LoadFile() {
+        IsPlaying = false;
+
+        if(streamHandle != 0) {
+            BassMix.BASS_Mixer_ChannelRemove(streamHandle);
+            Bass.BASS_ChannelStop(streamHandle);
+            Bass.BASS_StreamFree(streamHandle);
+            streamHandle = 0;
+        }
+
+        if(file == null || faderVolume == null) return;
+
+        streamHandle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_STREAM_PRESCAN | BASSFlag.BASS_ASYNCFILE);
+        fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON | BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_FX_FREESOURCE);
+        BassMix.BASS_Mixer_StreamAddChannel(Program.BassMixHandle, fxHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE | BASSFlag.BASS_MIXER_CHAN_NORAMPIN | BASSFlag.BASS_MIXER_CHAN_BUFFER);
+        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
+
+        ApplyVolume(faderVolume.Value);
+        SetupEQ();
+        faderTempo?.SetValue(0.5);
+
+        trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
+        waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, FilesUI.TimeSlice);
+
+        peaks = [];
+        beatMarkers.Clear();
+        Task.Run(async () => {
+            while(!SetParameters()) await Task.Delay(1000);
+            queueAutoSnap = !IsPlaying;
+        });
+    }
+
+    private void SetupEQ() {
+        // set peaking equalizer effect with no bands
+        eqHandle = Bass.BASS_ChannelSetFX(fxHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+
+        // setup the EQ bands
+        eqParams.fQ = 0f;
+        eqParams.fBandwidth = 2.5f;
+        eqParams.lChannel = BASSFXChan.BASS_BFX_CHANALL;
+
+        // create 1st band for bass
+        eqParams.lBand = 0;
+        eqParams.fCenter = 125;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+        // create 2nd band for mid
+        eqParams.lBand = 1;
+        eqParams.fCenter = 1000;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+        // create 3rd band for treble
+        eqParams.lBand = 2;
+        eqParams.fCenter = 8000;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+        eqCtrls?.Reset();
+    }
+
+    public bool SetParameters() {
+        if(file == null || !file.Waveform.Contains('|')) return false;
+
+        peaks = file.Waveform.Split('|').Select(p => double.Parse(p)).ToArray();
+        maxPeak = peaks.Max();
+
+        waveformWidth = peaks.Length * waveformBarWidth;
+        beatsPerSecond = file!.BPM / 60.0;
+        secondsToPosX = 1.0 / (file.Duration == 0 ? 1 : file.Duration) * waveformWidth;
+
+        fileBPM = file.BPM;
+
+        // x = s / file.Duration * waveformWidth
+        // s = x / waveformWidth * file.Duration
+
+        GenerateBeatMarkers();
+        waveformFull.UpdateFullWaveform();
+
+        return true;
+    }
+
+    private void GenerateBeatMarkers() {
+        if(file?.DownbeatAt == -1) return;
+
+        double t1 = file.DownbeatAt;
+        double t2 = t1 - 1 / beatsPerSecond;
+        while(t1 < file.Duration || t2 >= 0) {
+            if(t1 < file.Duration) {
+                beatMarkers.Add((t1 * secondsToPosX, t1));
+                t1 += 1 / beatsPerSecond;
+            }
+            if(t2 >= 0) {
+                beatMarkers.Insert(0, (t2 * secondsToPosX, t2));
+                t2 -= 1 / beatsPerSecond;
+            }
+        }
+    }
+
+    private void SnapToClosestBeatMarker() {
+        if(beatMarkers.Count == 0) return;
+        double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+
+        int closestIndex = 0;
+        double closestDistance = float.MaxValue;
+        for(int i = 0; i < beatMarkers.Count; i++) {
+            double distance = Math.Abs(beatMarkers[i].Seconds - playbackPositionSeconds);
+            if(distance < closestDistance) {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+
+        double seconds = beatMarkers[closestIndex].Seconds;
+        cuePoint = seconds;
+        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, cuePoint));
+    }
+
+    private async Task MonitorPlayback() {
+        int delay = 60;
+        int intervals = 0;
+        while(true) {
+            await Task.Delay(delay);
+
+            if(Bass.BASS_ChannelIsActive(fxHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
+                if(waveform.IsMouseDown) {
+                    long p = waveform.PlaybackHead * waveformStepLength / waveformBarWidth;
+                    BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
+                } else if(waveformFull.IsMouseDown) {
+                    long p = waveformFull.PlaybackHead * waveformStepLength / waveformBarWidth;
+                    BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
+                } else {
+                    waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle) * waveformBarWidth / waveformStepLength;
+                    waveformFull.PlaybackHead = waveform.PlaybackHead;
+                }
+                playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+
+                float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
+                vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0]);
+                
+                await waveform.Refresh();
+                if(intervals % 5 == 0) await waveformFull.Refresh();
+            }
+
+            if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender && faderVolume != null && faderTempo != null) {
+            faderVolume.SetInitialValue(0.8);
+            faderTempo.SetInitialValue(0.5);
+            await InvokeAsync(StateHasChanged);
+        }
+
+        if(queueAutoSnap) {
+            SnapToClosestBeatMarker();
+            queueAutoSnap = false;
+        }
+    }
+}
