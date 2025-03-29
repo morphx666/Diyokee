@@ -362,7 +362,7 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-
+Data/cache.db
 Data/cache.sqbpro
 Components/**/*.css
 secrets.json
