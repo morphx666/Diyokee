@@ -111,8 +111,8 @@ internal class Program {
         string streamsDir = Path.Combine(Runtime.RunningDirectory, "streams");
         if(!Directory.Exists(streamsDir)) Directory.CreateDirectory(streamsDir);
 
-        if(secrets.TryGetProperty("bassnet-reg-email", out var email) && secrets.TryGetProperty("bassnet-reg-password", out var password)) {
-            BassNet.Registration(email.ToString(), password.ToString());
+        if(secrets.TryGetProperty("bassnet-reg-email", out var email) && secrets.TryGetProperty("bassnet-reg-key", out var key)) {
+            BassNet.Registration(email.ToString(), key.ToString());
         }
 
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
