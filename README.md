@@ -1,7 +1,7 @@
 # Diyokee
 A work in progress DJ mixing webapp with streaming support 
 
-![image](https://github.com/user-attachments/assets/8f73d7e5-c624-4466-a5a9-626f2f3847bf)
+![image](https://github.com/user-attachments/assets/435fc47a-e2f8-4267-8253-e6aecf751a54)
 
 ## Important notes
 
@@ -56,5 +56,5 @@ If you want to run the app on your computer, change the hardcoded path defined i
   Use the [↨] button to load a track
 - Searching is quite limited and a bit buggy
 - Audio device selection for audio monitoring
-- Selecting which track(s) should be sent to the monitor (with volume adjustment)
+- Selecting which tracks should be sent to the monitor (with volume adjustment)
 - ...and many more
