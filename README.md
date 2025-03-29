@@ -58,3 +58,7 @@ If you want to run the app on your computer, change the hardcoded path defined i
 - Audio device selection for audio monitoring
 - Selecting which tracks should be sent to the monitor (with volume adjustment)
 - ...and many more
+
+## Known issues
+
+- Plenty... but the worst one is that if the window is resized, mouse interactions with the waveform displayed, the faders and the knobs will stop working and the page needs to be refreshed.
