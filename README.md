@@ -63,3 +63,11 @@ If you want to run the app on your computer, change the hardcoded path defined i
 ## Known issues
 
 - Plenty... but the worst one is that if the window is resized, mouse interactions with the waveform displayed, the faders and the knobs will stop working and the page needs to be refreshed.
+
+---
+
+This project wouldn't have been possible without the following:
+- [BASS](https://www.un4seen.com/bass.html) audio library
+- [Icons8](https://icons8.com/)
+- [AspNetCore.SassCompiler](https://github.com/koenvzeijl/AspNetCore.SassCompiler)
+- [BlazorExtensions.Canvas](https://github.com/BlazorExtensions/Canvas)
