@@ -367,3 +367,4 @@ Data/cache.sqbpro
 Components/**/*.css
 secrets.json
 !/bass/**
+.editorconfig

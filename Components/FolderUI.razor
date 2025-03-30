@@ -1,6 +1,7 @@
 ﻿@using Diyokee.MediaProviders
 @using static Diyokee.IMediaProvider
 
+<div class="error" hidden="@directoryExists">Directory not found</div>
 @foreach(MediaFolder folder in folders) {
     <div class="folder @(folder.RelativePath == selectedFolder ? "selected" : "")">
         <div class="name" style="padding-left: calc(0.3rem + @(deep)rem)">
@@ -9,24 +10,24 @@
                     <img src="@Assets["/images/waiting.gif"]" hidden="@(!folder.IsBusy)" />
                 </div>
             } else {
-                 <div
-                    class="icons"
-                    @onclick="() => folder.IsExpanded = !folder.IsExpanded">
+                <div
+                class="icons"
+                @onclick="() => folder.IsExpanded = !folder.IsExpanded">
                     <img
-                        class="arrow @(folder.HasSubfolders ? (folder.IsExpanded ? "expanded" : "") : "hidden")"
-                        src="@Assets["/images/arrow.png"]" />
+                    class="arrow @(folder.HasSubfolders ? (folder.IsExpanded ? "expanded" : "") : "hidden")"
+                    src="@Assets["/images/arrow.png"]" />
                     <img
-                        class="folder-icon"
-                        src="@Assets["/images/folder-icon.svg"]" />
+                    class="folder-icon"
+                    src="@Assets["/images/folder-icon.svg"]" />
                 </div>
             }
 
             <span
                 class="ellipsis"
                 @onclick="() => {
-                                selectedFolder = folder.RelativePath;
-                                SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                            }"
+                                    selectedFolder = folder.RelativePath;
+                                    SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                                }"
                 @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
                 @folder.Name
             </span>
@@ -48,6 +49,7 @@
     private List<MediaFolder> folders = [];
     private string relativePath = "-";
     private int deep = 0;
+    private bool directoryExists = true;
 
     [Parameter]
     public IMediaProvider? Provider { get; set; }
@@ -64,6 +66,7 @@
         set {
             if(relativePath == value || Provider == null) return;
             relativePath = value;
+            directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, relativePath));
 
             Task.Run(async () => {
                 folders = Provider.Directories(relativePath);

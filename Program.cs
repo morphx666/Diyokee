@@ -27,7 +27,9 @@ internal class Program {
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
 
-        if(secrets.TryGetProperty("cert-file", out var certFile) && secrets.TryGetProperty("cert-password", out var certPassword)) {
+        if(secrets.TryGetProperty("cert-file", out var certFile)
+            && secrets.TryGetProperty("cert-password", out var certPassword)
+            && File.Exists(certFile.ToString())) {
             builder.WebHost.ConfigureKestrel(serverOptions => {
                 serverOptions.ListenAnyIP(5000, listenOptions => {
                     listenOptions.UseHttps(certFile.ToString(), certPassword.ToString());
