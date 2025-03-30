@@ -79,10 +79,6 @@
         return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
     }
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
-    }
-
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             switch(ViewMode) {

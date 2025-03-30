@@ -10,7 +10,7 @@
 
 <div class="files-container">
     <div class="files-scrollable scroller">
-        <div class="files-list-container">
+        <div class="files-list-container" tabindex="0">
             <div class="column cell">Artist</div>
             <div class="column cell">Title</div>
             <div class="column cell">Genre</div>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="footer-container">
-        <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@HandleKeyUp"></InputText>
+        <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@TextInputHandleKeyUp"></InputText>
         <div class="button reset-search" @onclick="@ResetSearch">×</div>
         <div class="button search-button @(isSearching ? "working" : "")" @onclick="@(() => AnalyzeFiles(true))"><span>@searchButtonIcon</span></div>
         <div class="button" @onclick="@ReAnalyzeFile">⟳</div>
@@ -48,7 +48,7 @@
 </div>
 
 <script>
-    window.scrollFilesToTop = () => document.querySelector(".files-list-container").scrollTo({ top: 0 });
+    scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
 </script>
 
 @code {
@@ -83,14 +83,16 @@
     }
 
     private List<File> files = [];
+    private string lastRelativePath = "-";
     private string selectedFile = "";
-    private string relativePath = "";
     private Task? analyzingTask = null;
     private KeyTools keyTools = new();
     private string searchText = "";
     private CancellationTokenSource? cancellationTokenSource = null;
     private bool isSearching = false;
     private string searchButtonIcon = "🔎";
+    private bool componentCanRender = false;
+
     public const double TimeSlice = 0.05;
 
     [Parameter]
@@ -100,15 +102,16 @@
     public EventCallback<File> SelectedFileChanged { get; set; }
 
     [Parameter]
-    public string RelativePath {
-        get => relativePath;
-        set {
-            if(relativePath == value) return;
-            relativePath = value;
-            selectedFile = "";
+    public string RelativePath { get; set; } = "";
 
-            AnalyzeFiles(false);
-        }
+    public async void SetRelativePath(string path) {
+        if(lastRelativePath == path) return;
+        lastRelativePath = path;
+
+        RelativePath = path;
+        selectedFile = "";
+
+        await AnalyzeFiles(false);
     }
 
     private async Task AnalyzeFiles(bool doSearch) {
@@ -127,23 +130,23 @@
         if(doSearch) {
             isSearching = true;
             searchButtonIcon = "↻";
-            Provider?.Search(relativePath, searchText, true).ForEach(file => {
-                string fullFileName = Path.Combine(Provider.RootPath, relativePath, file);
+            Provider?.Search(RelativePath, searchText, true).ForEach(file => {
+                string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
                 files.Add(new File {
                         Artist = "...",
                         Filename = fullFileName
                     });
             });
         } else {
-            Provider?.Files(relativePath).ForEach(file => {
-                string fullFileName = Path.Combine(Provider.RootPath, relativePath, file);
+            Provider?.Files(RelativePath).ForEach(file => {
+                string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
                 files.Add(new File {
                         Artist = "...",
                         Filename = fullFileName
                     });
             });
         }
-        await JS.InvokeVoidAsync("scrollFilesToTop");
+        if(componentCanRender) await JS.InvokeVoidAsync("scrollFilesViewTop");
 
         int counter = 0;
         CacheDbContext? cache = null;
@@ -183,6 +186,8 @@
                 file.Key = tlFile.Tag.InitialKey ?? "";
                 file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
                 file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
+
+                if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace(file.Artist + " - ", "").Trim();
             }
 
             if((file.Artist == "" || file.Title == "") && file.Filename.Contains(" - ")) {
@@ -256,7 +261,7 @@
         await SelectedFileChanged.InvokeAsync(file);
     }
 
-    private async void HandleKeyUp(KeyboardEventArgs e) {
+    private async void TextInputHandleKeyUp(KeyboardEventArgs e) {
         if(e.Key == "Enter") await AnalyzeFiles(true);
     }
 
@@ -273,7 +278,7 @@
         if(selFile != null) {
             cache.Files.Remove(selFile);
             await cache!.SaveChangesAsync();
-            
+
             int index = files.FindIndex(f => f.Filename == selectedFile);
             files.RemoveAt(index);
 
@@ -284,5 +289,20 @@
             await InvokeAsync(StateHasChanged);
         }
         await cache.DisposeAsync();
+    }
+
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) componentCanRender = true;
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
+    // Is this the correct way to handle parameter changes?
+    // https://stackoverflow.com/questions/79302784/why-blazor-component-parameters-should-be-the-auto-properties
+    public override Task SetParametersAsync(ParameterView parameters) {
+        parameters.SetParameterProperties(this);
+
+        SetRelativePath(RelativePath);
+
+        return base.OnParametersSetAsync();
     }
 }

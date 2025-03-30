@@ -129,7 +129,10 @@
                 }
             } catch(Exception e) {
                 // Just ignore it - usually this is caused by the BeatMarkers collection being modified while rendering
-                Debugger.Break();
+                #if DEBUG 
+                    Console.WriteLine(e.Message);
+                    Debugger.Break();
+                #endif
             }
         }
     }

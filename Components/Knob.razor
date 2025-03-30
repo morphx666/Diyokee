@@ -2,9 +2,8 @@
 
 <div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
     <div class="knob-container">
-        <div class="arc" style="@GetRangeCss()"></div>
-        <div class="knob">
-            <div class="pointer" style="@GetPointerCss()"></div>
+        <div class="knob" style="@GetKnobCss()">
+            <div class="pointer"></div>
         </div>
     </div>
     <div class="name">@Name</div>
@@ -51,21 +50,10 @@
         // }
     }
 
-    public string GetPointerCss() {
+    public string GetKnobCss() {
         // target_value = (source_value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
         double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
         return $"rotate: {angle}deg";
-    }
-
-    public string GetRangeCss() {
-        return "display: none";
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        const string g = "/4px 4px no-repeat radial-gradient(50% 50%,#000 97%,#0000)";
-        return $@"mask: top {g}, 
-                        calc(50% + 50% * sin({angle}))
-                        calc(50% - 50% * cos({angle})) {g},
-                        linear-gradient(#0000 0 0) content-box intersect, 
-                        conic-gradient(#000 {angle}deg,#0000 0)";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

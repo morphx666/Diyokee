@@ -77,11 +77,6 @@
 </div>
 
 @code {
-    private const int waveformBarWidth = 5;
-
-    private float systemBPM = 128;
-    private double fileBPM = 0;
-
     private int streamHandle = 0;
     private int fxHandle = 0;
     private int eqHandle = 0;
@@ -99,6 +94,8 @@
     private VuMeter? vuMeter;
     private Eq? eqCtrls;
 
+    private double fileBPM = 0;
+    private const int waveformBarWidth = 5;
     private int waveformWidth = 0;
     private long trackLengthBytes = 0;
     private double playbackPosition = 0;
@@ -116,7 +113,7 @@
     private bool IsPlaying { get; set; }
 
     [Parameter]
-    public FilesUI.File? File {
+    public FilesUI.File? File { // TODO: Apply the same logic as in FilesUI
         get => file;
         set {
             file = value;
