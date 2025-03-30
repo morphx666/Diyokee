@@ -9,6 +9,9 @@
 @inject IJSRuntime JS
 
 <div class="files-container">
+    <div class="spinner" style="@(providerIsBusy ? "" : "display: none")">
+        <img src="@Assets["/images/spinner.png"]" />
+    </div>
     <div class="files-scrollable scroller">
         <div class="files-list-container" tabindex="0">
             <div class="column cell">Artist</div>
@@ -90,6 +93,7 @@
     private string searchText = "";
     private CancellationTokenSource? cancellationTokenSource = null;
     private bool isSearching = false;
+    private bool providerIsBusy = false;
     private string searchButtonIcon = "🔎";
     private bool componentCanRender = false;
 
@@ -116,6 +120,10 @@
 
     private async Task AnalyzeFiles(bool doSearch) {
         if(doSearch && searchText == "") doSearch = false;
+        await InvokeAsync(() => {
+            providerIsBusy = true;
+            StateHasChanged();
+        });
 
         if(cancellationTokenSource == null) {
             cancellationTokenSource = new CancellationTokenSource();
@@ -147,6 +155,10 @@
             });
         }
         if(componentCanRender) await JS.InvokeVoidAsync("scrollFilesViewTop");
+        await InvokeAsync(() => {
+            providerIsBusy = false;
+            StateHasChanged();
+        });
 
         int counter = 0;
         CacheDbContext? cache = null;

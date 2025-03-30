@@ -1,4 +1,6 @@
 ﻿.files-container {
+    position: relative;
+
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -6,6 +8,21 @@
 
     overflow: hidden;
     background-color: var(--panel-background-color-light);
+
+    .spinner {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 2;
+
+        img {
+            width: 48px;
+            height: 48px;
+            filter: contrast(0);
+            animation: rotate-button 2s infinite linear reverse;
+        }
+    }
 
     .files-scrollable {
         height: 100%;
