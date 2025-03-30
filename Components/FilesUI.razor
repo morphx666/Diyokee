@@ -24,7 +24,7 @@
             <div class="column cell">Gain</div>
             <div class="column cell">Duration</div>
 
-            @foreach(File file in files) {
+            @foreach(DFile file in files) {
                 @if(file.Artist == "...") {
                     <div class="cell @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">
                         <img src="@Assets["/images/waiting.gif"]" />
@@ -38,7 +38,7 @@
                 <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.BPM.ToString("N2")</div>
                 <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
                 <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
-                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@File.FormatTime(file.Duration)</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@DFile.FormatTime(file.Duration)</div>
             }
         </div>
     </div>
@@ -58,37 +58,7 @@
 </script>
 
 @code {
-    // Migrations:
-    // dotnet ef migrations add "Added ReplayGain"
-    // dotnet ef database update
-    public class File {
-        public int Id { get; set; }
-        public string Artist { get; set; } = "";
-        public string Title { get; set; } = "";
-        public string Genre { get; set; } = "";
-        public string Album { get; set; } = "";
-        public string Filename { get; set; } = "";
-        public double Duration { get; set; } = 0;
-        public string Waveform { get; set; } = ""; // Base64 encoded
-        public float BPM { get; set; } = 0;
-        public double DownbeatAt { get; set; } = -1;
-        public string Key { get; set; } = "";
-        public double ReplayGain { get; set; } = 0;
-        public bool HasReplayGain { get; set; } = false;
-
-        public static string FormatTime(double seconds) {
-            double h = Math.Floor(seconds / 3600);
-            double m = Math.Floor((seconds % 3600) / 60);
-            double s = seconds % 60;
-            StringBuilder sb = new();
-            if(h > 0) sb.Append($"{h:00}:");
-            sb.Append($"{m:00}:");
-            sb.Append($"{s:00}");
-            return sb.ToString();
-        }
-    }
-
-    private List<File> files = [];
+    private List<DFile> files = [];
     private string lastRelativePath = "-";
     private string selectedFile = "";
     private Task? analyzingTask = null;
@@ -108,7 +78,7 @@
     public IMediaProvider? Provider { get; set; } = null;
 
     [Parameter]
-    public EventCallback<File> SelectedFileChanged { get; set; }
+    public EventCallback<DFile> SelectedFileChanged { get; set; }
 
     [Parameter]
     public string RelativePath { get; set; } = "";
@@ -153,7 +123,7 @@
             searchButtonIcon = "↻";
             Provider?.Search(RelativePath, searchText, true).ForEach(file => {
                 string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
-                files.Add(new File {
+                files.Add(new DFile {
                         Artist = "...",
                         Filename = fullFileName
                     });
@@ -161,7 +131,7 @@
         } else {
             Provider?.Files(RelativePath).ForEach(file => {
                 string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
-                files.Add(new File {
+                files.Add(new DFile {
                         Artist = "...",
                         Filename = fullFileName
                     });
@@ -197,7 +167,7 @@
         });
     }
 
-    private async Task AnalyzeFile(File file, CacheDbContext cache, bool ignoreCache) {
+    private async Task AnalyzeFile(DFile file, CacheDbContext cache, bool ignoreCache) {
         var cachedFile = ignoreCache ? null : await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(cachedFile == null) {
             float bpm = 0;
@@ -235,7 +205,7 @@
                 IntPtr.Zero);
 
             file.DownbeatAt = downbeatAt;
-            file.Waveform = GenerateWaveform(handle);
+            file.Waveform = GenerateWaveform(handle).Zip();
 
             BassFx.BASS_FX_BPM_Free(handle);
             Bass.BASS_StreamFree(handle);
@@ -278,7 +248,7 @@
         return sb.ToString().TrimEnd('|');
     }
 
-    private async void ChangeSelectedFile(File? file) {
+    private async void ChangeSelectedFile(DFile? file) {
         string newFilename = file?.Filename ?? "";
         if(selectedFile == newFilename) return;
 
@@ -299,7 +269,7 @@
 
     private async void ReAnalyzeFile() {
         CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-        File? selFile = await cache.Files.FirstOrDefaultAsync(f => f.Filename == selectedFile);
+        DFile? selFile = await cache.Files.FirstOrDefaultAsync(f => f.Filename == selectedFile);
         if(selFile != null) {
             cache.Files.Remove(selFile);
             await cache!.SaveChangesAsync();

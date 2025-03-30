@@ -61,9 +61,9 @@
     private IMediaProvider mediaProvider = new MediaProviderLocal("Local", @"Z:\Music");
     private string selectedFolder = "";
 
-    private FilesUI.File? selectedFile = null;
-    private FilesUI.File? player1File = null;
-    private FilesUI.File? player2File = null;
+    private DFile? selectedFile = null;
+    private DFile? player1File = null;
+    private DFile? player2File = null;
 
     private Player? player1;
     private Player? player2;
@@ -88,7 +88,7 @@
         shouldRender = true;
     }
 
-    private void SelectedFileChanged(FilesUI.File file) {
+    private void SelectedFileChanged(DFile file) {
         selectedFile = file;
         shouldRender = true;
     }

@@ -17,14 +17,13 @@
             <span class="ellipsis">@file?.Album</span>
         </div>
         <div class="time">
-            <span>@FilesUI.File.FormatTime(playbackPosition)</span>
-            <span>-@FilesUI.File.FormatTime(GetRemainingTime())</span>
+            <span>@DFile.FormatTime(playbackPosition)</span>
+            <span>-@DFile.FormatTime(GetRemainingTime())</span>
             <span>&nbsp;</span>
         </div>
         <div class="bpm-key">
             <span>@CalcBpm()</span>
             <span>@GetBpmAdjustment()</span>
-            @* <span>@systemBPM.ToString("N2")</span> *@
             <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
         </div>
         <div class="player-name" style="background-color: @PlayerCssColor">
@@ -86,7 +85,7 @@
     private double trackGain = 1;
     private double crossFaderVolume = 1;
 
-    private FilesUI.File? file = null;
+    private DFile? file = null;
     private Fader? faderVolume;
     private Fader? faderTempo;
     private Waveform? waveform;
@@ -113,7 +112,7 @@
     private bool IsPlaying { get; set; }
 
     [Parameter]
-    public FilesUI.File? File { // TODO: Apply the same logic as in FilesUI
+    public DFile? File { // TODO: Apply the same logic as in FilesUI
         get => file;
         set {
             file = value;
@@ -325,9 +324,9 @@
     }
 
     public bool SetParameters() {
-        if(file == null || !file.Waveform.Contains('|')) return false;
+        if(file == null || !file.WaveformUnZipped.Contains('|')) return false;
 
-        peaks = file.Waveform.Split('|').Select(p => double.Parse(p)).ToArray();
+        peaks = file.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
         maxPeak = peaks.Max();
 
         waveformWidth = peaks.Length * waveformBarWidth;
