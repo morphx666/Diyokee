@@ -25,7 +25,7 @@ If you want to run the app on your computer, change the hardcoded path defined i
   }
   ```
 - The streaming URL is hardcoded to http://localhost:2132/stream (can be changed in the `SetupBASS()` method in `Program.cs`)
-- The streaming encoding is hardcoded to 320kbps (can be changed in the `SetupBASS()` method in `Program.cs`)
+- The streaming encoder is hardcoded to 320kbps (can be changed in the `SetupBASS()` method in `Program.cs`)
 - An empty database (which will be needed if you want to run the program) is available [here](https://github.com/morphx666/Diyokee/blob/804e17a88c580ef16c86e903634b076db2685c71/Data/cache.db)
 
 ## Basic usage
@@ -52,11 +52,11 @@ If you want to run the app on your computer, change the hardcoded path defined i
 - Loops
 - A fancy screen for remote connections to the stream
 - Synced playback  
-  At this moment, when clicking the [▶] button, playback will start immediately instead of auto-syncing to the nearest beat marker point.
-- No drag & drop support to load files into a player
-  Use the [↨] button to load a track
-- Searching is quite limited and a bit buggy
-- Audio device selection for audio monitoring
+  At this moment, when clicking the [▶] button, playback will start immediately instead of auto-syncing to the nearest beat marker.
+- No drag & drop support to load files into a player.
+  Use the [↨] button to load a track or press A or B on your keyboard.
+- Searching is quite limited and a bit buggy.
+- Audio device selection for audio monitoring (configuration dialog).
 - Selecting which tracks should be sent to the monitor (with volume adjustment)
 - ...and many more
 
