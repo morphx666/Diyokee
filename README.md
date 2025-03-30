@@ -26,6 +26,7 @@ If you want to run the app on your computer, change the hardcoded path defined i
   ```
 - The streaming URL is hardcoded to http://localhost:2132/stream (can be changed in the `SetupBASS()` method in `Program.cs`)
 - The streaming encoding is hardcoded to 320kbps (can be changed in the `SetupBASS()` method in `Program.cs`)
+- An empty database (which will be needed if you want to run the program) is available [here](https://github.com/morphx666/Diyokee/blob/804e17a88c580ef16c86e903634b076db2685c71/Data/cache.db)
 
 ## Basic usage
 
