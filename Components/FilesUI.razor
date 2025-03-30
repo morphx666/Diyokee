@@ -47,6 +47,8 @@
         <div class="button reset-search" @onclick="@ResetSearch">×</div>
         <div class="button search-button @(isSearching ? "working" : "")" @onclick="@(() => AnalyzeFiles(true))"><span>@searchButtonIcon</span></div>
         <div class="button" @onclick="@ReAnalyzeFile">⟳</div>
+
+        <div class="progress" style="@GetProgressCss()"></div>
     </div>
 </div>
 
@@ -97,6 +99,8 @@
     private string searchButtonIcon = "🔎";
     private bool componentCanRender = false;
 
+    private int analyzedFilesCount = 0;
+
     public const double TimeSlice = 0.05;
 
     [Parameter]
@@ -116,6 +120,14 @@
         selectedFile = "";
 
         await AnalyzeFiles(false);
+    }
+
+    private string GetProgressCss() {
+        if(files.Count > 0) {
+            return $"width: {analyzedFilesCount * 100.0 / files.Count}%";
+        } else {
+            return "width: 0";
+        }
     }
 
     private async Task AnalyzeFiles(bool doSearch) {
@@ -160,7 +172,7 @@
             StateHasChanged();
         });
 
-        int counter = 0;
+        analyzedFilesCount = 0;
         CacheDbContext? cache = null;
         analyzingTask = await Task.Run(async () => {
             cache ??= await CacheDbContextFactory.CreateDbContextAsync();
@@ -170,12 +182,13 @@
 
                 await AnalyzeFile(file, cache, false);
 
-                if(++counter % 10 == 0) await cache!.SaveChangesAsync();
+                if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
                 await InvokeAsync(StateHasChanged);
             });
         }, cancellationTokenSource.Token).ContinueWith(async _ => {
             isSearching = false;
             searchButtonIcon = "🔎";
+            analyzedFilesCount = 0;
 
             await InvokeAsync(StateHasChanged);
             await cache!.SaveChangesAsync();
@@ -198,8 +211,6 @@
                 file.Key = tlFile.Tag.InitialKey ?? "";
                 file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
                 file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
-
-                if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace(file.Artist + " - ", "").Trim();
             }
 
             if((file.Artist == "" || file.Title == "") && file.Filename.Contains(" - ")) {
@@ -209,6 +220,7 @@
                 if(file.Artist == "") file.Artist = tokens[0];
                 if(file.Title == "") file.Title = tokens[1];
             }
+            if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace(file.Artist + " - ", "").Trim();
 
             int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
             file.Duration = Bass.BASS_ChannelBytes2Seconds(handle, Bass.BASS_ChannelGetLength(handle, BASSMode.BASS_POS_BYTE));

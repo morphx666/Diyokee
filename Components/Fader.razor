@@ -4,8 +4,8 @@
     <div class="name">@Name</div>
     <div class="fader @(ViewMode == Mode.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
         <div class="knob button-thin"
-        style="@GetKnobCss()"
-        @ondblclick="() => SetValue(initialValue)">
+            style="@GetKnobCss()"
+            @ondblclick="() => SetValue(initialValue)">
         </div>
         <div class="range" style="@GetRangeCss()"></div>
     </div>

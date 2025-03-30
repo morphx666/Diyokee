@@ -49,7 +49,7 @@
                 top: 50%;
                 height: 1px;
                 width: calc(100% - 2rem);
-                background-color: var(--ctrl-highlight);
+                background-color: var(--ctrl-highlight-soft);
                 pointer-events: none;
                 transform: translateY(-50%);
             }
@@ -87,7 +87,7 @@
                 top: 0;
                 height: 20px;
                 width: 1px;
-                background-color: var(--ctrl-highlight);
+                background-color: var(--ctrl-highlight-soft);
                 pointer-events: none;
                 transform: translateX(-50%);
             }

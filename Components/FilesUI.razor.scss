@@ -75,12 +75,24 @@
     }
 
     .footer-container {
+        position: relative;
         display: flex;
         flex-direction: row;
         gap: 6px;
 
         border-top: 1px solid #000;
         padding: 6px;
+
+        .progress {
+            position: absolute;
+            left: 0;
+            top: -1px;
+            width: 50%;
+            height: 1px;
+            z-index: 3;
+
+            background-color: var(--ctrl-highlight-soft);
+        }
 
         ::deep .text-input {
             flex: 1;

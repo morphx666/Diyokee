@@ -15,7 +15,8 @@
 
     --mono-font-family: "JetBrains Mono";
 
-    --ctrl-highlight: #81bcb7cc;
+    --ctrl-highlight: #81bcb7;
+    --ctrl-highlight-soft: #81bcb7cc;
 }
 
 * {
@@ -68,7 +69,7 @@ body, html {
         }
 
         &.cyan:after {
-            background-color: #81bcb7;
+            background-color: var(----ctrl-highlight);
         }
 
         &.red:after {
