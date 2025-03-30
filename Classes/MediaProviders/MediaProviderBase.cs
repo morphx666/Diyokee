@@ -1,5 +1,5 @@
 using System;
-using static Diyokee.IMediaProvider;
+using static Diyokee.MediaProviders.IMediaProvider;
 
 namespace Diyokee.MediaProviders;
 

@@ -1,4 +1,4 @@
-﻿namespace Diyokee {   
+﻿namespace Diyokee.MediaProviders {   
     public interface IMediaProvider {
         public class MediaFolder(string name, string relativePath, bool hasSubfolders) {
             public string Name { get; init; } = name;

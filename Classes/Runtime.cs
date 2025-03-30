@@ -16,14 +16,14 @@ internal class Runtime {
     public static Platforms Platform {
         get {
             if(mPlatform == null) DetectPlatform();
-            return mPlatform.HasValue ? mPlatform.Value : default(Platforms);
+            return mPlatform.HasValue ? mPlatform.Value : default;
         }
     }
 
     public static char PathSeparator {
         get {
             if(mPathSeparator == null) DetectPlatform();
-            return mPathSeparator.HasValue ? mPathSeparator.Value : default(Char);
+            return mPathSeparator.HasValue ? mPathSeparator.Value : default;
         }
     }
 
@@ -83,7 +83,7 @@ internal class Runtime {
         catProcess.StartInfo.RedirectStandardError = true;
         catProcess.StartInfo.RedirectStandardInput = false;
 
-        catProcess.OutputDataReceived += (object sender, DataReceivedEventArgs e) => lines.Add(e.Data ?? "");
+        catProcess.OutputDataReceived += (sender, e) => lines.Add(e.Data ?? "");
 
         try {
             catProcess.Start();

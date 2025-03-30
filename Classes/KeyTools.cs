@@ -109,8 +109,8 @@ namespace Diyokee {
 
         private int CalculateNewKeyIndex(int keyIndex, int step, bool toggleScale) {
             var currentKeyIndex = keyIndex;
-            if(toggleScale) currentKeyIndex = (currentKeyIndex % 2 == 0) ? currentKeyIndex + 1 : currentKeyIndex - 1;
-            var stepChange = step > 0 ? step * 2 : (WHEEL_KEYS_NUM * 2) + (step * 2);
+            if(toggleScale) currentKeyIndex = currentKeyIndex % 2 == 0 ? currentKeyIndex + 1 : currentKeyIndex - 1;
+            var stepChange = step > 0 ? step * 2 : WHEEL_KEYS_NUM * 2 + step * 2;
 
             return (stepChange + currentKeyIndex) % (WHEEL_KEYS_NUM * 2);
         }

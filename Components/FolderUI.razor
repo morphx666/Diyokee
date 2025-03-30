@@ -1,5 +1,6 @@
 ﻿@using Diyokee.MediaProviders
-@using static Diyokee.IMediaProvider
+@using Diyokee.MediaProviders
+@using static Diyokee.MediaProviders.IMediaProvider
 
 <div class="error" hidden="@directoryExists">Directory not found</div>
 @foreach(MediaFolder folder in folders) {
