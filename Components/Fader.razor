@@ -3,7 +3,7 @@
 
 <div class="fader-container">
     <div class="name">@Name</div>
-    <div class="fader @(ViewMode == Mode.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
+    <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
         <div class="knob button-thin"
             style="@GetKnobCss()"
             @ondblclick="() => SetValue(initialValue)">
@@ -13,13 +13,13 @@
 </div>
 
 @code {
-    public enum Mode {
+    public enum Orientations {
         Vertical,
         Horizontal
     }
 
     [Parameter]
-    public Mode ViewMode { get; set; } = Mode.Vertical;
+    public Orientations Orientation { get; set; } = Orientations.Vertical;
 
     [Parameter]
     public double Value { get; set; } = 0.5;
@@ -70,31 +70,31 @@
     }
 
     private string GetKnobCss() {
-        string prop = ViewMode == Mode.Vertical ? "top" : "left";
+        string prop = Orientation == Orientations.Vertical ? "top" : "left";
         return $"{prop}: calc(10px + 100% - {gutterOffsetTop + gutterOffsetBottom}px - (100% - {gutterOffsetTop + gutterOffsetBottom}px) * {Value})";
     }
 
     private string GetRangeCss() {
-        string prop1 = ViewMode == Mode.Vertical ? "top" : "left";
-        string prop2 = ViewMode == Mode.Vertical ? "height" : "width";
+        string prop1 = Orientation == Orientations.Vertical ? "top" : "left";
+        string prop2 = Orientation == Orientations.Vertical ? "height" : "width";
         return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            switch(ViewMode) {
-                case Mode.Vertical:
+            switch(Orientation) {
+                case Orientations.Vertical:
                     gutterOffsetTop = 16;
                     gutterOffsetBottom = 8;
                     break;
-                case Mode.Horizontal:
+                case Orientations.Horizontal:
                     gutterOffsetTop = 16;
                     gutterOffsetBottom = 16;
                     break;
             }
 
             faderBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", faderElement));
-            faderSize = (ViewMode == Mode.Vertical ? faderBounds.Height : faderBounds.Width) - gutterOffsetTop - gutterOffsetBottom;
+            faderSize = (Orientation == Orientations.Vertical ? faderBounds.Height : faderBounds.Width) - gutterOffsetTop - gutterOffsetBottom;
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);
@@ -113,7 +113,7 @@
 
                     if(isValid) {
                         if(mouseState?.ButtonsDown == 1) {
-                            double offset = ViewMode == Mode.Vertical ? mouseState.Y - faderBounds!.Y : mouseState.X - faderBounds!.X;
+                            double offset = Orientation == Orientations.Vertical ? mouseState.Y - faderBounds!.Y : mouseState.X - faderBounds!.X;
                             double newValue = (faderSize - (offset - gutterOffsetTop)) / faderSize;
                             if(newValue < 0) {
                                 newValue = 0;
@@ -129,7 +129,7 @@
                             isValid = false;
                         }
                     } else if(mouseState?.WheelDelta != 0 && faderBounds.Contains(mouseState.X, mouseState.Y)) {
-                        double newValue = Value - (mouseState.WheelDelta / 2_000) * (ViewMode == Mode.Horizontal ? -1 : 1);
+                        double newValue = Value - (mouseState.WheelDelta / 2_000) * (Orientation == Orientations.Horizontal ? -1 : 1);
                         if(newValue < 0) {
                             newValue = 0;
                         } else if(newValue > 1) {

@@ -57,7 +57,8 @@
         display: flex;
         flex-direction: row;
         flex: 1;
-        max-height: calc(100vh - 315px - 2px); /* FIXME: WHY??? */
+        //max-height: calc(100vh - 319px); /* FIXME: WHY??? */
+        overflow: hidden;
 
         .sources {
             width: 400px;

@@ -191,7 +191,8 @@
                 if(file.Artist == "") file.Artist = tokens[0];
                 if(file.Title == "") file.Title = tokens[1];
             }
-            if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace(file.Artist + " - ", "").Trim();
+            // This is for files where the only title is present and it has been set to the file name
+            if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace($"{file.Artist} - ", "").Trim();
 
             int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
             file.Duration = Bass.BASS_ChannelBytes2Seconds(handle, Bass.BASS_ChannelGetLength(handle, BASSMode.BASS_POS_BYTE));

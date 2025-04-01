@@ -76,7 +76,7 @@ internal class Program {
         Bass.BASS_ChannelSetAttribute(BassMixHandle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
 
         int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandle, "-b320", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
-        int serverHandle = BassEnc.BASS_Encode_ServerInit(encodeHandle, $"2132/stream", 16384, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
+        int serverHandle = BassEnc.BASS_Encode_ServerInit(encodeHandle, $"2132/stream", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
         Bass.BASS_ChannelPlay(BassMixHandle, true);
     }
 
@@ -122,7 +122,7 @@ internal class Program {
         // Device
         // -1 = default
         // 0 = no sound
-        Bass.BASS_Init(-1, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+        Bass.BASS_Init(0, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);

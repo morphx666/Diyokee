@@ -56,8 +56,8 @@
             WaveformWidth="@waveformWidth"
         @ref="waveform" />
         <VuMeter @ref="vuMeter" />
-        <Fader ViewMode="Fader.Mode.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
-        <Fader ViewMode="Fader.Mode.Vertical" ValueChanged="ApplyTempo" Name="🎶" DefaultValue="0.5" @ref="faderTempo" />
+        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
+        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="🎶" DefaultValue="0.5" @ref="faderTempo" />
         <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
     </div>
 
