@@ -94,7 +94,7 @@
                             mouseState!.IsCaptured = false;
                             isValid = false;
                         }
-                    } else if(mouseState?.WheelDelta != 0 && knobBounds.Contains(mouseState.X, mouseState.Y)) {
+                    } else if(mouseState?.WheelDelta != 0 && knobBounds!.Contains(mouseState!.X, mouseState.Y)) {
                         double newValue = Value - (mouseState.WheelDelta / 2_000);
                         if(newValue < 0) {
                             newValue = 0;

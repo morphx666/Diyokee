@@ -111,8 +111,10 @@
     private double maxPeak = 1.0;
     private double beatsPerSecond;
     private double secondsToPosX;
-    public List<(double X, double Seconds)> beatMarkers = new();
-    public double cuePoint = 0;
+    private double currentTempoValue;
+
+    private List<(double X, double Seconds)> beatMarkers = new();
+    private double cuePoint = 0;
 
     private KeyTools keyTools = new();
 
@@ -147,6 +149,18 @@
 
     public Player() {
         Task.Run(MonitorPlayback);
+    }
+
+    public void SetCrossFaderVolume(double value) {
+        crossFaderVolume = value;
+        ApplyVolume(faderVolume?.Value ?? 0);
+    }
+
+    public async void SyncBPMToOtherPlayer() {
+        if(OtherPlayer?.File == null || fileBPM == 0) return;
+
+        double tempo = (OtherPlayer?.AdjustedBPM ?? 0) / fileBPM * 1.5 - 1.0;
+        await faderTempo!.SetValue(tempo);
     }
 
     //private SYNCPROC syncProc;
@@ -208,11 +222,6 @@
         Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume));
     }
 
-    public void SetCrossFaderVolume(double value) {
-        crossFaderVolume = value;
-        ApplyVolume(faderVolume?.Value ?? 0);
-    }
-
     private void ApplyTempo() {
         if(fxHandle == 0) return;
         // tempo = ((1 + X) / 1.5 - 1) * 100
@@ -260,28 +269,20 @@
         return 0;
     }
 
-    private async void SyncBPMToOtherPlayer() {
-        if(OtherPlayer?.File == null || fileBPM == 0) return;
-
-        double tempo = (OtherPlayer?.AdjustedBPM ?? 0) / fileBPM * 1.5 - 1.0;
-        await faderTempo?.SetValue(tempo);
-    }
-
     private double AdjustedBPM {
         get => fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
     }
 
-    private double currentTempoValue;
     private void SlowDown(MouseEventArgs e) {
         if(e.Button == 0) {
-            currentTempoValue = faderTempo.Value;
+            currentTempoValue = faderTempo!.Value;
             faderTempo?.SetValue(faderTempo.Value - 0.1);
         }
     }
 
     private void SpeedUp(MouseEventArgs e) {
         if(e.Button == 0) {
-            currentTempoValue = faderTempo.Value;
+            currentTempoValue = faderTempo!.Value;
             faderTempo?.SetValue(faderTempo.Value + 0.1);
         }
     }
@@ -365,13 +366,13 @@
         // s = x / waveformWidth * file.Duration
 
         GenerateBeatMarkers();
-        waveformFull.UpdateFullWaveform();
+        waveformFull?.UpdateFullWaveform();
 
         return true;
     }
 
     private void GenerateBeatMarkers() {
-        if(file?.DownbeatAt == -1) return;
+        if(file!.DownbeatAt == -1) return;
 
         double t1 = file.DownbeatAt;
         double t2 = t1 - 1 / beatsPerSecond;
@@ -413,10 +414,10 @@
             await Task.Delay(delay);
 
             if(Bass.BASS_ChannelIsActive(fxHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                if(waveform.IsMouseDown) {
+                if(waveform!.IsMouseDown) {
                     long p = waveform.PlaybackHead * waveformStepLength / waveformBarWidth;
                     BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
-                } else if(waveformFull.IsMouseDown) {
+                } else if(waveformFull!.IsMouseDown) {
                     long p = waveformFull.PlaybackHead * waveformStepLength / waveformBarWidth;
                     BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
                 } else {
@@ -430,7 +431,7 @@
                 vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0]);
                 
                 await waveform.Refresh();
-                if(intervals % 5 == 0) await waveformFull.Refresh();
+                if(intervals % 5 == 0) await waveformFull!.Refresh();
             }
 
             if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);

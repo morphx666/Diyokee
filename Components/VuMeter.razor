@@ -9,8 +9,8 @@
 
 
 @code {
-    private BECanvas canvas;
-    private Canvas2DContext ctx;
+    private BECanvas? canvas;
+    private Canvas2DContext? ctx;
 
     private long canvasWidth = 0;
     private long canvasHeight = 0;
@@ -28,7 +28,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas.CanvasReference));
+            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
             canvasWidth = (long)canvasSize[0];
             canvasHeight = (long)canvasSize[1];
             canvasRatio = canvasSize[2];

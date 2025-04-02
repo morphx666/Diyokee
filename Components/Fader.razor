@@ -37,7 +37,6 @@
     private MouseState? mouseState { get; set; } = null;
 
     private ElementReference faderElement;
-    private bool isMouseDown = false;
     private double rangeTop = 0;
     private double rangeHeight = 0;
     private Bounds? faderBounds;
@@ -133,7 +132,7 @@
                             mouseState!.IsCaptured = false;
                             isValid = false;
                         }
-                    } else if(mouseState?.WheelDelta != 0 && faderBounds.Contains(mouseState.X, mouseState.Y)) {
+                    } else if(mouseState?.WheelDelta != 0 && faderBounds!.Contains(mouseState!.X, mouseState.Y)) {
                         double newValue = Value - (mouseState.WheelDelta / 2_000) * (Orientation == Orientations.Horizontal ? -1 : 1);
                         if(newValue < 0) {
                             newValue = 0;

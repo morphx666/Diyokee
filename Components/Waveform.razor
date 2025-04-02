@@ -16,8 +16,8 @@
         Full
     }
 
-    private BECanvas canvas;
-    private Canvas2DContext ctx;
+    private BECanvas? canvas;
+    private Canvas2DContext? ctx;
 
     public bool IsMouseDown { get; internal set; } = false;
 
@@ -73,7 +73,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas.CanvasReference));
+            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
             canvasWidth = (long)canvasSize[0];
             canvasHeight = (long)canvasSize[1];
             canvasRatio = canvasSize[2];
@@ -100,7 +100,7 @@
                                     lastMousePosX = mouseState.X;
                                     break;
                                 case Modes.Full:
-                                    PlaybackHead = (long)((mouseState.X - canvasBounds.X) * WaveformWidth / canvasWidth);
+                                    PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * WaveformWidth / canvasWidth);
                                     break;
                             }
                         } else {
@@ -162,7 +162,7 @@
         double cw2 = canvasWidth / (canvasRatio * 2);
         double ch2 = canvasHeight / (canvasRatio * 2);
 
-        await ctx.BeginBatchAsync();
+        await ctx!.BeginBatchAsync();
         await ctx.SetTransformAsync(canvasRatio, 0, 0, canvasRatio, 0, 0);
         await ctx.SetLineWidthAsync(1);
         await ctx.ClearRectAsync(0, 0, cw, ch);
@@ -199,7 +199,7 @@
         double cw2 = canvasWidth / (canvasRatio * 2);
         double ch2 = canvasHeight / (canvasRatio * 2);
 
-        await ctx.BeginBatchAsync();
+        await ctx!.BeginBatchAsync();
         await ctx.SetTransformAsync(canvasRatio, 0, 0, canvasRatio, 0, 0);
         await ctx.SetLineWidthAsync(1);
         await ctx.ClearRectAsync(0, 0, cw, ch);
