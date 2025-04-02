@@ -33,27 +33,27 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
         @ref="waveform" />
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
@@ -65,13 +65,20 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick">▶</div>
         <div class="button-3d icon" @onmouseup="HandleStopClick">⏹</div>
         <div class="button-3d icon"
-            @onmousedown="HandlePlayClick"
-            @onmouseup="HandleStopAndSnapClick">
+        @onmousedown="HandlePlayClick"
+        @onmouseup="HandleStopAndSnapClick">
             CUE
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker">↨</div>
         <div class="button-3d icon" @onmouseup="HandleRequestedFileCue">⏏</div>
         <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer">➞ @(OtherPlayer?.PlayerName ?? "")</div>
+        <div class="sync-adjust">
+            <span>SYNC</span>
+            <div class="sync-buttons">
+                <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed">⇠</div>
+                <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed">⇢</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -260,8 +267,27 @@
         await faderTempo?.SetValue(tempo);
     }
 
-    public double AdjustedBPM {
+    private double AdjustedBPM {
         get => fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
+    }
+
+    private double currentTempoValue;
+    private void SlowDown(MouseEventArgs e) {
+        if(e.Button == 0) {
+            currentTempoValue = faderTempo.Value;
+            faderTempo?.SetValue(faderTempo.Value - 0.1);
+        }
+    }
+
+    private void SpeedUp(MouseEventArgs e) {
+        if(e.Button == 0) {
+            currentTempoValue = faderTempo.Value;
+            faderTempo?.SetValue(faderTempo.Value + 0.1);
+        }
+    }
+
+    private void ResetSpeed(MouseEventArgs e) {
+        if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
     }
 
     private void LoadFile() {
@@ -323,7 +349,7 @@
         eqCtrls?.Reset();
     }
 
-    public bool SetParameters() {
+    private bool SetParameters() {
         if(file == null || !file.WaveformUnZipped.Contains('|')) return false;
 
         peaks = file.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
