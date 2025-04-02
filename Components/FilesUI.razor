@@ -232,8 +232,10 @@
 
             int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
             file.Duration = Bass.BASS_ChannelBytes2Seconds(handle, Bass.BASS_ChannelGetLength(handle, BASSMode.BASS_POS_BYTE));
-            if(bpm <= 0) bpm = BassFx.BASS_FX_BPM_DecodeGet(handle, 0, 60, 45 | (130 << 16), BASSFXBpm.BASS_FX_BPM_BKGRND | BASSFXBpm.BASS_FX_BPM_MULT2, null, IntPtr.Zero);
+            if(bpm <= 0) bpm = BassFx.BASS_FX_BPM_DecodeGet(handle, 0, file.Duration / 2, Utils.MakeLong(60, 330), BASSFXBpm.BASS_FX_BPM_MULT2, null, IntPtr.Zero);
             if(bpm > 0) file.BPM = bpm;
+
+            // TODO: Implement key finding algorithm, such as Krumhansl-Schmuckler
 
             BassFx.BASS_FX_BPM_BeatDecodeGet(handle, 0, 60, BASSFXBpm.BASS_FX_BPM_DEFAULT,
                 new BPMBEATPROC((int handle, double beatPosition, IntPtr user) => {
