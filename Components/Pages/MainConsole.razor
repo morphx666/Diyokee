@@ -128,18 +128,29 @@ tabindex="0"
         mouseState.WheelDelta = e.DeltaY;
     }
 
+    private CancellationTokenSource? cancellationTokenSource = null;
+    private Task? crossfadeTask = null;
     private void HandleAutoCrossFade(int direction) {
         if(crossFader == null) return;
+
+        if(cancellationTokenSource == null) {
+            cancellationTokenSource = new CancellationTokenSource();
+        } else {
+            cancellationTokenSource.Cancel();
+            crossfadeTask?.Wait();
+            cancellationTokenSource.Dispose();
+            cancellationTokenSource = new CancellationTokenSource();
+        }
         
         int duration = 2; // seconds
-        Task.Run(async () => {
-            while(true) {
+        crossfadeTask = Task.Run(async () => {
+            while(!cancellationTokenSource.IsCancellationRequested) {
                 double value = crossFader.Value - direction / 100.0;
                 if(value < 0 || value > 1) break;
                 await crossFader.SetValue(value, true);
                 await Task.Delay(10 * duration);
             }
-        });
+        }, cancellationTokenSource.Token);
     }
 
     private void ApplyFader(double value) {
