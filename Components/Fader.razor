@@ -5,8 +5,8 @@
     <div class="name">@Name</div>
     <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
         <div class="knob button-thin"
-            style="@GetKnobCss()"
-            @ondblclick="() => SetValue(initialValue)">
+        style="@GetKnobCss()"
+        @ondblclick="() => SetValue(initialValue)">
         </div>
         <div class="range" style="@GetRangeCss()"></div>
     </div>
@@ -52,11 +52,16 @@
         UpdateRange();
     }
 
-    public async Task SetValue(double newValue) {
+    public async Task SetValue(double newValue, bool updateState = false) {
+        if(newValue < 0) newValue = 0;
+        else if(newValue > 1) newValue = 1;
+
         if(Value == newValue) return;
         Value = newValue;
         UpdateRange();
         await ValueChanged.InvokeAsync(newValue);
+
+        if(updateState) await InvokeAsync(StateHasChanged);
     }
 
     private void UpdateRange() {

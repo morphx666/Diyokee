@@ -50,6 +50,34 @@
             .controls {
                 height: calc(5rem - 2px);
             }
+
+            .crossfade-controls {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                padding: 6px 8px;
+                cursor: pointer;
+
+                ::deep .fader-container {
+                    width: 100%;
+                }
+
+                .button-3d {
+                    display: flex;
+                    align-items: anchor-center;
+                    justify-content: center;
+                    width: 2rem;
+                    line-height: 2rem;
+
+                    span {
+                        margin-top: -1px;
+                    }
+
+                    &:first-child span {
+                        rotate: 180deg;
+                    }
+                }
+            }
         }
     }
 

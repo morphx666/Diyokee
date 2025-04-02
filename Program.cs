@@ -122,7 +122,7 @@ internal class Program {
         // Device
         // -1 = default
         // 0 = no sound
-        Bass.BASS_Init(0, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+        Bass.BASS_Init(-1, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);

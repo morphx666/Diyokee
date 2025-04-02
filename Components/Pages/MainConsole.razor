@@ -1,43 +1,46 @@
 ﻿@using System.Diagnostics
 @using Diyokee
 @using Diyokee.MediaProviders
-@using Diyokee.MediaProviders
 
 @page "/"
 
 <PageTitle>Diyokee</PageTitle>
 
 <div
-    class="console"
-    tabindex="0"
-    @onkeydown="HandleKeyDown"
-    @onmousedown="HandleMouseDown"
-    @onmousemove="HandleMouseMove"
-    @onmouseup="HandleMouseUp"
-    @onmousewheel="HandleMouseWheel">
+class="console"
+tabindex="0"
+@onkeydown="HandleKeyDown"
+@onmousedown="HandleMouseDown"
+@onmousemove="HandleMouseMove"
+@onmouseup="HandleMouseUp"
+@onmousewheel="HandleMouseWheel">
     <CascadingValue Value="@mouseState">
         <div class="players">
             <div class="player">
                 <Player 
-                    PlayerName="A"
-                    File="@player1File"
-                    RequestedFileCue="() => LoadSelectedFile(player1)"
-                    PlayerCssColor="#977696"
-                    OtherPlayer="@player2"
-                    @ref="player1" />
+                PlayerName="A"
+                File="@player1File"
+                RequestedFileCue="() => LoadSelectedFile(player1)"
+                PlayerCssColor="#977696"
+                OtherPlayer="@player2"
+                @ref="player1" />
             </div>
             <div class="mixer">
                 <div class="controls"></div>
-                <Fader Orientation="Fader.Orientations.Horizontal" ValueChanged="ApplyFader" DefaultValue="0.5" @ref="crossFader" />
+                <div class="crossfade-controls">
+                    <div class="button-3d" @onclick="() => HandleAutoCrossFade(-1)"><span>➧</span></div>
+                    <Fader Orientation="Fader.Orientations.Horizontal" ValueChanged="ApplyFader" DefaultValue="0.5" @ref="crossFader" />
+                    <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><span>➧</span></div>
+                </div>
             </div>
             <div class="player">
                 <Player
-                    PlayerName="B"
-                    File="@player2File"
-                    RequestedFileCue="() => LoadSelectedFile(player2)"
-                    PlayerCssColor="#279597"
-                    OtherPlayer="@player1"
-                    @ref="player2" />
+                PlayerName="B"
+                File="@player2File"
+                RequestedFileCue="() => LoadSelectedFile(player2)"
+                PlayerCssColor="#279597"
+                OtherPlayer="@player1"
+                @ref="player2" />
             </div>
         </div>
 
@@ -123,6 +126,20 @@
 
     private void HandleMouseWheel(WheelEventArgs e) {
         mouseState.WheelDelta = e.DeltaY;
+    }
+
+    private void HandleAutoCrossFade(int direction) {
+        if(crossFader == null) return;
+        
+        int duration = 2; // seconds
+        Task.Run(async () => {
+            while(true) {
+                double value = crossFader.Value - direction / 100.0;
+                if(value < 0 || value > 1) break;
+                await crossFader.SetValue(value, true);
+                await Task.Delay(10 * duration);
+            }
+        });
     }
 
     private void ApplyFader(double value) {
