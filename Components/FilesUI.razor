@@ -15,14 +15,14 @@
     </div>
     <div class="files-scrollable scroller">
         <div class="files-list-container" tabindex="0">
-            <div class="column cell">Artist</div>
-            <div class="column cell">Title</div>
-            <div class="column cell">Genre</div>
-            <div class="column cell">Album</div>
-            <div class="column cell">BPM</div>
-            <div class="column cell">Key</div>
-            <div class="column cell">Gain</div>
-            <div class="column cell">Duration</div>
+            <div class="column cell" @onclick="() => SetSortingIndex(0)">Artist<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 0 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(1)">Title<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 1 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(2)">Genre<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 2 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(3)">Album<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 3 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(4)">BPM<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 4 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(5)">Key<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 5 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(6)">Gain<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 6 ? "🞁" : "")</span></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(7)">Duration<span class="@(sortAscending ? "asc" : "desc")">@(sortIndex == 7 ? "🞁" : "")</span></div>
 
             @foreach(DFile file in files) {
                 @if(file.Artist == "...") {
@@ -69,8 +69,10 @@
     private bool providerIsBusy = false;
     private string searchButtonIcon = "🔎";
     private bool componentCanRender = false;
-
     private int analyzedFilesCount = 0;
+
+    private int sortIndex = 0;
+    private bool sortAscending = true;
 
     public const double TimeSlice = 0.05;
 
@@ -161,10 +163,44 @@
             searchButtonIcon = "🔎";
             analyzedFilesCount = 0;
 
+            SortFilesList();
+
             await InvokeAsync(StateHasChanged);
             await cache!.SaveChangesAsync();
             await cache.DisposeAsync();
         });
+    }
+
+    private void SetSortingIndex(int index) {
+        if(sortIndex == index) {
+            sortAscending = !sortAscending;
+        } else {
+            sortIndex = index;
+            sortAscending = true;
+        }
+        SortFilesList();
+    }
+
+    private void SortFilesList() {
+        if(sortAscending) {
+            if(sortIndex == 0) files = files.OrderBy(f => f.Artist).ToList();
+            if(sortIndex == 1) files = files.OrderBy(f => f.Title).ToList();
+            if(sortIndex == 2) files = files.OrderBy(f => f.Genre).ToList();
+            if(sortIndex == 3) files = files.OrderBy(f => f.Album).ToList();
+            if(sortIndex == 4) files = files.OrderBy(f => f.BPM).ToList();
+            if(sortIndex == 5) files = files.OrderBy(f => f.Key).ToList();
+            if(sortIndex == 6) files = files.OrderBy(f => f.ReplayGain).ToList();
+            if(sortIndex == 7) files = files.OrderBy(f => f.Duration).ToList();
+        } else {
+            if(sortIndex == 0) files = files.OrderByDescending(f => f.Artist).ToList();
+            if(sortIndex == 1) files = files.OrderByDescending(f => f.Title).ToList();
+            if(sortIndex == 2) files = files.OrderByDescending(f => f.Genre).ToList();
+            if(sortIndex == 3) files = files.OrderByDescending(f => f.Album).ToList();
+            if(sortIndex == 4) files = files.OrderByDescending(f => f.BPM).ToList();
+            if(sortIndex == 5) files = files.OrderByDescending(f => f.Key).ToList();
+            if(sortIndex == 6) files = files.OrderByDescending(f => f.ReplayGain).ToList();
+            if(sortIndex == 7) files = files.OrderByDescending(f => f.Duration).ToList();
+        }
     }
 
     private async Task AnalyzeFile(DFile file, CacheDbContext cache, bool ignoreCache) {

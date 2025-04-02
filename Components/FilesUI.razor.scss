@@ -65,11 +65,35 @@
             }
 
             .column {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                align-items: center;
+
                 position: sticky;
                 top: 0;
                 background-color: var(--header);
                 padding: calc(0.2rem + 1px) 0.5rem;
                 z-index: 1;
+
+                &:hover {
+                    span {
+                        opacity: 1;
+                    }
+                }
+
+                span {
+                    margin-left: 1rem;
+                    width: 1rem;
+
+                    opacity: 0.6;
+
+                    transition: rotate 120ms, opacity 120ms;
+
+                    &.desc {
+                        rotate: 180deg;
+                    }
+                }
             }
         }
     }
