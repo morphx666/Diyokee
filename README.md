@@ -66,10 +66,23 @@ The program uses the settings defined in the `settings.json` file.
 
 - Plenty... but the worst one is that if the window is resized, mouse interactions with the waveform displayed, the faders and the knobs will stop working and the page needs to be refreshed.
 
----
+## Releases
+
+Platform|Architecture|Status|Download
+---|---|---|:---:
+Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)
+MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)
+MacOS|Arm|Not Tested[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)
+Linux|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)
+Linux|Arm|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)
+
+## Acknowledgements
 
 This project wouldn't have been possible without the following:
 - [BASS](https://www.un4seen.com/bass.html) audio library
 - [Icons8](https://icons8.com/)
 - [AspNetCore.SassCompiler](https://github.com/koenvzeijl/AspNetCore.SassCompiler)
 - [BlazorExtensions.Canvas](https://github.com/BlazorExtensions/Canvas)
+
+[^1]: File attributes may be lost when running the app under linux-like systems, including MacOS.  
+Use `chmod +x` to set the executable bit on the `diyokee-server` binary.

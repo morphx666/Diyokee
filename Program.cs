@@ -77,7 +77,7 @@ internal class Program {
             .AddInteractiveServerRenderMode();
 
         app.Logger.LogInformation("Setting up BASS...");
-        InitBASS(workingDirectory);
+        InitBASS(workingDirectory, app.Logger);
         SetupBASS();
 
         app.Run();
@@ -94,23 +94,25 @@ internal class Program {
         Bass.BASS_ChannelPlay(BassMixHandle, true);
     }
 
-    public static bool InitBASS(string workingDirectory) {
+    public static bool InitBASS(string workingDirectory, ILogger logger) {
         char c = Runtime.PathSeparator;
         string platform = Runtime.Platform.ToString().ToLower();
         string architecture = Environment.Is64BitProcess || Runtime.Platform == Runtime.Platforms.Mac ? "x64" : "x86";
 
         if(platform.StartsWith("arm")) {
-            architecture = platform.EndsWith("hard") ? "hardfp" : "softfp";  // "armhf" : "armel";
             platform = "arm";
+            architecture = platform.EndsWith("hard") ? "hardfp" : "softfp";  // "armhf" : "armel";
+        } else if(platform.StartsWith("aarch64")) {
+            platform = "arm";
+            architecture = "aarch64";
         }
 
         string srcDir = Path.Combine(Runtime.RunningDirectory, $"bass{c}{platform}{c}{architecture}{c}");
 
-#if DEBUG
-        //Console.WriteLine($"Platform: {platform}");
-        //Console.WriteLine($"Architecture: {architecture}");
-        //Console.WriteLine($"BASS: {srcDir}");
-#endif
+        logger.LogInformation(
+            $@"Platform: {Runtime.Platform}
+Architecture: {architecture}
+BASS: {srcDir}");
 
         foreach(string srcFile in Directory.GetFiles(srcDir)) {
             string trgFile = Path.Combine(Runtime.RunningDirectory, Path.GetFileName(srcFile));
@@ -124,13 +126,10 @@ internal class Program {
             }
         }
 
-        // Fix bug with libbassenc_mp3.dylib where it can't find the libbassenc.dylib in the current directory
-        //if(Runtime.Platform == Runtime.Platforms.Mac) File.Copy("libbassenc.dylib", "/usr/local/lib/libbassenc.dylib", true);
-
         if(Settings.BassNetRegEmail != "" && Settings.BassNetRegKey != "") {
             BassNet.Registration(Settings.BassNetRegEmail, Settings.BassNetRegKey);
         }
-        
+
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 

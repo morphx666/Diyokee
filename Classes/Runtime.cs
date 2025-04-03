@@ -8,7 +8,8 @@ internal class Runtime {
         Linux,
         Mac,
         ARMSoft,
-        ARMHard
+        ARMHard,
+        Aarch64
     }
     private static Platforms? mPlatform;
     private static char? mPathSeparator;
@@ -59,11 +60,12 @@ internal class Runtime {
                 } else {
                     mPlatform = Platforms.Linux;
 
-                    string distro = GetLinuxDistro().ToLower();
-                    if(distro.Contains("raspberrypi")) {
+                    string distro = GetLinuxInfo("-a").ToLower();
+                    string arch = GetLinuxInfo("-m").ToLower();
+                    if(distro.Contains("raspberrypi") || distro.Contains("rpi")) {
                         mPlatform = Platforms.ARMSoft;
-                        if(distro.Contains("armv7l"))
-                            mPlatform = Platforms.ARMHard;
+                        if(distro.Contains("armv7l")) mPlatform = Platforms.ARMHard;
+                        if(arch == "aarch64") mPlatform = Platforms.Aarch64;
                     }
                 }
 
@@ -71,12 +73,12 @@ internal class Runtime {
         }
     }
 
-    private static string GetLinuxDistro() {
+    private static string GetLinuxInfo(string param) {
         List<string> lines = [];
 
         Process catProcess = new();
         catProcess.StartInfo.FileName = "uname";
-        catProcess.StartInfo.Arguments = "-a";
+        catProcess.StartInfo.Arguments = param;
         catProcess.StartInfo.CreateNoWindow = true;
         catProcess.StartInfo.UseShellExecute = false;
         catProcess.StartInfo.RedirectStandardOutput = true;
