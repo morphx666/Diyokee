@@ -4,8 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyVersion>2025.4.2.1641</AssemblyVersion>
-    <FileVersion>2025.4.2.1641</FileVersion>
+    <AssemblyVersion>2025.4.3.1655</AssemblyVersion>
+    <FileVersion>2025.4.3.1655</FileVersion>
     <Title>Diyokee</Title>
     <UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
   </PropertyGroup>
@@ -27,6 +27,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="radio42.Bass.Net.core" Version="2.4.17.6" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.3" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />

@@ -5,40 +5,36 @@ using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
 using Un4seen.Bass.AddOn.EncMp3;
 using Un4seen.Bass.AddOn.Mix;
-using System.Text.Json;
 using Diyokee;
+using Newtonsoft.Json;
 
 internal class Program {
     public static int BassMixHandle = 0;
     public static int BassLatencyMs = 0;
 
-    private static JsonElement secrets;
+    public static Settings Settings = new();
 
     private static void Main(string[] args) {
-        if(File.Exists("secrets.json")) {
-            secrets = JsonDocument.Parse(File.ReadAllText("secrets.json")).RootElement;
-        } else {
-            secrets = JsonDocument.Parse("{}").RootElement;
+        if(File.Exists("settings.json")) {
+            Settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json")) ?? new();
         }
-        
+
         InitBASS();
         SetupBASS();
 
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
 
-        if(secrets.TryGetProperty("cert-file", out var certFile)
-            && secrets.TryGetProperty("cert-password", out var certPassword)
-            && File.Exists(certFile.ToString())) {
+        if(File.Exists(Settings.CertFile)) {
             builder.WebHost.ConfigureKestrel(serverOptions => {
                 serverOptions.ListenAnyIP(5000, listenOptions => {
-                    listenOptions.UseHttps(certFile.ToString(), certPassword.ToString());
+                    listenOptions.UseHttps(Settings.CertFile, Settings.CertPassword);
                 });
             });
         }
 
-        if(secrets.TryGetProperty("webhost-url", out var webHostUrl)) {
-            builder.WebHost.UseUrls(webHostUrl.ToString());
+        if(Settings.WebHostUrl != "") {
+            builder.WebHost.UseUrls(Settings.WebHostUrl);
         }
 
         // Add services to the container.
@@ -113,8 +109,8 @@ internal class Program {
         string streamsDir = Path.Combine(Runtime.RunningDirectory, "streams");
         if(!Directory.Exists(streamsDir)) Directory.CreateDirectory(streamsDir);
 
-        if(secrets.TryGetProperty("bassnet-reg-email", out var email) && secrets.TryGetProperty("bassnet-reg-key", out var key)) {
-            BassNet.Registration(email.ToString(), key.ToString());
+        if(Settings.BassNetRegEmail != "" && Settings.BassNetRegKey != "") {
+            BassNet.Registration(Settings.BassNetRegEmail, Settings.BassNetRegKey);
         }
 
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);

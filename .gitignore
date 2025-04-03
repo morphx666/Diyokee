@@ -366,5 +366,6 @@ FodyWeavers.xsd
 Data/cache.sqbpro
 Components/**/*.css
 secrets.json
+settings.json
 !/bass/**
 .editorconfig
