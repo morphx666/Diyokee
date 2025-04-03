@@ -3,30 +3,31 @@ A work in progress DJ mixing webapp with streaming support
 
 ![image](https://github.com/user-attachments/assets/435fc47a-e2f8-4267-8253-e6aecf751a54)
 
-## Important notes
+## App settings
+The program uses the settings defined in the `settings.json` file.
 
-- The app uses media providers as the source of music files. Currently, only one media provider is available (for local files and network shares), and it's hardcoded to a folder on my computer.
-If you want to run the app on your computer, change the hardcoded path defined in the `MainConsole.razor` page:
-  ```csharp
-  private IMediaProvider mediaProvider = new MediaProviderLocal("Local", @"Z:\Music");
-  ```
-- The server for the webapp supports secure connections. You can define the location of your CERT file and its password by creating a `secrets.json` file:
-  ```json
-  {
-    "cert-file": "C:\\path-to-my-cert-file\\cert-file-name.pfx",
-    "cert-password": "my-cert-file-password",
-  }
-  ```
-- The audio subsystem is provided by the [BASS library](https://www.un4seen.com/bass.html). If you have a valid license, you can specify your credentials in the `secrets.json` file:
-  ```json
-  {
-    "bassnet-reg-email": "my-registered-email-address",
-    "bassnet-reg-key": "my-registration-key",
-  }
-  ```
-- The streaming URL is hardcoded to http://localhost:2132/stream (can be changed in the `SetupBASS()` method in `Program.cs`)
-- The streaming encoder is hardcoded to 320kbps (can be changed in the `SetupBASS()` method in `Program.cs`)
-- An empty database (which will be needed if you want to run the program) is available [here](https://github.com/morphx666/Diyokee/blob/804e17a88c580ef16c86e903634b076db2685c71/Data/cache.db)
+```json
+{
+  "cert-file": "<path to cert file>",
+  "cert-password": "<cert file password>",
+  "bassnet-reg-email": "<bass registered email>",
+  "bassnet-reg-key": "<bass registration key>",
+  "webhost-url": "http[s]://[host|ip]:port",
+  "encoder": {
+    "enabled": true|false,
+    "port": <valid port number>,
+    "url": "<optional path to the stream>",
+    "bitrate": <64|128|192|320>
+  },
+  "media-providers": [
+    {
+      "type": "<local is the only supported type>",
+      "name": "<optional name of the provider>",
+      "root-directory": "<path to the folder contaning the media files>"
+    }
+  ]
+}
+```
 
 ## Basic usage
 
@@ -52,7 +53,8 @@ If you want to run the app on your computer, change the hardcoded path defined i
 - Loops
 - A fancy screen for remote connections to the stream
 - Synced playback  
-  At this moment, when clicking the [▶] button, playback will start immediately instead of auto-syncing to the nearest beat marker.
+  At this moment, when clicking the [▶] button, playback will start immediately instead of auto-syncing to the nearest beat marker.  
+- You can use the [⇠] and [⇢] buttons under the SYNC section to perform small tempo adjustments.
 - No drag & drop support to load files into a player.
   Use the [↨] button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.

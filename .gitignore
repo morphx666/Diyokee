@@ -369,3 +369,4 @@ secrets.json
 settings.json
 !/bass/**
 .editorconfig
+PrepareReleases/

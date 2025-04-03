@@ -81,7 +81,10 @@ tabindex="0"
         foreach(Settings.MediaProvider mp in Program.Settings.MediaProviders) {
             if(mp.Type == "local") {
                 // Use the first local media provider found (for now)
-                this.mediaProvider = new MediaProviderLocal(mp.Name, mp.RootDirectory);
+                this.mediaProvider = new MediaProviderLocal(mp.Name, 
+                                                            string.IsNullOrEmpty(mp.RootDirectory)
+                                                            ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+                                                            : mp.RootDirectory);
                 break;
             }
         }

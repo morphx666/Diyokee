@@ -1,10 +1,9 @@
-using System;
 using static Diyokee.MediaProviders.IMediaProvider;
 
 namespace Diyokee.MediaProviders;
 
 public abstract class MediaProviderBase(string name, string rootPath) : IMediaProvider {
-    internal string[] supportedExtensions = [ ".mp3", ".acc", ".wav", ".flac", ".ogg" ];
+    internal string[] supportedExtensions = [ ".mp3", ".wav", ".flac", ".aac", ".ac3" ];
     internal bool isBusy = false;
 
     public string Name { get; init; } = name;

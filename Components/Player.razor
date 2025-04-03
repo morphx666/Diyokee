@@ -33,27 +33,27 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
         @ref="waveform" />
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
