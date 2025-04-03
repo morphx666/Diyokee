@@ -8,10 +8,10 @@ The program uses the settings defined in the `settings.json` file.
 
 ```json
 {
-  "cert-file": "<path to cert file>",
-  "cert-password": "<cert file password>",
-  "bassnet-reg-email": "<bass registered email>",
-  "bassnet-reg-key": "<bass registration key>",
+  "cert-file": "<optional path to cert file>",
+  "cert-password": "<optional cert file password>",
+  "bassnet-reg-email": "<optional bass registered email>",
+  "bassnet-reg-key": "<optional bass registration key>",
   "webhost-url": "http[s]://[host|ip]:port",
   "encoder": {
     "enabled": true|false,
