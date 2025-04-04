@@ -209,15 +209,19 @@
             float bpm = 0;
             double downbeatAt = -1;
 
-            using(TagLib.File tlFile = TagLib.File.Create(file.Filename)) {
-                file.Artist = tlFile.Tag.FirstPerformer ?? "";
-                file.Title = tlFile.Tag.Title ?? "";
-                file.Genre = tlFile.Tag.FirstGenre ?? "";
-                file.Album = tlFile.Tag.Album ?? "";
-                if(!ignoreCache) bpm = tlFile.Tag.BeatsPerMinute;
-                file.Key = tlFile.Tag.InitialKey ?? "";
-                file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
-                file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
+            file.Artist = "";
+            string fileExtension = Path.GetExtension(file.Filename).ToLower();
+            if(fileExtension != ".ac3") {
+                using(TagLib.File tlFile = TagLib.File.Create(file.Filename)) {
+                    file.Artist = tlFile.Tag.FirstPerformer ?? "";
+                    file.Title = tlFile.Tag.Title ?? "";
+                    file.Genre = tlFile.Tag.FirstGenre ?? "";
+                    file.Album = tlFile.Tag.Album ?? "";
+                    if(!ignoreCache) bpm = tlFile.Tag.BeatsPerMinute;
+                    file.Key = tlFile.Tag.InitialKey ?? "";
+                    file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
+                    file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
+                }
             }
 
             if((file.Artist == "" || file.Title == "") && file.Filename.Contains(" - ")) {
@@ -225,7 +229,7 @@
                 if(name.Contains('\\')) name = name.Split('\\').Last();
                 string[] tokens = name.Split(" - ");
                 if(file.Artist == "") file.Artist = tokens[0];
-                if(file.Title == "") file.Title = tokens[1];
+                if(file.Title == "") file.Title = tokens[1].Replace(fileExtension, "");
             }
             // This is for files where the only title is present and it has been set to the file name
             if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace($"{file.Artist} - ", "").Trim();

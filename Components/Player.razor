@@ -33,27 +33,27 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
         @ref="waveform" />
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
@@ -304,9 +304,10 @@
         if(file == null || faderVolume == null) return;
 
         streamHandle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_STREAM_PRESCAN | BASSFlag.BASS_ASYNCFILE);
+        //var info = Bass.BASS_ChannelGetInfo(streamHandle);
         fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON | BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_FX_FREESOURCE);
         BassMix.BASS_Mixer_StreamAddChannel(Program.BassMixHandle, fxHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE | BASSFlag.BASS_MIXER_CHAN_NORAMPIN | BASSFlag.BASS_MIXER_CHAN_BUFFER);
-        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
+        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);        
 
         ApplyVolume(faderVolume.Value);
         SetupEQ();
