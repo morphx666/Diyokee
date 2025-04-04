@@ -28,19 +28,21 @@ internal class Program {
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
 
-        if(File.Exists(Settings.CertFile)) {
-            builder.WebHost.ConfigureKestrel(serverOptions => {
-                serverOptions.ListenAnyIP(5000, listenOptions => {
+        builder.WebHost.ConfigureKestrel(serverOptions => {
+            int kestrelPort = 5000;
+            string[] tokens = Settings.WebHostUrl.Split(":");
+            if(tokens.Length > 2 && int.TryParse(tokens[2], out int port)) kestrelPort = port;
+            serverOptions.ListenAnyIP(kestrelPort, listenOptions => {
+                if(File.Exists(Settings.CertFile)) {
                     listenOptions.UseHttps(Settings.CertFile, Settings.CertPassword);
-                });
+                }
             });
-        }
+        });
 
         if(Settings.WebHostUrl != "") {
             builder.WebHost.UseUrls(Settings.WebHostUrl);
         }
 
-        // Add services to the container.
         builder.Services.AddRazorComponents()
             .AddInteractiveServerComponents();
 
@@ -110,15 +112,16 @@ internal class Program {
         string srcDir = Path.Combine(Runtime.RunningDirectory, $"bass{c}{platform}{c}{architecture}{c}");
 
         logger.LogInformation(
-            $@"Platform: {Runtime.Platform}
-Architecture: {architecture}
-BASS: {srcDir}");
+            $$"""
+            Platform: {{Runtime.Platform}}
+            Architecture: {{architecture}}
+            Libraries: {{Path.GetRelativePath(workingDirectory, srcDir)}}
+            """);
 
         foreach(string srcFile in Directory.GetFiles(srcDir)) {
             string trgFile = Path.Combine(Runtime.RunningDirectory, Path.GetFileName(srcFile));
 
             if(File.Exists(trgFile)) File.Delete(trgFile);
-
             try {
                 File.Copy(srcFile, trgFile, true);
             } catch {

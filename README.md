@@ -80,9 +80,9 @@ Linux|Arm|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-a
 
 This project wouldn't have been possible without the following:
 - [BASS](https://www.un4seen.com/bass.html) audio library
-- [Icons8](https://icons8.com/)
 - [AspNetCore.SassCompiler](https://github.com/koenvzeijl/AspNetCore.SassCompiler)
 - [BlazorExtensions.Canvas](https://github.com/BlazorExtensions/Canvas)
+- [Icons8](https://icons8.com/)
 
 [^1]: File attributes may be lost when running the app under linux-like systems, including MacOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
