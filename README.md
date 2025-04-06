@@ -1,7 +1,7 @@
 # Diyokee
-A work in progress DJ mixing webapp with streaming support 
+A work in progress DJ mixing webapp with streaming support
 
-![Diyokee Web UI](https://github.com/user-attachments/assets/3e4777d4-88c2-4880-97ee-278ba2416cfd)
+[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s1.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
 The program uses the settings defined in the `settings.json` file.
