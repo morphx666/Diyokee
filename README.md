@@ -31,20 +31,20 @@ The program uses the settings defined in the `settings.json` file.
 
 ## Basic usage
 
-- To load a track into a player, click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" style="width:1rem;"> button.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" style="width:1rem;"> button to start playing.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/forward-step.svg" style="width:1rem;"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" style="width:1rem;"> button to jump to the cue point. Leave the button pressed to temporarily play the track from the cue point.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" style="width:1rem;"> button to stop playback and move to the beginning of the track.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-right-from-bracket.svg" style="width:1rem;"> button to sync the track to the other player
-- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/volume-high.svg" style="width:1rem;"> fader to change the volume.
-- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/music.svg" style="width:1rem;"> fader to change the tempo (BPM).
+- To load a track into a player, click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button to start playing.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/forward-step.svg" width="12"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button to jump to the cue point. Leave the button pressed to temporarily play the track from the cue point.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" width="12"> button to stop playback and move to the beginning of the track.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-right-from-bracket.svg" width="12"> button to sync the track to the other player
+- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/volume-high.svg" width="12"> fader to change the volume.
+- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/music.svg" width="12"> fader to change the tempo (BPM).
 - Use the Lo/Mid/Hi knobs to change the track's equalization.
 - Use the fader between the two players to cross-fade between them.
 - Faders and knobs can be used by clicking and dragging or by moving the mouse over them and using the scroll wheel.
 - You can click and drag over both waveforms (synced and full) to change the playback position.
 - Use the textbox at the bottom of the files list to search for files. The search is recursive.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" style="width:1rem;"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
+- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" width="12"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
 
 ## Notable missing features
 
@@ -53,10 +53,10 @@ The program uses the settings defined in the `settings.json` file.
 - Loops
 - A fancy screen for remote connections to the stream
 - Synced playback  
-  At this moment, when clicking the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" style="width:1rem;"> button, playback will start immediately instead of auto-syncing to the nearest beat marker.  
-- You can use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" style="width:1rem;"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" style="width:1rem;"> buttons under the SYNC section to perform small tempo adjustments.
+  At this moment, when clicking the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button, playback will start immediately instead of auto-syncing to the nearest beat marker.  
+- You can use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" width="12"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" width="12"> buttons under the SYNC section to perform small tempo adjustments.
 - No drag & drop support to load files into a player.
-  Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" style="width:1rem;"> button to load a track or press A or B on your keyboard.
+  Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.
 - Audio device selection for audio monitoring (configuration dialog).
 - Selecting which tracks should be sent to the monitor (with volume adjustment)
