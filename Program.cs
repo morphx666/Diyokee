@@ -7,6 +7,8 @@ using Un4seen.Bass.AddOn.Enc;
 using Un4seen.Bass.AddOn.EncMp3;
 using Un4seen.Bass.AddOn.Mix;
 using Newtonsoft.Json;
+using Microsoft.Data.Sqlite;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 internal class Program {
     public static int BassMixHandle = 0;
@@ -62,6 +64,24 @@ internal class Program {
                         context.Database.Migrate();
                     }
                 }
+
+                // TODO: Add this cleanup code to the global settings dialog
+                //int filesDeleted = 0;
+                //context?.Files
+                //    .AsEnumerable()
+                //    .Where(f => !File.Exists(f.Filename))
+                //    .ToList()
+                //    .ForEach(f => {
+                //        context.Files.Remove(f);
+                //        filesDeleted++;
+                //    });
+
+                //if(filesDeleted > 0) {
+                //    app.Logger.LogInformation($"Deleted {filesDeleted} orphaned file{(filesDeleted == 1 ? "" : "s")} from the database");
+
+                //    context?.Database.ExecuteSqlRaw("VACUUM");
+                //    context?.SaveChanges();
+                //}
             }
         }
 
