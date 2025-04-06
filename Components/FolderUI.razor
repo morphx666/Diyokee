@@ -7,18 +7,23 @@
         <div class="name" style="padding-left: calc(0.3rem + @(deep)rem)">
             @if(folder.IsBusy) {
                 <div class="loading">
-                    <img src="@Assets["/images/waiting.gif"]" hidden="@(!folder.IsBusy)" />
+                    <img src="@Assets["/images/waiting.gif"]" />
                 </div>
             } else {
                 <div
-                class="icons"
-                @onclick="() => folder.IsExpanded = !folder.IsExpanded">
-                    <img
-                    class="arrow @(folder.HasSubfolders ? (folder.IsExpanded ? "expanded" : "") : "hidden")"
-                    src="@Assets["/images/arrow.png"]" />
-                    <img
-                    class="folder-icon"
-                    src="@Assets["/images/folder-icon.svg"]" />
+                    class="icons"
+                    @onclick="() => {
+                        if(folder.HasSubfolders) {
+                            folder.IsExpanded = !folder.IsExpanded;
+                        } else {
+                            selectedFolder = folder.RelativePath;
+                            SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                        }
+                    }">
+                    <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
+                    @if(folder.HasSubfolders) {
+                        <i class="fa-solid fa-xmark plus-hack"></i>
+                    }
                 </div>
             }
 

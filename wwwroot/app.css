@@ -1,3 +1,13 @@
+@font-face {
+    font-family: "Montserrat";
+    src: url("/fonts/Montserrat/Montserrat-VariableFont_wght.ttf") format("truetype");
+}
+
+@font-face {
+    font-family: "JetBrains Mono";
+    src: url("/fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf") format("truetype");
+}
+
 :root {
     --app-background-color: #111;
 
@@ -54,7 +64,7 @@ body, html {
             content: '';
             position: absolute;
             bottom: 3px;
-            right: 3px;
+            right: 4px;
             width: 8px;
             height: 8px;
 

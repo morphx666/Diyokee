@@ -82,17 +82,11 @@
                     }
                 }
 
-                span {
-                    margin-left: 1rem;
+                i {
+                    margin: 0.3rem 0 0 1rem;
                     width: 1rem;
 
                     opacity: 0.6;
-
-                    transition: rotate 120ms, opacity 120ms;
-
-                    &.desc {
-                        rotate: 180deg;
-                    }
                 }
             }
         }
@@ -134,7 +128,6 @@
 
         .reset-search {
             position: absolute;
-            font-size: 1.6rem;
             right: calc((2rem + 6px + 2px) * 2);
         }
 
@@ -151,16 +144,20 @@
             padding: 2px;
             border: 1px solid var(--panel-background-color-light-light);
 
+            &:not(.reset-search) {
+                font-size: 0.8rem;
+            }
+
+            i {
+                margin-top: 2px;
+            }
+
             &.working span {
                 animation: rotate-button 1s infinite linear;
             }
 
             &:active {
                 background-color: var(--panel-background-color-light-light);
-            }
-
-            &.search-button span {
-                filter: contrast(0) brightness(1.3);
             }
         }
     }

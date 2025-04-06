@@ -67,15 +67,6 @@
                     align-items: anchor-center;
                     justify-content: center;
                     width: 2rem;
-                    line-height: 2rem;
-
-                    span {
-                        margin-top: -1px;
-                    }
-
-                    &:first-child span {
-                        rotate: 180deg;
-                    }
                 }
             }
         }

@@ -10,41 +10,34 @@
         padding: calc(0.2rem + 2px) 0.5rem;
 
         .icons {
+            position: relative;
             display: flex;
             flex-direction: row;
             gap: 4px;
             align-items: center;
+            width: 2rem;
 
-            .arrow {
-                width: 0.5rem;
-                height: 0.5rem;
-                rotate: 90deg;
-    
-                transition: transform 250ms;
-    
-                &.expanded {
-                    transform: rotate(90deg);
+            i {
+                margin: auto;
+
+                &.plus-hack {
+                    position: absolute;
+                    left: 50%;
+                    top: 50%;
+                    transform: translate(-50%, calc(-50% + 0.5px)) rotate(45deg) scale(0.5);
                 }
-    
-                &.hidden {
-                    visibility: hidden;
-                }
-            }
-    
-            .folder-icon {
-                width: 1.2rem;
-                height: 1.2rem;
-                filter: invert(0.6);
             }
         }
 
         .loading {
-            width: calc(0.5rem + 4px + 1.2rem + 2px);
+            width: calc(0.5rem + 4px + 1.2rem);
             height: 1.2rem;
+            margin: auto;
+
             img {
                 height: 1.5rem;
                 filter: invert(1) brightness(0.7);
-                margin-top: -0.2rem;
+                margin: -0.2rem 0 0 0.1rem;
             }
         }
     }

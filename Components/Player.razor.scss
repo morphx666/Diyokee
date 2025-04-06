@@ -96,8 +96,10 @@
             flex-direction: column;
             gap: 4px;
             flex: 1;
-            width: 100%;
+            max-width: 10rem;
+            min-width: 6rem;
             height: 100%;
+            margin-left: auto;
 
             span {
                 display: inline-block;
@@ -117,7 +119,11 @@
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    width: calc(50% - 8px);
+                    width: calc(50% - 4px);
+
+                    i {
+                        margin-top: 2px;
+                    }
                 }
             }
         }

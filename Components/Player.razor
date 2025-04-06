@@ -33,50 +33,50 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveform" />
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveform" />
         <VuMeter @ref="vuMeter" />
-        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="🔊" DefaultValue="0" @ref="faderVolume" />
-        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="🎶" DefaultValue="0.5" @ref="faderTempo" />
+        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
+        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
         <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
     </div>
 
     <div class="transport">
-        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick">▶</div>
-        <div class="button-3d icon" @onmouseup="HandleStopClick">⏹</div>
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick"><i class="fa-solid fa-play"></i></div>
+        <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-        @onmousedown="HandlePlayClick"
-        @onmouseup="HandleStopAndSnapClick">
-            CUE
+            @onmousedown="HandlePlayClick"
+            @onmouseup="HandleStopAndSnapClick">
+            <i class="fa-solid fa-forward-step"></i>
         </div>
-        <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker">↨</div>
-        <div class="button-3d icon" @onmouseup="HandleRequestedFileCue">⏏</div>
-        <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer">➞ @(OtherPlayer?.PlayerName ?? "")</div>
+        <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
+        <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
+        <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.PlayerName ?? "")</div>
         <div class="sync-adjust">
             <span>SYNC</span>
             <div class="sync-buttons">
-                <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed">⇠</div>
-                <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed">⇢</div>
+                <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed"><i class="fa-solid fa-left-long"></i></div>
+                <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed"><i class="fa-solid fa-right-long"></i></div>
             </div>
         </div>
     </div>
