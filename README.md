@@ -68,7 +68,7 @@ The program uses the settings defined in the `settings.json` file.
 
 ## Releases
 
-Platform|Architecture|Status|Download
+Platform|Architecture|Status|Download<br><small>(2025-04-03)</small>
 ---|---|---|:---:
 Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)
 MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)
@@ -83,6 +83,7 @@ This project wouldn't have been possible without the following:
 - [AspNetCore.SassCompiler](https://github.com/koenvzeijl/AspNetCore.SassCompiler)
 - [BlazorExtensions.Canvas](https://github.com/BlazorExtensions/Canvas)
 - [Icons8](https://icons8.com/)
+- [Font Awesome](https://fontawesome.com/)
 
 [^1]: File attributes may be lost when running the app under linux-like systems, including MacOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
