@@ -4,22 +4,6 @@
     width: 100%;
     height: 100vh;
 
-    .vertical-resize {
-        width: 100%;
-        min-height: 2px;
-        max-height: 2px;
-        background-color: transparent;
-        cursor: ns-resize;
-    }
-
-    .horizontal-resize {
-        min-width: 2px;
-        max-width: 2px;
-        height: 100%;
-        background-color: transparent;
-        cursor: ew-resize;
-    }
-
     .panel {
         ::deep h3 {
             padding: 0.22em 0.5rem;

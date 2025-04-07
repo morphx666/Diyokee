@@ -15,7 +15,7 @@
     @onmouseup="HandleMouseUp"
     @onmousewheel="HandleMouseWheel">
     <CascadingValue Value="@mouseState">
-        <div class="players">
+        <div class="players" @ref="playersPanel">
             <div class="player">
                 <Player 
                     PlayerName="A"
@@ -44,16 +44,14 @@
             </div>
         </div>
 
-        <div class="vertical-resize">
-        </div>
+        <PanelResize Orientation="PanelResize.Orientations.Vertical" ResizeElement="playersPanel" />
 
         <div class="media">
-            <div class="sources panel">
+            <div class="sources panel" @ref="mediaProviderPanel">
                 <MediaProvider Provider="@mediaProvider" SelectedFolderChanged="SelectedFolderChanged" />
             </div>
 
-            <div class="horizontal-resize">
-            </div>
+            <PanelResize Orientation="PanelResize.Orientations.Horizontal" ResizeElement="mediaProviderPanel" />
 
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>
@@ -74,6 +72,9 @@
     private Fader? crossFader;
 
     private MouseState mouseState = new();
+
+    private ElementReference playersPanel;
+    private ElementReference mediaProviderPanel;
 
     private bool shouldRender = true;
 
@@ -128,6 +129,8 @@
         mouseState.X = e.ClientX;
         mouseState.Y = e.ClientY;
         mouseState.ButtonsDown = e.Buttons;
+
+        
     }
 
     private void HandleMouseMove(MouseEventArgs e) {

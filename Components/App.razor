@@ -30,6 +30,20 @@
             return [b.x, b.y, b.width, b.height];
         };
 
+        setElementBounds = (element, param) => {
+            const [x, y, w, h] = param;
+            element.style.left = `${x}px`;
+            element.style.top = `${y}px`;
+
+            element.style.width = `${w}px`;
+            element.style.maxWidth = `${w}px`;
+            element.style.minWidth = `${w}px`;
+
+            element.style.height = `${h}px`;
+            element.style.maxHeight = `${h}px`;
+            element.style.minHeight = `${h}px`;
+        };
+
         resizeCanvas = (element, param) => {
             const ctx = element.getContext('2d');
             const ratio = getPixelRatio(ctx);

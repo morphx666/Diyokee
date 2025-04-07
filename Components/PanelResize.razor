@@ -1,0 +1,80 @@
+﻿@using System.Diagnostics
+@inject IJSRuntime JS
+
+<div class="panel-resize @(Orientation == Orientations.Horizontal ? "horizontal-resize" : "vertical-resize")" @ref="dividerElement"></div>
+
+@code {
+    public enum Orientations {
+        Horizontal,
+        Vertical
+    }
+
+    [Parameter]
+    public Orientations Orientation { get; set; } = Orientations.Horizontal;
+
+    [Parameter]
+    public ElementReference ResizeElement { get; set; }
+
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
+    private ElementReference dividerElement;
+    private Bounds? dividerBounds;
+    private Bounds? resizeElementBounds;
+
+    private bool retry = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender || retry) {
+            if(ResizeElement.Id == null) {
+                retry = true;
+                return;
+            } else {
+                retry = false;
+            }
+
+            dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
+            resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
+
+            await Task.Run(async () => {
+                bool isValid = false;
+                while(true) {
+                    if(!isValid && mouseState != null && dividerBounds != null &&
+                        !mouseState.IsCaptured &&
+                        mouseState.ButtonsDown == 1 &&
+                        dividerBounds.Contains(mouseState.X, mouseState.Y)) {
+
+                        mouseState.IsCaptured = true;
+                        isValid = true;
+                    }
+
+                    if(isValid) {
+                        if(mouseState?.ButtonsDown == 1) {
+                            double offset = Orientation == Orientations.Vertical ? mouseState.Y - resizeElementBounds!.Bottom : mouseState.X - resizeElementBounds.Right;
+
+                            if(Orientation == Orientations.Vertical) {
+                                resizeElementBounds.Height += offset;
+                                dividerBounds!.Y += offset;
+                            } else {
+                                resizeElementBounds.Width += offset;
+                                dividerBounds!.X += offset;
+                            }
+
+                            await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
+                                resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height
+                            });
+                        } else {
+                            mouseState!.IsCaptured = false;
+                            isValid = false;
+                        }
+                    } else {
+                        mouseState!.IsCaptured = false;
+                        isValid = false;
+                    }
+
+                    await Task.Delay(50);
+                }
+            });
+        }
+    }
+}

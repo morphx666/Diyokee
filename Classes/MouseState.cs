@@ -15,7 +15,9 @@
         public double X { get; set; } = x;
         public double Y { get; set; } = y;
         public double Width { get; set; } = width;
-        public double Height { get; set; } = height; 
+        public double Height { get; set; } = height;
+        public double Right => X + Width;
+        public double Bottom => Y + Height;
 
         public Bounds(double[] values) : this(values[0], values[1], values[2], values[3]) { }
 
