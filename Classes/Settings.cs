@@ -23,6 +23,7 @@ namespace Diyokee {
         [JsonProperty("bassnet-reg-key")] public string BassNetRegKey { get; set; }
         [JsonProperty("media-providers")] public List<MediaProvider> MediaProviders { get; set; }
         [JsonProperty("encoder")] public EncoderOptions Encoder { get; set; }
+        [JsonProperty("ui")] public Dictionary<string, string> UIElements { get; set; }
 
         public Settings() {
             WebHostUrl = "http://localhost:5000";
@@ -37,12 +38,34 @@ namespace Diyokee {
                     RootDirectory = ""
                 }
             ];
-            Encoder = new EncoderOptions() {
+            Encoder = new() {
                 Enabled = true,
                 Port = 2132,
                 Url = "stream",
                 Bitrate = 128
             };
+            UIElements = new() {
+                ["main-resize-horizontal"] = "400",
+                ["main-resize-vertical"] = "315"
+            };
+        }
+
+        public async static Task<Settings> Load() {
+            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+            if(File.Exists(Path.Combine(workingDirectory, "settings.json"))) {
+                Settings settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
+                settings.MediaProviders.RemoveAt(0); // FIXME: Delete the provider created by the ctor
+                return settings;
+            } else {
+                Settings settings = new();
+                await settings.Save();
+                return settings;
+            }
+        }
+
+        public async Task Save() {
+            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+            await File.WriteAllTextAsync(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
         }
     }
 }

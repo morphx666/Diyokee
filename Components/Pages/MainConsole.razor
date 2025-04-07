@@ -44,14 +44,22 @@
             </div>
         </div>
 
-        <PanelResize Orientation="PanelResize.Orientations.Vertical" ResizeElement="playersPanel" />
+        <PanelResize
+            Orientation="PanelResize.Orientations.Vertical"
+            ResizeElement="playersPanel" 
+            Name="main-resize-vertical"
+            OnResizeEnd="HandleDividerResize" />
 
         <div class="media">
             <div class="sources panel" @ref="mediaProviderPanel">
                 <MediaProvider Provider="@mediaProvider" SelectedFolderChanged="SelectedFolderChanged" />
             </div>
 
-            <PanelResize Orientation="PanelResize.Orientations.Horizontal" ResizeElement="mediaProviderPanel" />
+            <PanelResize
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize" />
 
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>
@@ -129,8 +137,6 @@
         mouseState.X = e.ClientX;
         mouseState.Y = e.ClientY;
         mouseState.ButtonsDown = e.Buttons;
-
-        
     }
 
     private void HandleMouseMove(MouseEventArgs e) {
@@ -148,6 +154,15 @@
         mouseState.WheelDelta = e.DeltaY;
     }
 
+    private async void HandleDividerResize((string name, double value) args) {
+        if(Program.Settings.UIElements.ContainsKey(args.name)) {
+            Program.Settings.UIElements[args.name] = args.value.ToString();
+        } else {
+            Program.Settings.UIElements.Add(args.name, args.value.ToString());
+        }
+        await Program.Settings.Save();
+    }
+
     private CancellationTokenSource? cancellationTokenSource = null;
     private Task? crossfadeTask = null;
     private void HandleAutoCrossFade(int direction) {
@@ -161,7 +176,7 @@
             cancellationTokenSource.Dispose();
             cancellationTokenSource = new CancellationTokenSource();
         }
-        
+
         int duration = 2; // seconds
         crossfadeTask = Task.Run(async () => {
             while(!cancellationTokenSource.IsCancellationRequested) {

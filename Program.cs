@@ -22,10 +22,7 @@ internal class Program {
         Directory.SetCurrentDirectory(workingDirectory);
 #endif
 
-        if(File.Exists("settings.json")) {
-            Settings = JsonConvert.DeserializeObject<Settings>(File.ReadAllText("settings.json")) ?? new();
-            Settings.MediaProviders.RemoveAt(0); // Delete the provider created by the ctor
-        }
+        Settings = Settings.Load().GetAwaiter().GetResult();
 
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");

@@ -1,4 +1,5 @@
 ﻿@using System.Diagnostics
+@using Newtonsoft.Json
 @inject IJSRuntime JS
 
 <div class="panel-resize @(Orientation == Orientations.Horizontal ? "horizontal-resize" : "vertical-resize")" @ref="dividerElement"></div>
@@ -14,6 +15,12 @@
 
     [Parameter]
     public ElementReference ResizeElement { get; set; }
+
+    [Parameter]
+    public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<(string, double)> OnResizeEnd { get; set; }
 
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
@@ -35,6 +42,22 @@
 
             dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
             resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
+
+            if(Program.Settings.UIElements.ContainsKey(Name)) {
+                if(double.TryParse(Program.Settings.UIElements[Name], out double value)) {
+                    if(Orientation == Orientations.Vertical) {
+                        resizeElementBounds.Height = value;
+                        dividerBounds!.Y = value;
+                    } else {
+                        resizeElementBounds.Width = value;
+                        dividerBounds!.X = value;
+                    }
+
+                    await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
+                        resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height
+                    });
+                }
+            }
 
             await Task.Run(async () => {
                 bool isValid = false;
@@ -66,6 +89,12 @@
                         } else {
                             mouseState!.IsCaptured = false;
                             isValid = false;
+
+                            if(Orientation == Orientations.Vertical) {
+                                await OnResizeEnd.InvokeAsync((Name, dividerBounds!.Y));
+                            } else {
+                                await OnResizeEnd.InvokeAsync((Name, dividerBounds!.X));
+                            }
                         }
                     } else {
                         mouseState!.IsCaptured = false;
