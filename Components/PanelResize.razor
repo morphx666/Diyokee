@@ -10,6 +10,11 @@
         Vertical
     }
 
+    public enum ConstrainKeys {
+        Min,
+        Max
+    }
+
     [Parameter]
     public Orientations Orientation { get; set; } = Orientations.Horizontal;
 
@@ -18,6 +23,9 @@
 
     [Parameter]
     public string Name { get; set; } = string.Empty;
+
+    [Parameter]
+    public Dictionary<ConstrainKeys, string> Constrains { get; set; } = new();
 
     [Parameter]
     public EventCallback<(string, double)> OnResizeEnd { get; set; }
@@ -30,6 +38,28 @@
     private Bounds? resizeElementBounds;
 
     private bool retry = false;
+
+    private void Validate() {
+        foreach(var constrain in Constrains) {
+            if(!double.TryParse(constrain.Value, out double value)) return;
+            switch(constrain.Key) {
+                case ConstrainKeys.Min:
+                    if(Orientation == Orientations.Vertical) {
+                        if(resizeElementBounds!.Height < value) resizeElementBounds.Height = value;
+                    } else {
+                        if(resizeElementBounds!.Width < value) resizeElementBounds.Width = value;
+                    }
+                    break;
+                case ConstrainKeys.Max:
+                    if(Orientation == Orientations.Vertical) {
+                        if(resizeElementBounds!.Height > value) resizeElementBounds.Height = value;
+                    } else {
+                        if(resizeElementBounds!.Width > value) resizeElementBounds.Width = value;
+                    }
+                    break;
+            }
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender || retry) {
@@ -52,6 +82,7 @@
                         resizeElementBounds.Width = value;
                         dividerBounds!.X = value;
                     }
+                    Validate();
 
                     await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                         resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height
@@ -82,6 +113,7 @@
                                 resizeElementBounds.Width += offset;
                                 dividerBounds!.X += offset;
                             }
+                            Validate();
 
                             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                                 resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height

@@ -48,7 +48,8 @@
             Orientation="PanelResize.Orientations.Vertical"
             ResizeElement="playersPanel" 
             Name="main-resize-vertical"
-            OnResizeEnd="HandleDividerResize" />
+            OnResizeEnd="HandleDividerResize"
+            Constrains="playersConstrains" />
 
         <div class="media">
             <div class="sources panel" @ref="mediaProviderPanel">
@@ -56,10 +57,11 @@
             </div>
 
             <PanelResize
-                Orientation="PanelResize.Orientations.Horizontal"
-                ResizeElement="mediaProviderPanel"
-                Name="main-resize-horizontal"
-                OnResizeEnd="HandleDividerResize" />
+            Orientation="PanelResize.Orientations.Horizontal"
+            ResizeElement="mediaProviderPanel"
+            Name="main-resize-horizontal"
+            OnResizeEnd="HandleDividerResize"
+            Constrains="mediaProviderConstrains" />
 
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>
@@ -82,7 +84,9 @@
     private MouseState mouseState = new();
 
     private ElementReference playersPanel;
+    private Dictionary<PanelResize.ConstrainKeys, string> playersConstrains = new() { { PanelResize.ConstrainKeys.Min, "315" } };
     private ElementReference mediaProviderPanel;
+    private Dictionary<PanelResize.ConstrainKeys, string> mediaProviderConstrains = new() { { PanelResize.ConstrainKeys.Min, "250" } };
 
     private bool shouldRender = true;
 
