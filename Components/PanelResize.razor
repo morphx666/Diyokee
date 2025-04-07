@@ -39,7 +39,7 @@
 
     private bool retry = false;
 
-    private void Validate() {
+    private async Task ApplyNewSize() {
         foreach(var constrain in Constrains) {
             if(!double.TryParse(constrain.Value, out double value)) return;
             switch(constrain.Key) {
@@ -59,6 +59,22 @@
                     break;
             }
         }
+
+        if(Orientation == Orientations.Vertical) {
+            await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
+                -1, -1, -1, resizeElementBounds!.Height
+        });
+        } else {
+            await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
+                -1, -1, resizeElementBounds!.Width, -1
+        });
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnResize() {
+        dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
+        resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -70,8 +86,9 @@
                 retry = false;
             }
 
-            dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
-            resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
+            await OnResize();
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
             if(Program.Settings.UIElements.ContainsKey(Name)) {
                 if(double.TryParse(Program.Settings.UIElements[Name], out double value)) {
@@ -82,11 +99,7 @@
                         resizeElementBounds.Width = value;
                         dividerBounds!.X = value;
                     }
-                    Validate();
-
-                    await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
-                        resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height
-                    });
+                    await ApplyNewSize();
                 }
             }
 
@@ -113,24 +126,17 @@
                                 resizeElementBounds.Width += offset;
                                 dividerBounds!.X += offset;
                             }
-                            Validate();
-
-                            await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
-                                resizeElementBounds.X, resizeElementBounds.Y, resizeElementBounds.Width, resizeElementBounds.Height
-                            });
+                            await ApplyNewSize();
                         } else {
                             mouseState!.IsCaptured = false;
                             isValid = false;
 
                             if(Orientation == Orientations.Vertical) {
-                                await OnResizeEnd.InvokeAsync((Name, dividerBounds!.Y));
+                                await OnResizeEnd.InvokeAsync((Name, resizeElementBounds!.Height));
                             } else {
-                                await OnResizeEnd.InvokeAsync((Name, dividerBounds!.X));
+                                await OnResizeEnd.InvokeAsync((Name, resizeElementBounds!.Width));
                             }
                         }
-                    } else {
-                        mouseState!.IsCaptured = false;
-                        isValid = false;
                     }
 
                     await Task.Delay(50);

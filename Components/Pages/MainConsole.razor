@@ -1,6 +1,7 @@
 ﻿@using System.Diagnostics
 @using Diyokee
 @using Diyokee.MediaProviders
+@inject IJSRuntime JS
 
 @page "/"
 
@@ -57,11 +58,11 @@
             </div>
 
             <PanelResize
-            Orientation="PanelResize.Orientations.Horizontal"
-            ResizeElement="mediaProviderPanel"
-            Name="main-resize-horizontal"
-            OnResizeEnd="HandleDividerResize"
-            Constrains="mediaProviderConstrains" />
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize"
+                Constrains="mediaProviderConstrains" />
 
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>

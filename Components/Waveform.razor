@@ -71,15 +71,23 @@
         waveformId = DateTime.Now.Ticks;
     }
 
+    [JSInvokable]
+    public async Task OnResize() {
+        double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
+        canvasWidth = (long)canvasSize[0];
+        canvasHeight = (long)canvasSize[1];
+        canvasRatio = canvasSize[2];
+
+        canvasBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", canvas.CanvasReference));
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
-            canvasWidth = (long)canvasSize[0];
-            canvasHeight = (long)canvasSize[1];
-            canvasRatio = canvasSize[2];
+            await OnResize();
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
             double lastMousePosX = 0;
-            canvasBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", canvas.CanvasReference));
             await Task.Run(async () => {
                 while(true) {
                     if(!IsMouseDown && mouseState != null && canvasBounds != null &&

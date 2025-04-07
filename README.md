@@ -62,10 +62,6 @@ The program uses the settings defined in the `settings.json` file.
 - Selecting which tracks should be sent to the monitor (with volume adjustment)
 - ...and many more
 
-## Known issues
-
-- Plenty... but the worst one is that if the window is resized, mouse interactions with the waveform displayed, the faders and the knobs will stop working and the page needs to be refreshed.
-
 ## Releases
 
 Platform|Architecture|Status|Download<br><small>(2025-04-03)</small>

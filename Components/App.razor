@@ -32,16 +32,16 @@
 
         setElementBounds = (element, param) => {
             const [x, y, w, h] = param;
-            element.style.left = `${x}px`;
-            element.style.top = `${y}px`;
+            if(x != -1) element.style.left = `${x}px`;
+            if(y != -1) element.style.top = `${y}px`;
 
-            element.style.width = `${w}px`;
-            element.style.maxWidth = `${w}px`;
-            element.style.minWidth = `${w}px`;
+            if(w != -1) element.style.width = `${w}px`;
+            if(w != -1) element.style.maxWidth = `${w}px`;
+            if(w != -1) element.style.minWidth = `${w}px`;
 
-            element.style.height = `${h}px`;
-            element.style.maxHeight = `${h}px`;
-            element.style.minHeight = `${h}px`;
+            if(h != -1) element.style.height = `${h}px`;
+            if(h != -1) element.style.maxHeight = `${h}px`;
+            if(h != -1) element.style.minHeight = `${h}px`;
         };
 
         resizeCanvas = (element, param) => {
@@ -69,12 +69,19 @@
             return dpr / bsr;
         }
 
+        var Diyokee = Diyokee || {};
+        var dotNetListeners = [];
+        Diyokee.monitorResize = (dotNetObjReference) => {
+            dotNetListeners.push(dotNetObjReference);
+        }
+
         var notifyHandler = 0;
         window.onresize = () => {
             clearTimeout(notifyHandler);
             notifyHandler = setTimeout(() => {
-                // https://learn.microsoft.com/en-us/aspnet/core/blazor/javascript-interoperability/call-dotnet-from-javascript?view=aspnetcore-9.0
-                //DotNet.invokeMethodAsync('Diyokee', 'OnResize');
+                dotNetListeners.forEach(dotNetObjReference => {
+                    dotNetObjReference.invokeMethodAsync("OnResize");
+                });
             }, 500);
         };
     </script>

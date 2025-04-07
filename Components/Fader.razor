@@ -84,6 +84,12 @@
         return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
     }
 
+    [JSInvokable]
+    public async Task OnResize() {
+        faderBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", faderElement));
+        faderSize = (Orientation == Orientations.Vertical ? faderBounds.Height : faderBounds.Width) - gutterOffsetTop - gutterOffsetBottom;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             switch(Orientation) {
@@ -97,8 +103,9 @@
                     break;
             }
 
-            faderBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", faderElement));
-            faderSize = (Orientation == Orientations.Vertical ? faderBounds.Height : faderBounds.Width) - gutterOffsetTop - gutterOffsetBottom;
+            await OnResize();
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);

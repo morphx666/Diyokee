@@ -57,10 +57,17 @@
         return $"rotate: {angle}deg";
     }
 
+    [JSInvokable]
+    public async Task OnResize() {
+        knobBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", knobElement));
+        knobSize = knobBounds.Height;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            knobBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", knobElement));
-            knobSize = knobBounds.Height;
+            await OnResize();
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);

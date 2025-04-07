@@ -1,9 +1,11 @@
-﻿namespace Diyokee {
+﻿using System.Diagnostics;
+
+namespace Diyokee {
     public class MouseState {
         public double X { get; set; }
         public double Y { get; set; }
         public long ButtonsDown { get; set; }
-        public bool IsCaptured { get; set; }
+        public bool IsCaptured {get;set; }
         public double WheelDelta { get; set; }
 
         public override string ToString() {
