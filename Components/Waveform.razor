@@ -58,6 +58,8 @@
     [Parameter]
     public Modes Mode { get; set; } = Modes.AudioSynced;
 
+    public bool EnableMouseEvents { get; set; } = true;
+
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
@@ -91,6 +93,9 @@
             double lastMousePosX = 0;
             await Task.Run(async () => {
                 while(true) {
+                    await Task.Delay(60);
+                    if(!EnableMouseEvents) continue;
+
                     if(!IsMouseDown && mouseState != null && canvasBounds != null &&
                         !mouseState.IsCaptured &&
                         mouseState.ButtonsDown == 1 &&
@@ -117,8 +122,6 @@
                             IsMouseDown = false;
                         }
                     }
-
-                    await Task.Delay(50);
                 }
             });
         }

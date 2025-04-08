@@ -40,7 +40,7 @@
 
                 transform: translateX(-50%);
 
-                &:after {
+                &::after {
                     content: "";
                     position: absolute;
                     top: 50%;

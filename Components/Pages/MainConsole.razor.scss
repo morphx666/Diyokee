@@ -8,7 +8,7 @@
         ::deep h3 {
             padding: 0.22em 0.5rem;
             margin: 0;
-            background-color: var(--header);
+            background-color: var(--header-background-color);
             border-bottom: 1px solid var(--panel-background-color-dark);
         }
     }
@@ -48,7 +48,7 @@
 
                 .button-3d {
                     display: flex;
-                    align-items: anchor-center;
+                    align-items: center;
                     justify-content: center;
                     width: 2rem;
                 }

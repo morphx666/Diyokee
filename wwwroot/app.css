@@ -8,6 +8,11 @@
     src: url("/fonts/JetBrains_Mono/JetBrainsMono-VariableFont_wght.ttf") format("truetype");
 }
 
+@font-face {
+    font-family: "FontAwesome Solid";
+    src: url("/fonts/fa-free-6.7.2-web/webfonts/fa-solid-900.ttf") format("truetype");
+}
+
 :root {
     --app-background-color: #111;
 
@@ -21,7 +26,7 @@
     --pale-blue: #007bff;
     --pale-blue-hover: #0056b3;
 
-    --header: #563283;
+    --header-background-color: #563283;
 
     --mono-font-family: "JetBrains Mono";
 
@@ -65,8 +70,8 @@ body, html {
     }
 
     &.led {
-        &:after {
-            content: '';
+        &::after {
+            content: "";
             position: absolute;
             bottom: 3px;
             right: 4px;
@@ -79,15 +84,15 @@ body, html {
             border-radius: 50%;
         }
 
-        &.green:after {
+        &.green::after {
             background-color: #83fa1b;
         }
 
-        &.cyan:after {
+        &.cyan::after {
             background-color: var(----ctrl-highlight);
         }
 
-        &.red:after {
+        &.red::after {
             background-color: #f00;
         }
     }
@@ -161,7 +166,7 @@ h1:focus {
     color: white;
 }
 
-.blazor-error-boundary::after {
+.blazor-error-boundary:::after {
     content: "An error has occurred."
 }
 

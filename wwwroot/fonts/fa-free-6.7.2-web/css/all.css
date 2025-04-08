@@ -22,13 +22,13 @@
   line-height: 1;
   text-rendering: auto; }
 
-.fas::before,
-.far::before,
-.fab::before,
-.fa-solid::before,
-.fa-regular::before,
-.fa-brands::before,
-.fa::before {
+.fas:::before,
+.far:::before,
+.fab:::before,
+.fa-solid:::before,
+.fa-regular:::before,
+.fa-brands:::before,
+.fa:::before {
   content: var(--fa); }
 
 .fa-classic,

@@ -1,4 +1,9 @@
-﻿<div class="dialog-background @(isOpen ? "show" : "")">
+﻿@using Diyokee.Data
+@using Microsoft.EntityFrameworkCore
+@inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
+@inject IJSRuntime JS
+
+<div class="dialog-background @(isOpen ? "show" : "")">
     <div class="dialog-container @(isOpen ? "show" : "")">
         <div class="title">
             <span>Track Properties</span>
@@ -19,17 +24,69 @@
             <div class="row">
                 <div class="field">
                     <label for="album">Album</label>
-                    <InputText id="album" @bind-value="file.Album" />
+                    <InputText
+                        id="album"
+                        @bind-value="file.Album"
+                        @onclick="@(async () => {
+                            albumsAcVisible = true;
+                            player.EnableMouseEvents = false;
+                            await JS.InvokeVoidAsync("scrollToSelectedItem");
+                        })"
+                        @onblur=@(async () => {
+                            await Task.Delay(100); // Process item onclick first (if any)
+                            albumsAcVisible = false;
+                            player.EnableMouseEvents = true;
+                        })
+                    />
+                    <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
+                        @foreach(var album in albums) {
+                            <div
+                                class="item @(album == file.Album ? "selected" : "")"
+                                @onclick="@(async () => {
+                                    file.Album = album;
+                                    albumsAcVisible = false;
+                                    player.EnableMouseEvents = true;
+                                })">
+                                @album
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="genre">Genre</label>
+                    <InputText
+                        id="genre"
+                        @bind-value="file.Genre"
+                        @onclick="@(async () => {
+                            genresAcVisible = true;
+                            player.EnableMouseEvents = false;
+                            await JS.InvokeVoidAsync("scrollToSelectedItem");
+                        })"
+                        @onblur=@(async () => {
+                            await Task.Delay(100); // Process item onclick first (if any)
+                            genresAcVisible = false;
+                            player.EnableMouseEvents = true;
+                        })
+                    />
+                    <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
+                        @foreach(var genre in genres) {
+                            <div
+                                class="item @(genre == file.Genre ? "selected" : "")"
+                                @onclick="@(async () => {
+                                    file.Genre = genre;
+                                    genresAcVisible = false;
+                                    player.EnableMouseEvents = true;
+                                })">
+                                @genre
+                            </div>
+                        }
+                    </div>
                 </div>
 
                 <div class="field year">
                     <label for="year">Year</label>
                     <InputNumber id="year" @bind-value="file.Year" />
-                </div>
-
-                <div class="field">
-                    <label for="genre">Genre</label>
-                    <InputText id="genre" @bind-value="file.Genre" />
                 </div>
             </div>
 
@@ -54,9 +111,9 @@
                 </div>
 
                 <Player
-                PlayerName="Preview"
-                PlayerCssColor="#82871f"
-                MinimalMode="true"
+                    PlayerName="Preview"
+                    PlayerCssColor="#82871f"
+                    MinimalMode="true"
                 @ref="player" />
             </div>
         </div>
@@ -68,10 +125,20 @@
     </div>
 </div>
 
+<script>
+    scrollToSelectedItem = () => document.querySelector(".item.selected").scrollTo({ top: 0 });
+</script>
+
 @code {
     private DFile file = new();
     private Player? player;
     private bool isOpen = false;
+
+    private bool genresAcVisible = false;
+    private bool albumsAcVisible = false;
+
+    private List<string> genres = [];
+    private List<string> albums = [];
 
     [Parameter]
     public FilesUI Files { get; set; } = null!;
@@ -80,8 +147,12 @@
         if(file == null) return;
         this.file = (DFile)file.Clone();
 
-        Task.Run(async () => { // FIXME: Why? I'm sure there must be a better way to do this
-            while(player == null) {
+        Task.Run(async () => {
+            CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
+            genres = cache.Files.Select(f => f.Genre).Distinct().ToList();
+            albums = cache.Files.Select(f => f.Album).Distinct().ToList();
+
+            while(player == null) { // FIXME: Why? I'm sure there must be a better way to do this
                 await Task.Delay(10);
             }
 
@@ -94,6 +165,9 @@
 
     public void Close() {
         player!.Stop(false);
+        player!.EnableMouseEvents = true;
+        genresAcVisible = false;
+        albumsAcVisible = false;
         isOpen = false;
     }
 

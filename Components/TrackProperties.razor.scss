@@ -40,6 +40,7 @@
 
         padding: 0.5rem;
         background-color: var(--panel-background-color-dark);
+        background-color: var(--header-background-color);
 
         .close {
             cursor: pointer;
@@ -79,19 +80,24 @@
                 padding-right: 0.4rem;
             }
 
-            ::deep input {
+            ::deep input, ::deep select {
                 flex: 1;
 
+                appearance: none;
+                font-family: Montserrat;
                 color: var(--text-white);
                 outline: none;
                 background-color: var(--panel-background-color-dark);
                 border: none;
                 padding: 0.3rem;
+                font-size: 0.9rem;
 
                 &[type="number"], &.as-number {
                     appearance: textfield;
                     text-align: center;
                     max-width: 4rem;
+                    font-family: var(--mono-font-family);
+                    line-height: 0.1rem;
 
                     &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
                         display: none;
@@ -99,11 +105,53 @@
                 }
             }
 
-            &.year {
-                ::deep input {
-                    font-family: var(--mono-font-family);
-                    font-size: 0.9rem;
+            /*&:has(select) {
+                position: relative;
+
+                &::after {
+                    content: "\f0d7";
+                    font-family: "FontAwesome Solid";
+                    color: var(--panel-background-color-light-light);
+                    position: absolute;
+                    display: inline-block;
+                    right: 0;
+                    width: 1rem;
+                    height: 1rem;
                 }
+            }*/
+
+            &:has(.autocomplete) {
+                position: relative;
+
+                .autocomplete {
+                    position: absolute;
+                    top: 100%;
+                    left: calc(7ch - 2px);
+                    width: calc(100% - 7ch + 2px);
+                    height: fit-content;
+                    max-height: 12rem;
+                    overflow-y: scroll;
+                    z-index: 100;
+                    font-size: 0.9rem;
+                    background-color: var(--panel-background-color-dark);
+
+                    display: none;
+
+                    &.show {
+                        display: block;
+                    }
+
+                    .item {
+                        padding: 0.3rem;
+
+                        &.selected {
+                            background-color: var(--pale-blue);
+                        }
+                    }
+                }
+            }
+
+            &.year {
                 max-width: 8rem;
             }
 
@@ -119,10 +167,7 @@
                     gap: 2px;
 
                     ::deep input {
-                        font-family: var(--mono-font-family);
-                        text-align: center;
                         width: 2.5rem;
-                        font-size: 0.9rem;
                     }
                 }
             }
