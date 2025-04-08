@@ -30,15 +30,18 @@
                         <img src="@Assets["/images/waiting.gif"]" />
                     </div>
                 } else {
-                    <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Artist</div>
+                    <div
+                    class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")"
+                    @onclick="() => ChangeSelectedFile(file)"
+                    @ondblclick="OpenTrackProperties">@file.Artist</div>
                 }
-                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Title</div>
-                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Genre</div>
-                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.Album</div>
-                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@file.BPM.ToString("N2")</div>
-                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
-                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
-                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">@DFile.FormatTime(file.Duration)</div>
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")"            @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Title</div>
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")"            @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Genre</div>
+                <div class="cell ellipsis @((file.Filename == selectedFile) ? "selected" : "")"            @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Album</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.BPM.ToString("N2")</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
+                <div class="cell ellipsis right mono @((file.Filename == selectedFile) ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@DFile.FormatTime(file.Duration)</div>
             }
         </div>
     </div>
@@ -47,11 +50,16 @@
         <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@TextInputHandleKeyUp"></InputText>
         <div class="button reset-search" @onclick="@ResetSearch"><i class="fa-solid fa-xmark"></i></div>
         <div class="button @(isSearching ? "working" : "")" @onclick="@(() => AnalyzeFiles(true))"><i class="fa-solid @searchButtonIcon"></i></div>
-        <div class="button" @onclick="@ReAnalyzeFile"><i class="fa-solid fa-arrow-rotate-right"></i></div>
 
         <div class="progress" style="@GetProgressCss()"></div>
     </div>
 </div>
+
+@if(showTrackProperties) {
+    <TrackProperties
+    Files="this"
+    @ref="trackProperties" />
+}
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
@@ -70,6 +78,9 @@
     private string searchButtonIcon = "fa-magnifying-glass";
     private bool componentCanRender = false;
     private int analyzedFilesCount = 0;
+
+    private TrackProperties? trackProperties = null;
+    private bool showTrackProperties = false;
 
     private int sortIndex = 0;
     private bool sortAscending = true;    
@@ -203,8 +214,8 @@
         }
     }
 
-    private async Task AnalyzeFile(DFile file, CacheDbContext cache, bool ignoreCache) {
-        var cachedFile = ignoreCache ? null : await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+    private async Task AnalyzeFile(DFile file, CacheDbContext cache, bool reanalyze) {
+        var cachedFile = reanalyze ? null : await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(cachedFile == null) {
             float bpm = 0;
             double downbeatAt = -1;
@@ -217,7 +228,8 @@
                     file.Title = tlFile.Tag.Title ?? "";
                     file.Genre = tlFile.Tag.FirstGenre ?? "";
                     file.Album = tlFile.Tag.Album ?? "";
-                    if(!ignoreCache) bpm = tlFile.Tag.BeatsPerMinute;
+                    file.Year = (int)tlFile.Tag.Year;
+                    if(!reanalyze) bpm = tlFile.Tag.BeatsPerMinute;
                     file.Key = tlFile.Tag.InitialKey ?? "";
                     file.ReplayGain = double.IsNaN(tlFile.Tag.ReplayGainTrackGain) ? 0 : tlFile.Tag.ReplayGainTrackGain;
                     file.HasReplayGain = !double.IsNaN(tlFile.Tag.ReplayGainTrackGain);
@@ -259,6 +271,7 @@
             file.Title = cachedFile.Title;
             file.Genre = cachedFile.Genre;
             file.Album = cachedFile.Album;
+            file.Year = cachedFile.Year;
             file.Duration = cachedFile.Duration;
             file.Waveform = cachedFile.Waveform;
             file.BPM = cachedFile.BPM;
@@ -267,6 +280,47 @@
             file.ReplayGain = cachedFile.ReplayGain;
             file.HasReplayGain = cachedFile.HasReplayGain;
         }
+    }
+
+    public float CalcBpm(DFile file) {
+        int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+        float bpm = BassFx.BASS_FX_BPM_DecodeGet(handle, 0, file.Duration / 2, Utils.MakeLong(60, 330), BASSFXBpm.BASS_FX_BPM_MULT2, null, IntPtr.Zero);
+        Bass.BASS_StreamFree(handle);
+
+        return bpm;
+    }
+
+    public double CalcDownbeat(DFile file) {
+        double downbeatAt = -1;
+        int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+        BassFx.BASS_FX_BPM_BeatDecodeGet(handle, 0, 60, BASSFXBpm.BASS_FX_BPM_DEFAULT,
+                new BPMBEATPROC((int handle, double beatPosition, IntPtr user) => {
+                    if(downbeatAt == -1) downbeatAt = beatPosition;
+                }),
+                IntPtr.Zero);
+        BassFx.BASS_FX_BPM_Free(handle);
+        Bass.BASS_StreamFree(handle);
+
+        return downbeatAt;
+    }
+
+    public async void UpdateFile(DFile file) {
+        CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
+        DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        if(fileFromCache != null) {
+            cache.Files.Remove(fileFromCache);
+            await cache!.SaveChangesAsync();
+
+            int index = files.FindIndex(f => f.Filename == file.Filename);
+            files.RemoveAt(index);
+
+            files.Insert(index, file);
+            cache.Files.Add(file);
+
+            await cache!.SaveChangesAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        await cache.DisposeAsync();
     }
 
     private string GenerateWaveform(int handle) {
@@ -310,25 +364,27 @@
         }
     }
 
-    private async void ReAnalyzeFile() {
-        CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-        DFile? selFile = await cache.Files.FirstOrDefaultAsync(f => f.Filename == selectedFile);
-        if(selFile != null) {
-            cache.Files.Remove(selFile);
-            await cache!.SaveChangesAsync();
-
-            int index = files.FindIndex(f => f.Filename == selectedFile);
-            files.RemoveAt(index);
-
-            await AnalyzeFile(selFile, cache, true);
-
-            files.Insert(index, selFile);
-            await cache!.SaveChangesAsync();
+    private async void OpenTrackProperties(DFile? file) {
+        if(file == null) return;
+        if(trackProperties == null) {
+            trackProperties = new TrackProperties();
             await InvokeAsync(StateHasChanged);
         }
-        await cache.DisposeAsync();
+        showTrackProperties = true;
+        trackProperties!.Open(file);
     }
 
+    private void OpenTrackProperties() {
+        showTrackProperties = true;
+
+        Task.Run(async () => {
+            while(trackProperties == null) {
+                await Task.Delay(250);
+            }
+            trackProperties!.Open(files.FirstOrDefault(f => f.Filename == selectedFile));
+        });
+    }
+    
     protected override Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) componentCanRender = true;
         return base.OnAfterRenderAsync(firstRender);

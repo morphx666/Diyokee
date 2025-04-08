@@ -9,27 +9,29 @@
 @using Un4seen.Bass.AddOn.Mix
 @inject IJSRuntime JS
 
-<div class="container">
-    <div class="header">
-        <div class="file-info ellipsis">
-            <span class="ellipsis">@file?.Title</span>
-            <span class="ellipsis">@file?.Artist</span>
-            <span class="ellipsis">@file?.Album</span>
+<div class="player-container">
+    @if(!MinimalMode) {
+        <div class="header">
+            <div class="file-info ellipsis">
+                <span class="ellipsis">@file?.Title</span>
+                <span class="ellipsis">@file?.Artist</span>
+                <span class="ellipsis">@file?.Album</span>
+            </div>
+            <div class="time">
+                <span>@DFile.FormatTime(playbackPosition)</span>
+                <span>-@DFile.FormatTime(GetRemainingTime())</span>
+                <span>&nbsp;</span>
+            </div>
+            <div class="bpm-key">
+                <span>@CalcBpm()</span>
+                <span>@GetBpmAdjustment()</span>
+                <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
+            </div>
+            <div class="player-name" style="background-color: @PlayerCssColor">
+                @PlayerName
+            </div>
         </div>
-        <div class="time">
-            <span>@DFile.FormatTime(playbackPosition)</span>
-            <span>-@DFile.FormatTime(GetRemainingTime())</span>
-            <span>&nbsp;</span>
-        </div>
-        <div class="bpm-key">
-            <span>@CalcBpm()</span>
-            <span>@GetBpmAdjustment()</span>
-            <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
-        </div>
-        <div class="player-name" style="background-color: @PlayerCssColor">
-            @PlayerName
-        </div>
-    </div>
+    }
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
@@ -55,10 +57,14 @@
             WaveformBarWidth="@waveformBarWidth"
             WaveformWidth="@waveformWidth"
             @ref="waveform" />
+
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
-        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
-        <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
+        
+        @if(!MinimalMode) {
+            <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
+            <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
+        }
     </div>
 
     <div class="transport">
@@ -70,15 +76,17 @@
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
-        <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
-        <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.PlayerName ?? "")</div>
-        <div class="sync-adjust">
-            <span>SYNC</span>
-            <div class="sync-buttons">
-                <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed"><i class="fa-solid fa-left-long"></i></div>
-                <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed"><i class="fa-solid fa-right-long"></i></div>
+        @if(!MinimalMode) {
+            <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
+            <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.PlayerName ?? "")</div>
+            <div class="sync-adjust">
+                <span>SYNC</span>
+                <div class="sync-buttons">
+                    <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed"><i class="fa-solid fa-left-long"></i></div>
+                    <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed"><i class="fa-solid fa-right-long"></i></div>
+                </div>
             </div>
-        </div>
+        }
     </div>
 </div>
 
@@ -147,8 +155,15 @@
     [Parameter]
     public Player? OtherPlayer { get; set; } = null;
 
+    [Parameter]
+    public bool MinimalMode { get; set; } = false;
+
     public Player() {
         Task.Run(MonitorPlayback);
+    }
+
+    public void SetFile(DFile file) {
+        File = file;
     }
 
     public void SetCrossFaderVolume(double value) {
@@ -188,7 +203,7 @@
         if(e.Button == 0) SyncBPMToOtherPlayer();
     }
 
-    private void Play() {
+    public void Play() {
         if(fxHandle == 0) return;
 
         // ******************* This might be useful for syncing the two players and playing loops *******************
@@ -210,7 +225,7 @@
         }
     }
 
-    private void Stop(bool resetToCuePoint) {
+    public void Stop(bool resetToCuePoint) {
         if(fxHandle == 0) return;
         BassMix.BASS_Mixer_ChannelPause(fxHandle);
         BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, resetToCuePoint ? cuePoint : 0));
@@ -304,20 +319,19 @@
         if(file == null || faderVolume == null) return;
 
         streamHandle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_STREAM_PRESCAN | BASSFlag.BASS_ASYNCFILE);
-        //var info = Bass.BASS_ChannelGetInfo(streamHandle);
         fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON | BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_FX_FREESOURCE);
         BassMix.BASS_Mixer_StreamAddChannel(Program.BassMixHandle, fxHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE | BASSFlag.BASS_MIXER_CHAN_NORAMPIN | BASSFlag.BASS_MIXER_CHAN_BUFFER);
         trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);        
 
-        ApplyVolume(faderVolume.Value);
+        ApplyVolume(faderVolume!.Value);
         SetupEQ();
         faderTempo?.SetValue(0.5);
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, FilesUI.TimeSlice);
 
-        peaks = [];
-        beatMarkers.Clear();
+        // peaks = [];
+        // beatMarkers.Clear();
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);
             queueAutoSnap = !IsPlaying;
@@ -351,8 +365,11 @@
         eqCtrls?.Reset();
     }
 
-    private bool SetParameters() {
+    public bool SetParameters() {
         if(file == null || !file.WaveformUnZipped.Contains('|')) return false;
+
+        peaks = [];
+        beatMarkers.Clear();
 
         peaks = file.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
         maxPeak = peaks.Max();
@@ -440,9 +457,9 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender && faderVolume != null && faderTempo != null) {
-            faderVolume.SetInitialValue(0.8);
-            faderTempo.SetInitialValue(0.5);
+        if(firstRender && faderVolume != null && (faderTempo != null || MinimalMode)) {
+            faderVolume!.SetInitialValue(0.8);
+            if(!MinimalMode) faderTempo.SetInitialValue(0.5);
             await InvokeAsync(StateHasChanged);
         }
 

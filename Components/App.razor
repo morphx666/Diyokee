@@ -48,8 +48,15 @@
             const ctx = element.getContext('2d');
             const ratio = getPixelRatio(ctx);
 
-            element.width = element.offsetWidth * ratio;
-            element.height = element.offsetHeight * ratio;
+            let container = element;
+            while(container.offsetWidth == 0 || container.offsetHeight == 0) {
+                const parent = container.parentElement;
+                if(parent == null) break;
+                container = parent;
+            }
+
+            element.width = container.offsetWidth * ratio;
+            element.height = container.offsetHeight * ratio;
             element.style.width = "100%";
             element.style.height = "100%";
             element.style.maxHeight = element.height / ratio + "px";

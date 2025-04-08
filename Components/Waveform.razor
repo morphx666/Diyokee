@@ -82,10 +82,11 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
+        if(firstRender || canvasWidth == 0 || canvasHeight == 0) {
             await OnResize();
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+            if(canvasWidth == 0 || canvasHeight == 0) return;
 
             double lastMousePosX = 0;
             await Task.Run(async () => {

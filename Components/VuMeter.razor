@@ -1,6 +1,7 @@
 ﻿@using Blazor.Extensions
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
+@using System.Diagnostics
 @inject IJSRuntime JS
 
 <div class="vumeter-container">
@@ -21,17 +22,27 @@
     private int vuSize = 5;
 
     public async void SetLevel(double real, double monitor) {
+        if(levelReal == real && levelMonitor == monitor) return;
         levelReal = real;
         levelMonitor = monitor;
         await InvokeAsync(StateHasChanged);
     }
 
+    [JSInvokable]
+    public async Task OnResize() {
+        double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
+        canvasWidth = (long)canvasSize[0];
+        canvasHeight = (long)canvasSize[1];
+        canvasRatio = canvasSize[2];
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
-            double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
-            canvasWidth = (long)canvasSize[0];
-            canvasHeight = (long)canvasSize[1];
-            canvasRatio = canvasSize[2];
+        if(firstRender || canvasWidth == 0 || canvasHeight == 0) {
+            await OnResize();
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
         }
 
         RenderVuMeter();

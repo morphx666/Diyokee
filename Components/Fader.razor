@@ -5,8 +5,8 @@
     <div class="name">@((MarkupString)Name)</div>
     <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
         <div class="knob button-thin"
-            style="@GetKnobCss()"
-            @ondblclick="() => SetValue(initialValue)">
+        style="@GetKnobCss()"
+        @ondblclick="() => SetValue(initialValue)">
         </div>
         <div class="range" style="@GetRangeCss()"></div>
     </div>
@@ -91,7 +91,7 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
+        if(firstRender || faderBounds?.Width == 0 || faderBounds?.Height == 0) {
             switch(Orientation) {
                 case Orientations.Vertical:
                     gutterOffsetTop = 16;
@@ -106,6 +106,7 @@
             await OnResize();
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+            if(faderBounds.Width == 0 || faderBounds.Height == 0) return;
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);

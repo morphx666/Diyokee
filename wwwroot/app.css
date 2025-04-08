@@ -27,6 +27,11 @@
 
     --ctrl-highlight: #81bcb7;
     --ctrl-highlight-soft: #81bcb7cc;
+
+    --primary: 00, 123, 255; /* --pale-blue */
+    --primary-light: #00ceff;
+    --secondary: 114, 29, 29; /* #721d1d */
+    --secondary-light: #ff5600;
 }
 
 * {
