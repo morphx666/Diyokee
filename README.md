@@ -47,6 +47,7 @@ The program uses the settings defined in the `settings.json` file.
 - Use the textbox at the bottom of the files list to search for files. The search is recursive.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" width="12"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
 - Double click a track in the files list to open the Track Properties dialog.
+  ![image](https://github.com/user-attachments/assets/fda34783-9973-49c9-8210-37f331cb5c5c)
 
 ## Notable missing features
 
