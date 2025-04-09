@@ -60,7 +60,7 @@ The program uses the settings defined in the `settings.json` file.
   Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.
 - Audio device selection for audio monitoring (configuration dialog).
-- Selecting which tracks should be sent to the monitor (with volume adjustment)
+- Audio routing for main output, monitor and stream (with volume adjustment)
 - ...and many more
 
 ## Releases
