@@ -42,19 +42,19 @@ The program uses the settings defined in the `settings.json` file.
 - Use the Lo/Mid/Hi knobs to change the track's equalization.
 - Use the fader between the two players to cross-fade between them.
 - Faders and knobs can be used by clicking and dragging or by moving the mouse over them and using the scroll wheel.
+- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" width="12"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" width="12"> buttons under the SYNC section to perform small tempo adjustments.
 - You can click and drag over both waveforms (synced and full) to change the playback position.
 - Use the textbox at the bottom of the files list to search for files. The search is recursive.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" width="12"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
+- Double click a track in the files list to open the Track Properties dialog.
 
 ## Notable missing features
 
 - Configuration dialog (global settings)
-- Track metadata editor (artist, title, genre, downbeat position, replay gain, bpm, etc...)
 - Loops
 - A fancy screen for remote connections to the stream
 - Synced playback  
   At this moment, when clicking the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button, playback will start immediately instead of auto-syncing to the nearest beat marker.  
-- You can use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" width="12"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" width="12"> buttons under the SYNC section to perform small tempo adjustments.
 - No drag & drop support to load files into a player.
   Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.
@@ -64,13 +64,13 @@ The program uses the settings defined in the `settings.json` file.
 
 ## Releases
 
-Platform|Architecture|Status|Download<br><small>(2025-04-03)</small>
----|---|---|:---:
-Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)
-MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)
-MacOS|Arm|Not Tested[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)
-Linux|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)
-Linux|Arm|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)
+Platform|Architecture|Status|Download|Release Date
+---|---|---|:---:|---
+Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-04-08
+MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-04-03
+MacOS|Arm|Not Tested[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2025-04-03
+Linux|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-04-03
+Linux|Arm|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2025-04-03
 
 ## Acknowledgements
 

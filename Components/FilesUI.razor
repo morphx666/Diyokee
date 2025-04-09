@@ -307,20 +307,21 @@
     public async void UpdateFile(DFile file) {
         CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
         DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
-        if(fileFromCache != null) {
-            cache.Files.Remove(fileFromCache);
-            await cache!.SaveChangesAsync();
+        if(fileFromCache == null) throw new Exception($"File {file.Filename} not found in cache");
 
-            int index = files.FindIndex(f => f.Filename == file.Filename);
-            files.RemoveAt(index);
+        cache.Files.Remove(fileFromCache);
+        cache.Files.Add(file);
 
-            files.Insert(index, file);
-            cache.Files.Add(file);
+        int index = files.FindIndex(f => f.Filename == file.Filename);
+        files.RemoveAt(index);
 
-            await cache!.SaveChangesAsync();
-            await InvokeAsync(StateHasChanged);
-        }
+        files.Insert(index, file);
+
+        await cache!.SaveChangesAsync();
+        await InvokeAsync(StateHasChanged);
         await cache.DisposeAsync();
+
+        await SelectedFileChanged.InvokeAsync(file);
     }
 
     private string GenerateWaveform(int handle) {

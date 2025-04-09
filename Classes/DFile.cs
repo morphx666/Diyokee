@@ -31,10 +31,13 @@ namespace Diyokee {
         }
 
         public static string FormatTime(double seconds, bool includeMs = false) {
-            double h = Math.Floor(seconds / 3600);
-            double m = Math.Floor((seconds % 3600) / 60);
-            double s = seconds % 60;
-            double ms = (s - Math.Floor(s)) * 1000;
+            int h = (int)(seconds / 3600);
+            seconds -= h * 3600;
+            int m = (int)(seconds / 60);
+            seconds -= m * 60;
+            int s = (int)seconds;
+            int ms = (int)Math.Round((seconds - s) * 1000.0, 3);
+
             StringBuilder sb = new();
             if(h > 0 || includeMs) sb.Append($"{h:00}:");
             sb.Append($"{m:00}:");
@@ -44,7 +47,7 @@ namespace Diyokee {
         }
 
         public static double ParseTime(double h, double m, double s, double ms) {
-            return (h * 3600) + (m * 60) + s + (ms / 1000);
+            return (h * 3600) + (m * 60) + s + (ms / 1000.0);
         }
 
         public object Clone() {

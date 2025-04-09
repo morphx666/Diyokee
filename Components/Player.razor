@@ -132,8 +132,8 @@
     public DFile? File { // TODO: Apply the same logic as in FilesUI
         get => file;
         set {
-            file = value;
-            if(file != null) { //&& lastFilename != file.Filename) {
+            if(value != null && lastFilename != file?.Filename) {
+                file = value;
                 lastFilename = file.Filename;
                 Stop(false);
                 LoadFile();
@@ -173,8 +173,13 @@
         Task.Run(MonitorPlayback);
     }
 
-    public void SetFile(DFile file) {
-        File = file;
+    public void SetFile(DFile file, bool fullReset = true) {
+        if(fullReset) {
+            File = file;
+        } else {
+            this.file = file;
+            SetParameters();
+        }
     }
 
     public void SetCrossFaderVolume(double value) {

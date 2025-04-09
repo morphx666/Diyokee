@@ -25,14 +25,14 @@
                 <div class="field">
                     <label for="album">Album</label>
                     <InputText
-                        id="album"
-                        @bind-value="file.Album"
-                        @onclick="@(async () => {
+                    id="album"
+                    @bind-value="file.Album"
+                    @onclick="@(async () => {
                             albumsAcVisible = true;
                             player.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
-                        @onblur=@(async () => {
+                    @onblur=@(async () => {
                             await Task.Delay(100); // Process item onclick first (if any)
                             albumsAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -41,8 +41,8 @@
                     <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                         @foreach(var album in albums) {
                             <div
-                                class="item @(album == file.Album ? "selected" : "")"
-                                @onclick="@(async () => {
+                            class="item @(album == file.Album ? "selected" : "")"
+                            @onclick="@(async () => {
                                     file.Album = album;
                                     albumsAcVisible = false;
                                     player.EnableMouseEvents = true;
@@ -56,14 +56,14 @@
                 <div class="field">
                     <label for="genre">Genre</label>
                     <InputText
-                        id="genre"
-                        @bind-value="file.Genre"
-                        @onclick="@(async () => {
+                    id="genre"
+                    @bind-value="file.Genre"
+                    @onclick="@(async () => {
                             genresAcVisible = true;
                             player.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
-                        @onblur=@(async () => {
+                    @onblur=@(async () => {
                             await Task.Delay(100); // Process item onclick first (if any)
                             genresAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -72,8 +72,8 @@
                     <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                         @foreach(var genre in genres) {
                             <div
-                                class="item @(genre == file.Genre ? "selected" : "")"
-                                @onclick="@(async () => {
+                            class="item @(genre == file.Genre ? "selected" : "")"
+                            @onclick="@(async () => {
                                     file.Genre = genre;
                                     genresAcVisible = false;
                                     player.EnableMouseEvents = true;
@@ -111,9 +111,9 @@
                 </div>
 
                 <Player
-                    PlayerName="Preview"
-                    PlayerCssColor="#82871f"
-                    MinimalMode="true"
+                PlayerName="Preview"
+                PlayerCssColor="#82871f"
+                MinimalMode="true"
                 @ref="player" />
             </div>
         </div>
@@ -171,33 +171,45 @@
         isOpen = false;
     }
 
+    int lastHrValue = -1;
     private int DownbeatAtHours {
         get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[0]);
         set {
+            if(lastHrValue == value) return;
+            lastHrValue = value;
             file.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMiliSeconds);
             player!.SetParameters();
         }
     }
 
+    int lastMinValue = -1;
     private int DownbeatAtMinutes {
         get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[1]);
         set {
+            if(lastMinValue == value) return;
+            lastMinValue = value;
             file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMiliSeconds);
             player!.SetParameters();
         }
     }
 
+    int lastSecValue = -1;
     private int DownbeatAtSeconds {
         get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[2].Split('.')[0]);
         set {
+            if(lastSecValue == value) return;
+            lastSecValue = value;
             file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMiliSeconds);
             player!.SetParameters();
         }
     }
 
+    int lastMsValue = -1;
     private int DownbeatAtMiliSeconds {
         get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[2].Split('.')[1]);
         set {
+            if(lastMsValue == value) return;
+            lastMsValue = value;
             file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, DownbeatAtSeconds, value);
             player!.SetParameters();
         }
