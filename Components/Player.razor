@@ -237,8 +237,24 @@
             BassMix.BASS_Mixer_ChannelPause(fxHandle);
             IsPlaying = false;
         } else {
-            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
-            IsPlaying = true;
+            if(OtherPlayer.IsPlaying) {
+                Task.Run(async () => {
+                    while(true) {
+                        await Task.Delay(1);
+                        if(OtherPlayer.InBeat) {
+                            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
+                            long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
+                            long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, (1 / beatsPerSecond) / 10);
+                            BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p + offset);
+                            IsPlaying = true;
+                            break;
+                        }
+                    }
+                });
+            } else {
+                BassMix.BASS_Mixer_ChannelPlay(fxHandle);
+                IsPlaying = true;
+            }
         }
     }
 
@@ -442,18 +458,18 @@
         BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, cuePoint));
     }
 
-    private async Task MonitorBeats() {
-        double beatsInterval = Math.Round(1 / beatsPerSecond, 3);
+    public bool InBeat { get; set; } = false;
 
+    private async Task MonitorBeats() {
+        double threshold = 0.15;
         while(true) {
             await Task.Delay(1);
 
             if(IsPlaying) {
-                double curPos = Math.Round(playbackPosition, 3);
-                //Console.WriteLine(curPos % beatsInterval);
-                if((curPos % beatsInterval) <= 0.01) {
-                    Console.WriteLine($"{DateTime.Now.Ticks}: BEAT");
-                }
+                double beatsInterval = 1 / beatsPerSecond;
+                double d = playbackPosition / beatsInterval;
+                double fp = d - Math.Floor(d);
+                InBeat = fp < threshold;
             }
         }
     }
