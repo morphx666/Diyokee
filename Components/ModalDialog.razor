@@ -1,0 +1,52 @@
+﻿<div class="dialog-background @(IsOpen ? "show" : "")">
+    <div class="dialog-container @(IsOpen ? "show" : "")">
+        <div class="title">
+            <span>Track Properties</span>
+            <div class="close" @onclick="Close"><i class="fa-solid fa-close"></i></div>
+        </div>
+
+        <div class="properties-container">
+            @ChildContent
+        </div>
+
+        <div class="buttons-container">
+            <div class="dlg-button primary" @onclick="Save">Save</div>
+            <div class="dlg-button secondary" @onclick="Close">Cancel</div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public EventCallback OnSave { get; set; }
+
+    public bool IsOpen { get; set; } = false;
+
+    public void Open() {
+        if(!IsOpen) {
+            IsOpen = true;
+            OnOpen.InvokeAsync(null);
+        }
+    }
+
+    public void Close() {
+        if(IsOpen) {
+            IsOpen = false;
+            OnClose.InvokeAsync(null);
+        }
+    }
+
+    private void Save() {
+        OnSave.InvokeAsync(null);
+        Close();
+    }
+}

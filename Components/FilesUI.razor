@@ -55,11 +55,7 @@
     </div>
 </div>
 
-@if(showTrackProperties) {
-    <TrackProperties
-    Files="this"
-    @ref="trackProperties" />
-}
+<TrackProperties Files="this" @ref="trackProperties" />
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
@@ -80,7 +76,6 @@
     private int analyzedFilesCount = 0;
 
     private TrackProperties? trackProperties = null;
-    private bool showTrackProperties = false;
 
     private int sortIndex = 0;
     private bool sortAscending = true;    
@@ -365,19 +360,7 @@
         }
     }
 
-    private async void OpenTrackProperties(DFile? file) {
-        if(file == null) return;
-        if(trackProperties == null) {
-            trackProperties = new TrackProperties();
-            await InvokeAsync(StateHasChanged);
-        }
-        showTrackProperties = true;
-        trackProperties!.Open(file);
-    }
-
     private void OpenTrackProperties() {
-        showTrackProperties = true;
-
         Task.Run(async () => {
             while(trackProperties == null) {
                 await Task.Delay(250);

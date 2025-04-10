@@ -3,136 +3,125 @@
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 @inject IJSRuntime JS
 
-<div class="dialog-background @(isOpen ? "show" : "")">
-    <div class="dialog-container @(isOpen ? "show" : "")">
-        <div class="title">
-            <span>Track Properties</span>
-            <div class="close" @onclick="Close"><i class="fa-solid fa-close"></i></div>
-        </div>
+<ModalDialog
+    @ref="dialog"
+    OnClose="Close"
+    OnSave="Save">
+    <div class="field">
+        <label for="artist">Artist</label>
+        <InputText id="artist" @bind-value="file.Artist" />
+    </div>
 
-        <div class="properties-container">
-            <div class="field">
-                <label for="artist">Artist</label>
-                <InputText id="artist" @bind-value="file.Artist" />
-            </div>
+    <div class="field">
+        <label for="title">Title</label>
+        <InputText id="title" @bind-value="file.Title" />
+    </div>
 
-            <div class="field">
-                <label for="title">Title</label>
-                <InputText id="title" @bind-value="file.Title" />
-            </div>
-
-            <div class="row">
-                <div class="field">
-                    <label for="album">Album</label>
-                    <InputText
-                    id="album"
-                    @bind-value="file.Album"
+    <div class="row">
+        <div class="field">
+            <label for="album">Album</label>
+            <InputText
+            id="album"
+            @bind-value="file.Album"
+            @onclick="@(async () => {
+                    albumsAcVisible = true;
+                    player.EnableMouseEvents = false;
+                    await JS.InvokeVoidAsync("scrollToSelectedItem");
+                })"
+            @onblur=@(async () => {
+                    await Task.Delay(100); // Process item onclick first (if any)
+                    albumsAcVisible = false;
+                    player.EnableMouseEvents = true;
+                })
+            />
+            <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
+                @foreach(var album in albums) {
+                    <div
+                    class="item @(album == file.Album ? "selected" : "")"
                     @onclick="@(async () => {
-                            albumsAcVisible = true;
-                            player.EnableMouseEvents = false;
-                            await JS.InvokeVoidAsync("scrollToSelectedItem");
-                        })"
-                    @onblur=@(async () => {
-                            await Task.Delay(100); // Process item onclick first (if any)
+                            file.Album = album;
                             albumsAcVisible = false;
                             player.EnableMouseEvents = true;
-                        })
-                    />
-                    <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
-                        @foreach(var album in albums) {
-                            <div
-                            class="item @(album == file.Album ? "selected" : "")"
-                            @onclick="@(async () => {
-                                    file.Album = album;
-                                    albumsAcVisible = false;
-                                    player.EnableMouseEvents = true;
-                                })">
-                                @album
-                            </div>
-                        }
+                        })">
+                        @album
                     </div>
-                </div>
+                }
+            </div>
+        </div>
 
-                <div class="field">
-                    <label for="genre">Genre</label>
-                    <InputText
-                    id="genre"
-                    @bind-value="file.Genre"
+        <div class="field">
+            <label for="genre">Genre</label>
+            <InputText
+            id="genre"
+            @bind-value="file.Genre"
+            @onclick="@(async () => {
+                    genresAcVisible = true;
+                    player.EnableMouseEvents = false;
+                    await JS.InvokeVoidAsync("scrollToSelectedItem");
+                })"
+            @onblur=@(async () => {
+                    await Task.Delay(100); // Process item onclick first (if any)
+                    genresAcVisible = false;
+                    player.EnableMouseEvents = true;
+                })
+            />
+            <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
+                @foreach(var genre in genres) {
+                    <div
+                    class="item @(genre == file.Genre ? "selected" : "")"
                     @onclick="@(async () => {
-                            genresAcVisible = true;
-                            player.EnableMouseEvents = false;
-                            await JS.InvokeVoidAsync("scrollToSelectedItem");
-                        })"
-                    @onblur=@(async () => {
-                            await Task.Delay(100); // Process item onclick first (if any)
+                            file.Genre = genre;
                             genresAcVisible = false;
                             player.EnableMouseEvents = true;
-                        })
-                    />
-                    <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
-                        @foreach(var genre in genres) {
-                            <div
-                            class="item @(genre == file.Genre ? "selected" : "")"
-                            @onclick="@(async () => {
-                                    file.Genre = genre;
-                                    genresAcVisible = false;
-                                    player.EnableMouseEvents = true;
-                                })">
-                                @genre
-                            </div>
-                        }
+                        })">
+                        @genre
                     </div>
-                </div>
-
-                <div class="field year">
-                    <label for="year">Year</label>
-                    <InputNumber id="year" @bind-value="file.Year" />
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="inner-properties-container">
-                    <div class="field downbeat-container">
-                        <label>Down beat</label>
-                        <div class="field downbeat">
-                            <InputNumber id="downbeatH" @bind-value="DownbeatAtHours" @oninput="(e) => DownbeatAtHours = int.Parse(e.Value.ToString())" hidden="true" /><span hidden="true">:</span>
-                            <InputNumber id="downbeatM" @bind-value="DownbeatAtMinutes" @oninput="(e) => DownbeatAtMinutes = int.Parse(e.Value.ToString())" /><span>:</span>
-                            <InputNumber id="downbeatM" @bind-value="DownbeatAtSeconds" @oninput="(e) => DownbeatAtSeconds = int.Parse(e.Value.ToString())" /><span>:</span>
-                            <InputNumber id="downbeatMs" @bind-value="DownbeatAtMiliSeconds" @oninput="(e) => DownbeatAtMiliSeconds = int.Parse(e.Value.ToString())" />
-                        </div>
-                        <div class="recalculate" @onclick="ReCalcDownbeat"><i class="fa-solid fa-arrow-rotate-right"></i></div>
-                    </div>
-
-                    <div class="field">
-                        <label for"bpm">BPM</label>
-                        <InputNumber id="bpm" class="as-number" @bind-value="Bpm" @oninput="(e) => Bpm = float.Parse(e.Value.ToString())" />
-                        <div class="recalculate" @onclick="ReCalcBpm"><i class="fa-solid fa-arrow-rotate-right"></i></div>
-                    </div>
-                </div>
-
-                <Player
-                PlayerName="Preview"
-                PlayerCssColor="#82871f"
-                MinimalMode="true"
-                @ref="player" />
+                }
             </div>
         </div>
 
-        <div class="buttons-container">
-            <div class="dlg-button primary" @onclick="() => { Files.UpdateFile(file); Close(); }">Save</div>
-            <div class="dlg-button secondary" @onclick="Close">Cancel</div>
+        <div class="field year">
+            <label for="year">Year</label>
+            <InputNumber id="year" @bind-value="file.Year" />
         </div>
     </div>
-</div>
+
+    <div class="row">
+        <div class="inner-properties-container">
+            <div class="field downbeat-container">
+                <label>Down beat</label>
+                <div class="field downbeat">
+                    <InputNumber id="downbeatH" @bind-value="DownbeatAtHours" @oninput="(e) => DownbeatAtHours = int.Parse(e.Value.ToString())" hidden="true" /><span hidden="true">:</span>
+                    <InputNumber id="downbeatM" @bind-value="DownbeatAtMinutes" @oninput="(e) => DownbeatAtMinutes = int.Parse(e.Value.ToString())" /><span>:</span>
+                    <InputNumber id="downbeatM" @bind-value="DownbeatAtSeconds" @oninput="(e) => DownbeatAtSeconds = int.Parse(e.Value.ToString())" /><span>:</span>
+                    <InputNumber id="downbeatMs" @bind-value="DownbeatAtMiliSeconds" @oninput="(e) => DownbeatAtMiliSeconds = int.Parse(e.Value.ToString())" />
+                </div>
+                <div class="recalculate" @onclick="ReCalcDownbeat"><i class="fa-solid fa-arrow-rotate-right"></i></div>
+            </div>
+
+            <div class="field">
+                <label for"bpm">BPM</label>
+                <InputNumber id="bpm" class="as-number" @bind-value="Bpm" @oninput="(e) => Bpm = float.Parse(e.Value.ToString())" />
+                <div class="recalculate" @onclick="ReCalcBpm"><i class="fa-solid fa-arrow-rotate-right"></i></div>
+            </div>
+        </div>
+
+        <Player
+        PlayerName="Preview"
+        PlayerCssColor="#82871f"
+        MinimalMode="true"
+        @ref="player" />
+    </div>
+</ModalDialog>
 
 <script>
     scrollToSelectedItem = () => document.querySelector(".item.selected").scrollTo({ top: 0 });
 </script>
 
 @code {
+    private ModalDialog dialog = null!;
     private DFile file = new();
     private Player? player;
-    private bool isOpen = false;
 
     private bool genresAcVisible = false;
     private bool albumsAcVisible = false;
@@ -142,6 +131,8 @@
 
     [Parameter]
     public FilesUI Files { get; set; } = null!;
+
+    public bool IsOpen { get => dialog.IsOpen; }
 
     public void Open(DFile? file) {
         if(file == null) return;
@@ -157,10 +148,15 @@
             }
 
             player!.SetFile(this.file);
-            isOpen = true;
+            dialog.Open();
 
             await InvokeAsync(StateHasChanged);
         });
+    }
+
+    private void Save() {
+        Files.UpdateFile(file);
+        Close();
     }
 
     public void Close() {
@@ -168,7 +164,6 @@
         player!.EnableMouseEvents = true;
         genresAcVisible = false;
         albumsAcVisible = false;
-        isOpen = false;
     }
 
     int lastHrValue = -1;
