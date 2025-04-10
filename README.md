@@ -53,7 +53,6 @@ To access the settings dialog press the "S" key on your keyboard.
 
 ## Notable missing features
 
-- Loops
 - A fancy screen for remote connections to the stream
 - No drag & drop support to load files into a player.
   Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.

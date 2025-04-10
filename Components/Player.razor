@@ -35,28 +35,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveform" />
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        Loop="loop"
+        @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -71,8 +72,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-            @onmousedown="(e) => HandlePlayClick(e, false)"
-            @onmouseup="HandleStopAndSnapClick">
+        @onmousedown="(e) => HandlePlayClick(e, false)"
+        @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -88,6 +89,36 @@
             </div>
         }
     </div>
+
+    @if(!MinimalMode) {
+        <div class="loop-container">
+            <div class="button-thin led @(loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
+            <div class="loop-size-container">
+                @foreach(var size in loopSizes) {
+                    <div
+                    class="button @(loopSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetLoopSize(size.Item2)">
+                        @size.Item1
+                    </div>
+                }
+            </div>
+            <div class="button-thin no-click">Jump</div>
+            <div class="loop-size-container">
+                @foreach(var size in loopSizes) {
+                    <div
+                    class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetJumpSize(size.Item2)">
+                        @size.Item1
+                    </div>
+                }
+
+                <div class="jump-buttons">
+                    <div class="button-thin" @onclick="() => DoJump(-1)"><i class="fa-solid fa-caret-left"></i></div>
+                    <div class="button-thin" @onclick="() => DoJump(+1)"><i class="fa-solid fa-caret-right"></i></div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 @code {
@@ -120,6 +151,20 @@
     private double beatsPerSecond;
     private double secondsToPosX;
     private double currentTempoValue;
+
+    private Loop loop = new();
+    private (string, double)[] loopSizes = {
+        ("¼", 0.25),
+        ("½", 0.50),
+        ("1", 1.00),
+        ("2", 2.00),
+        ("4", 4.00),
+        ("8", 8.00),
+        ("16", 16.00),
+        ("32", 32.00)
+    };
+    private double loopSize = 4.0;
+    private double jumpSize = 8.0;
 
     private List<(double X, double Seconds)> beatMarkers = new();
     private double cuePoint = 0;
@@ -159,6 +204,8 @@
     [Parameter]
     public bool MinimalMode { get; set; } = false;
 
+    public bool InBeat { get; set; } = false;
+
     private bool enableMouseEvents = true;
     public bool EnableMouseEvents {
         get => enableMouseEvents;
@@ -180,6 +227,7 @@
         } else {
             this.file = file;
             SetParameters();
+            SetLoopSize(loopSize);
         }
     }
 
@@ -195,7 +243,6 @@
         await faderTempo!.SetValue(tempo);
     }
 
-    //private SYNCPROC syncProc;
     private void HandlePlayClick(MouseEventArgs e, bool autoSync) {
         if(e.Button == 0) Play(autoSync);
     }
@@ -448,14 +495,62 @@
         BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, cuePoint));
     }
 
-    public bool InBeat { get; set; } = false;
+    private void ToggleLoop() {
+        loop.Enabled = !loop.Enabled;
+        SetLoopSize(loopSize);
+    }
+
+    private SYNCPROC syncProc = null!;
+    private void SetLoopSize(double size) {
+        loopSize = size;
+
+        double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+        if(!IsPlaying || !(position >= loop.Start && position <= loop.End)) loop.Start = position;
+        this.loop.End = loop.Start + loopSize / beatsPerSecond;
+
+        if(loop.BASSHandle != 0) {
+            Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
+            loop.BASSHandle = 0;
+        } else if(syncProc == null) syncProc = new SYNCPROC(DoLoop);
+
+        if(loop.Enabled) {
+            loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.Start);
+            loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.End);
+
+            if(loop.EndBytes > trackLengthBytes) {
+                loop.Enabled = false;
+                return;
+            }
+
+            Bass.BASS_ChannelLock(fxHandle, true);
+            loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, syncProc, IntPtr.Zero);
+            Bass.BASS_ChannelLock(fxHandle, false);
+        }
+    }
+
+    private void SetJumpSize(double size) {
+        jumpSize = size;
+    }
+
+    private void DoLoop(int handle, int channel, int data, IntPtr user) {
+        if(loop.Enabled) BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, loop.StartBytes);
+    }
+
+    private void DoJump(int direction) {
+        long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
+        long offset = direction * Bass.BASS_ChannelSeconds2Bytes(fxHandle, jumpSize / beatsPerSecond);
+        if((p + offset < 0) || (p + offset > trackLengthBytes)) return;
+        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle,  p + offset);
+    }
 
     private async Task MonitorBeats() {
-        double threshold = 0.15;
+        double threshold = 0.01;
         while(true) {
             await Task.Delay(1);
 
             if(IsPlaying) {
+                playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+
                 double beatsInterval = 1 / beatsPerSecond;
                 double d = playbackPosition / beatsInterval;
                 double fp = d - Math.Floor(d);
@@ -481,7 +576,7 @@
                     waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle) * waveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
                 }
-                playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+                //playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
 
                 float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
                 float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);

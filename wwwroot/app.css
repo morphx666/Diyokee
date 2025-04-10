@@ -68,34 +68,6 @@ body, html {
     &:active {
         background-color: var(--panel-background-color-dark);
     }
-
-    &.led {
-        &::after {
-            content: "";
-            position: absolute;
-            bottom: 3px;
-            right: 4px;
-            width: 8px;
-            height: 8px;
-
-            border: 2px solid var(--app-background-color);
-
-            background-color: var(--panel-background-color-dark);
-            border-radius: 50%;
-        }
-
-        &.green::after {
-            background-color: #83fa1b;
-        }
-
-        &.cyan::after {
-            background-color: var(----ctrl-highlight);
-        }
-
-        &.red::after {
-            background-color: #f00;
-        }
-    }
 }
 
 .button-thin {
@@ -105,6 +77,32 @@ body, html {
 
     &:active {
         background-color: var(--panel-background-color-dark);
+    }
+}
+
+.led {
+    &::after {
+        content: "";
+        position: absolute;
+        bottom: 3px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        border: 2px solid var(--app-background-color);
+        background-color: var(--panel-background-color-dark);
+        border-radius: 50%;
+    }
+
+    &.green::after {
+        background-color: #83fa1b;
+    }
+
+    &.cyan::after {
+        background-color: var(--ctrl-highlight);
+    }
+
+    &.red::after {
+        background-color: #f00;
     }
 }
 

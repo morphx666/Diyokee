@@ -40,7 +40,7 @@ namespace Diyokee {
             Encoder = new();
             UIElements = new() {
                 ["main-resize-horizontal"] = "400",
-                ["main-resize-vertical"] = "315"
+                ["main-resize-vertical"] = "396"
             };
             Audio = new();
         }

@@ -10,7 +10,7 @@
 @* READ: https://developer.mozilla.org/en-US/docs/Web/CSS/CSSOM_view/Coordinate_systems *@
 
 <div
-    class="console"
+    class="main-console"
     tabindex="0"
     @onkeydown="HandleKeyDown"
     @onmousedown="HandleMouseDown"
@@ -91,7 +91,7 @@
     private MouseState mouseState = new();
 
     private ElementReference playersPanel;
-    private Dictionary<PanelResize.ConstrainKeys, string> playersConstrains = new() { { PanelResize.ConstrainKeys.Min, "315" } };
+    private Dictionary<PanelResize.ConstrainKeys, string> playersConstrains = new() { { PanelResize.ConstrainKeys.Min, "396" } };
     private ElementReference mediaProviderPanel;
     private Dictionary<PanelResize.ConstrainKeys, string> mediaProviderConstrains = new() { { PanelResize.ConstrainKeys.Min, "250" } };
 

@@ -63,6 +63,9 @@
         flex: 1;
         overflow: hidden;
         
+        min-height: 150px;
+        max-height: 150px;
+        
         background-color: var(--panel-background-color-light);
 
         ::deep .vumeter-container {
@@ -135,6 +138,59 @@
                         margin-top: 2px;
                     }
                 }
+            }
+        }
+    }
+
+    .loop-container {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        align-items: center;
+        row-gap: 3px;
+        padding: 10px;
+        margin-top: -10px;
+
+        .button-thin {
+            position: relative;
+            padding: 4px 8px;
+            margin-right: 0.5rem;
+            cursor: pointer;
+
+            &.led::after {
+                width: 6px;
+                height: 6px;
+                right: 1px;
+                bottom: 1px;
+            }
+
+            &.no-click {
+                cursor: default;
+                pointer-events: none;
+            }
+        }
+
+        .loop-size-container {
+            display: flex;
+            flex-direction: row;
+
+            .button {
+                cursor: pointer;
+                padding: 4px 8px;
+                background-color: var(--panel-background-color-dark);
+
+                &.selected {
+                    background-color: rgb(var(--primary));
+                }
+
+                &.enabled {
+                    background-color: rgb(var(--secondary));
+                }
+            }
+
+            .jump-buttons {
+                display: flex;
+                flex-direction: row;
+                margin-left: 0.5rem;
             }
         }
     }
