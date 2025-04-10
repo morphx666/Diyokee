@@ -222,30 +222,20 @@
 
     public void Play() {
         if(fxHandle == 0) return;
-
-        // ******************* This might be useful for syncing the two players and playing loops *******************
-        //
-        // syncProc = new SYNCPROC(Play2);
-        //
-        // Bass.BASS_ChannelLock(Program.BassMixHandle, true);
-        // long mixerPos = Bass.BASS_ChannelGetPosition(Program.BassMixHandle, BASSMode.BASS_POS_BYTE | BASSMode.BASS_POS_DECODE);
-        // var r = Bass.BASS_ChannelSetSync(Program.BassMixHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_ONETIME, mixerPos+1000, syncProc, IntPtr.Zero);
-        // var err = Bass.BASS_ErrorGetCode();
-        // Bass.BASS_ChannelLock(Program.BassMixHandle, false);
-
         if(IsPlaying) {
             BassMix.BASS_Mixer_ChannelPause(fxHandle);
             IsPlaying = false;
         } else {
-            if(OtherPlayer.IsPlaying) {
-                Task.Run(async () => {
+            if(OtherPlayer?.IsPlaying ?? false) {
+                Task.Run(async () => { // TODO: This should be optional
                     while(true) {
                         await Task.Delay(1);
                         if(OtherPlayer.InBeat) {
-                            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, (1 / beatsPerSecond) / 10);
                             BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p + offset);
+
+                            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
                             IsPlaying = true;
                             break;
                         }
