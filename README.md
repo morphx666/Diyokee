@@ -4,7 +4,9 @@ A work in progress DJ mixing webapp with streaming support
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s1.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
-The program uses the settings defined in the `settings.json` file.
+The program uses the settings defined in the `settings.json` file.  
+Preliminary support for an integrated settings dialog is being worked on, but for now, you can edit the file manually.
+To access the settings dialog press the "S" key on your keyboard.
 
 ```json
 {
@@ -51,15 +53,11 @@ The program uses the settings defined in the `settings.json` file.
 
 ## Notable missing features
 
-- Configuration dialog (global settings)
 - Loops
 - A fancy screen for remote connections to the stream
-- Synced playback  
-  At this moment, when clicking the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button, playback will start immediately instead of auto-syncing to the nearest beat marker.  
 - No drag & drop support to load files into a player.
   Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.
-- Audio device selection for audio monitoring (configuration dialog).
 - Audio routing for main output, monitor, and stream (with volume adjustment)
 - ...and many more
 
