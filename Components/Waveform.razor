@@ -102,6 +102,7 @@
                         mouseState.ButtonsDown == 1 &&
                         canvasBounds.Contains(mouseState.X, mouseState.Y)) {
 
+                        await Task.Delay(30); // Wait for the mouse to settle before setting the mousedown position
                         lastMousePosX = mouseState.X;
                         mouseState.IsCaptured = true;
                         IsMouseDown = true;
@@ -142,12 +143,8 @@
                         break;
                 }
             } catch(Exception e) {
-                // Just ignore it - usually this is caused by the BeatMarkers collection being modified while rendering
-                #if DEBUG 
-                    Console.WriteLine(e.Message);
-                    forceRenderWaveformFull = true;
-                    //Debugger.Break();
-                #endif
+                // Just ignore it - this is usually caused by the beatMarkers collection being modified while rendering
+                if(Mode == Modes.Full) forceRenderWaveformFull = true;
             }
         }
     }

@@ -35,28 +35,28 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveform" />
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -68,11 +68,11 @@
     </div>
 
     <div class="transport">
-        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick"><i class="fa-solid fa-play"></i></div>
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-        @onmousedown="HandlePlayClick"
-        @onmouseup="HandleStopAndSnapClick">
+            @onmousedown="(e) => HandlePlayClick(e, false)"
+            @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -196,8 +196,8 @@
     }
 
     //private SYNCPROC syncProc;
-    private void HandlePlayClick(MouseEventArgs e) {
-        if(e.Button == 0) Play();
+    private void HandlePlayClick(MouseEventArgs e, bool autoSync) {
+        if(e.Button == 0) Play(autoSync);
     }
 
     private void HandleStopClick(MouseEventArgs e) {
@@ -220,13 +220,13 @@
         if(e.Button == 0) SyncBPMToOtherPlayer();
     }
 
-    public void Play() {
+    public void Play(bool autoSync) {
         if(fxHandle == 0) return;
         if(IsPlaying) {
             BassMix.BASS_Mixer_ChannelPause(fxHandle);
             IsPlaying = false;
         } else {
-            if(OtherPlayer?.IsPlaying ?? false) {
+            if(autoSync && (OtherPlayer?.IsPlaying ?? false)) {
                 Task.Run(async () => { // TODO: This should be optional
                     while(true) {
                         await Task.Delay(1);
