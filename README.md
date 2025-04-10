@@ -60,14 +60,14 @@ The program uses the settings defined in the `settings.json` file.
   Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
 - Searching is quite limited and a bit buggy.
 - Audio device selection for audio monitoring (configuration dialog).
-- Audio routing for main output, monitor and stream (with volume adjustment)
+- Audio routing for main output, monitor, and stream (with volume adjustment)
 - ...and many more
 
 ## Releases
 
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-04-08
+Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-04-10
 MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-04-03
 MacOS|Arm|Not Tested[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2025-04-03
 Linux|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-04-03
