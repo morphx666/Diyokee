@@ -1,0 +1,16 @@
+﻿<ModalDialog
+    Title="Settings"
+    @ref="dialog">
+</ModalDialog>
+
+@code {
+    private ModalDialog dialog = null!;
+
+    public void Open() {
+        dialog.Open();
+    }
+
+    public void Close() {
+        dialog.Close();
+    }
+}

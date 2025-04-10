@@ -18,7 +18,10 @@
 
 @code {
     [Parameter]
-    public RenderFragment ChildContent { get; set; }
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = null!;
 
     [Parameter]
     public EventCallback OnOpen { get; set; }

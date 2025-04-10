@@ -47,7 +47,7 @@
     </div>
 
     <div class="footer-container">
-        <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@TextInputHandleKeyUp"></InputText>
+        <InputText class="text-input" @bind-Value="@searchText" @onkeyup="@HandleSearchKeyUp"></InputText>
         <div class="button reset-search" @onclick="@ResetSearch"><i class="fa-solid fa-xmark"></i></div>
         <div class="button @(isSearching ? "working" : "")" @onclick="@(() => AnalyzeFiles(true))"><i class="fa-solid @searchButtonIcon"></i></div>
 
@@ -349,7 +349,7 @@
         await SelectedFileChanged.InvokeAsync(file);
     }
 
-    private async void TextInputHandleKeyUp(KeyboardEventArgs e) {
+    private async void HandleSearchKeyUp(KeyboardEventArgs e) {
         if(e.Key == "Enter") await AnalyzeFiles(true);
     }
 

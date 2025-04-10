@@ -69,6 +69,10 @@
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>
     </CascadingValue>
+
+    <SettingsUI @ref="settingsUi">
+
+    </SettingsUI>
 </div>
 
 @code {
@@ -81,6 +85,8 @@
 
     private Player? player1;
     private Player? player2;
+
+    private SettingsUI settingsUi = null!;
 
     private Fader? crossFader;
 
@@ -139,6 +145,9 @@
                 break;
             case "KeyB":
                 player2File = selectedFile;
+                break;
+            case "F12":
+                settingsUi.Open();
                 break;
         }
     }

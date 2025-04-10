@@ -48,18 +48,19 @@
             const ctx = element.getContext('2d');
             const ratio = getPixelRatio(ctx);
 
-            let container = element;
-            while(container.offsetWidth == 0 || container.offsetHeight == 0) {
-                const parent = container.parentElement;
-                if(parent == null) break;
-                container = parent;
-            }
+            // let container = element;
+            // while(container.offsetWidth == 0 || container.offsetHeight == 0) {
+            //     const parent = container.parentElement;
+            //     if(parent == null) break;
+            //     container = parent;
+            // }
 
-            element.width = container.offsetWidth * ratio;
-            element.height = container.offsetHeight * ratio;
+            element.style.display = "block";
             element.style.width = "100%";
-            element.style.height = "100%";
-            element.style.maxHeight = element.height / ratio + "px";
+            element.style.height = "100%"
+            element.width = element.offsetWidth * ratio;
+            element.height = element.offsetHeight * ratio;
+            //element.style.maxHeight = element.height / ratio + "px";
 
             const b = getElementBounds(element);
             return [b[2], b[3], ratio];

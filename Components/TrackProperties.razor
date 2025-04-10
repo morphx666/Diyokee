@@ -4,9 +4,10 @@
 @inject IJSRuntime JS
 
 <ModalDialog
-    @ref="dialog"
-    OnClose="Close"
-    OnSave="Save">
+Title="Track Properties"
+@ref="dialog"
+OnClose="Close"
+OnSave="Save">
     <div class="field">
         <label for="artist">Artist</label>
         <InputText id="artist" @bind-value="file.Artist" />
@@ -24,15 +25,15 @@
             id="album"
             @bind-value="file.Album"
             @onclick="@(async () => {
-                    albumsAcVisible = true;
-                    player.EnableMouseEvents = false;
-                    await JS.InvokeVoidAsync("scrollToSelectedItem");
-                })"
-            @onblur=@(async () => {
-                    await Task.Delay(100); // Process item onclick first (if any)
-                    albumsAcVisible = false;
-                    player.EnableMouseEvents = true;
-                })
+                        albumsAcVisible = true;
+                        player.EnableMouseEvents = false;
+                        await JS.InvokeVoidAsync("scrollToSelectedItem");
+                    })"
+            @onblur="@(async () => {
+                        await Task.Delay(100); // Process item onclick first (if any)
+                        albumsAcVisible = false;
+                        player.EnableMouseEvents = true;
+                    })"
             />
             <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                 @foreach(var album in albums) {
@@ -55,15 +56,15 @@
             id="genre"
             @bind-value="file.Genre"
             @onclick="@(async () => {
-                    genresAcVisible = true;
-                    player.EnableMouseEvents = false;
-                    await JS.InvokeVoidAsync("scrollToSelectedItem");
-                })"
-            @onblur=@(async () => {
-                    await Task.Delay(100); // Process item onclick first (if any)
-                    genresAcVisible = false;
-                    player.EnableMouseEvents = true;
-                })
+                        genresAcVisible = true;
+                        player.EnableMouseEvents = false;
+                        await JS.InvokeVoidAsync("scrollToSelectedItem");
+                    })"
+            @onblur="@(async () => {
+                        await Task.Delay(100); // Process item onclick first (if any)
+                        genresAcVisible = false;
+                        player.EnableMouseEvents = true;
+                    })"
             />
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
@@ -106,11 +107,13 @@
             </div>
         </div>
 
-        <Player
-        PlayerName="Preview"
-        PlayerCssColor="#82871f"
-        MinimalMode="true"
-        @ref="player" />
+        @if(playerVisible) {
+            <Player
+            PlayerName="Preview"
+            PlayerCssColor="#82871f"
+            MinimalMode="true"
+            @ref="player" />
+        }
     </div>
 </ModalDialog>
 
@@ -122,6 +125,7 @@
     private ModalDialog dialog = null!;
     private DFile file = new();
     private Player? player;
+    private bool playerVisible = false;
 
     private bool genresAcVisible = false;
     private bool albumsAcVisible = false;
@@ -137,6 +141,9 @@
     public void Open(DFile? file) {
         if(file == null) return;
         this.file = (DFile)file.Clone();
+
+        playerVisible = true;
+        InvokeAsync(StateHasChanged);
 
         Task.Run(async () => {
             CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
@@ -164,6 +171,7 @@
         player!.EnableMouseEvents = true;
         genresAcVisible = false;
         albumsAcVisible = false;
+        playerVisible = true;
     }
 
     int lastHrValue = -1;
