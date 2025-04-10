@@ -105,6 +105,20 @@
                 }
             }
 
+            &:has(select) {
+                position: relative;
+
+                &::after {
+                    content: '\f0d7';
+                    position: absolute;
+                    right: 0;
+                    top: 0.2rem;
+                    width: 20px;
+                    height: 20px;
+                    font-family: "FontAwesome Solid";
+                }
+            }
+
             &:has(.autocomplete) {
                 position: relative;
 

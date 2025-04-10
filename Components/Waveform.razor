@@ -102,7 +102,7 @@
                         mouseState.ButtonsDown == 1 &&
                         canvasBounds.Contains(mouseState.X, mouseState.Y)) {
 
-                        await Task.Delay(30); // Wait for the mouse to settle before setting the mousedown position
+                        await Task.Delay(30); // Wait for the mouse to settle before setting the initial mousedown position
                         lastMousePosX = mouseState.X;
                         mouseState.IsCaptured = true;
                         IsMouseDown = true;

@@ -153,10 +153,22 @@ internal class Program {
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 
-        // Device
-        // -1 = default
-        // 0 = no sound
-        Bass.BASS_Init(-1, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+        int deviceIndex = -1;
+        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
+            Bass.BASS_GetDeviceInfo(i, deviceInfo);
+            if(deviceInfo.name == Settings.Audio.MainOutputDevice) {
+                deviceIndex = i;
+                break;
+            }
+        }
+        if(deviceIndex == -1) {
+            deviceIndex = Bass.BASS_GetDeviceCount() > 0 ? 1 : 0;
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(deviceIndex);
+            Settings.Audio.MainOutputDevice = deviceInfo.name;
+        }
+
+        Bass.BASS_Init(deviceIndex, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);

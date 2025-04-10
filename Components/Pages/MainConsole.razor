@@ -70,9 +70,7 @@
         </div>
     </CascadingValue>
 
-    <SettingsUI @ref="settingsUi">
-
-    </SettingsUI>
+    <SettingsUI @ref="settingsUi" />
 </div>
 
 @code {
@@ -146,7 +144,7 @@
             case "KeyB":
                 player2File = selectedFile;
                 break;
-            case "F12":
+            case "KeyS":
                 settingsUi.Open();
                 break;
         }

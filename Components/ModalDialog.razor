@@ -1,7 +1,7 @@
 ﻿<div class="dialog-background @(IsOpen ? "show" : "")">
     <div class="dialog-container @(IsOpen ? "show" : "")">
         <div class="title">
-            <span>Track Properties</span>
+            <span>@Title</span>
             <div class="close" @onclick="Close"><i class="fa-solid fa-close"></i></div>
         </div>
 
@@ -38,6 +38,8 @@
         if(!IsOpen) {
             IsOpen = true;
             OnOpen.InvokeAsync(null);
+
+            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -45,6 +47,8 @@
         if(IsOpen) {
             IsOpen = false;
             OnClose.InvokeAsync(null);
+
+            InvokeAsync(StateHasChanged);
         }
     }
 

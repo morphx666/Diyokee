@@ -22,18 +22,18 @@ OnSave="Save">
         <div class="field">
             <label for="album">Album</label>
             <InputText
-            id="album"
-            @bind-value="file.Album"
-            @onclick="@(async () => {
-                        albumsAcVisible = true;
-                        player.EnableMouseEvents = false;
-                        await JS.InvokeVoidAsync("scrollToSelectedItem");
-                    })"
-            @onblur="@(async () => {
-                        await Task.Delay(100); // Process item onclick first (if any)
-                        albumsAcVisible = false;
-                        player.EnableMouseEvents = true;
-                    })"
+                id="album"
+                @bind-value="file.Album"
+                @onclick="@(async () => {
+                            albumsAcVisible = true;
+                            player.EnableMouseEvents = false;
+                            await JS.InvokeVoidAsync("scrollToSelectedItem");
+                        })"
+                @onblur="@(async () => {
+                            await Task.Delay(100); // Process item onclick first (if any)
+                            albumsAcVisible = false;
+                            player.EnableMouseEvents = true;
+                        })"
             />
             <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                 @foreach(var album in albums) {
@@ -53,18 +53,18 @@ OnSave="Save">
         <div class="field">
             <label for="genre">Genre</label>
             <InputText
-            id="genre"
-            @bind-value="file.Genre"
-            @onclick="@(async () => {
-                        genresAcVisible = true;
-                        player.EnableMouseEvents = false;
-                        await JS.InvokeVoidAsync("scrollToSelectedItem");
-                    })"
-            @onblur="@(async () => {
-                        await Task.Delay(100); // Process item onclick first (if any)
-                        genresAcVisible = false;
-                        player.EnableMouseEvents = true;
-                    })"
+                id="genre"
+                @bind-value="file.Genre"
+                @onclick="@(async () => {
+                            genresAcVisible = true;
+                            player.EnableMouseEvents = false;
+                            await JS.InvokeVoidAsync("scrollToSelectedItem");
+                        })"
+                @onblur="@(async () => {
+                            await Task.Delay(100); // Process item onclick first (if any)
+                            genresAcVisible = false;
+                            player.EnableMouseEvents = true;
+                        })"
             />
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
@@ -109,12 +109,14 @@ OnSave="Save">
 
         @if(playerVisible) {
             <Player
-            PlayerName="Preview"
-            PlayerCssColor="#82871f"
-            MinimalMode="true"
-            @ref="player" />
+                PlayerName="Preview"
+                PlayerCssColor="#82871f"
+                MinimalMode="true"
+                @ref="player" />
         }
     </div>
+
+    <div class="filename ellipsis">@file.Filename</div>
 </ModalDialog>
 
 <script>
@@ -156,8 +158,6 @@ OnSave="Save">
 
             player!.SetFile(this.file);
             dialog.Open();
-
-            await InvokeAsync(StateHasChanged);
         });
     }
 

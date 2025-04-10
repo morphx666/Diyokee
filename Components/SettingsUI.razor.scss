@@ -1,1 +1,9 @@
-﻿
+﻿h4 {
+    color: var(--text-white);
+    border-bottom: 1px solid var(--panel-background-color-light);
+}
+
+.note {
+    font-size: 0.7rem;
+    color: var(--secondary-light);
+}
