@@ -1,7 +1,7 @@
 # Diyokee
 A work in progress DJ mixing webapp with streaming support
 
-[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s1.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
+[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s2.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
 The program uses the settings defined in the `settings.json` file.  
@@ -48,7 +48,7 @@ To access the settings dialog press the "S" key on your keyboard.
 - You can click and drag over both waveforms (synced and full) to change the playback position.
 - Use the textbox at the bottom of the files list to search for files. The search is recursive.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" width="12"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
-- Double click a track in the files list to open the Track Properties dialog.
+- Double-click a track in the files list to open the Track Properties dialog.
   ![image](https://github.com/user-attachments/assets/fda34783-9973-49c9-8210-37f331cb5c5c)
 
 ## Notable missing features
