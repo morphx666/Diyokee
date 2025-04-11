@@ -2,6 +2,10 @@
     max-width: 8rem;
 }
 
+::deep #bpm {
+    max-width: calc(6rem - 6px);
+}
+
 .downbeat-container {
     label {
         line-height: 1rem;

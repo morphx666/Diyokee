@@ -164,7 +164,7 @@
         ("16", 16.00),
         ("32", 32.00)
     };
-    private double loopSize = 4.0;
+    private double loopSize = 8.0;
     private double jumpSize = 8.0;
     private bool syncLoopJump = true;
 
@@ -398,6 +398,7 @@
         ApplyVolume(faderVolume!.Value);
         SetupEQ();
         faderTempo?.SetValue(0.5);
+        if(loop.Enabled) ToggleLoop();
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, FilesUI.TimeSlice);
