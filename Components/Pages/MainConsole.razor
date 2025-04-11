@@ -10,23 +10,23 @@
 @* READ: https://developer.mozilla.org/en-US/docs/Web/CSS/CSSOM_view/Coordinate_systems *@
 
 <div
-class="main-console"
-tabindex="0"
-@onkeydown="HandleKeyDown"
-@onmousedown="HandleMouseDown"
-@onmousemove="HandleMouseMove"
-@onmouseup="HandleMouseUp"
-@onmousewheel="HandleMouseWheel">
+    class="main-console"
+    tabindex="0"
+    @onkeydown="HandleKeyDown"
+    @onmousedown="HandleMouseDown"
+    @onmousemove="HandleMouseMove"
+    @onmouseup="HandleMouseUp"
+    @onmousewheel="HandleMouseWheel">
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
                 <Player 
-                PlayerName="A"
-                File="@player1File"
-                RequestedFileCue="() => LoadSelectedFile(player1)"
-                PlayerCssColor="#977696"
-                OtherPlayer="@player2"
-                @ref="player1" />
+                    PlayerName="A"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    PlayerCssColor="#977696"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
             </div>
             <div class="mixer">
                 <div class="controls"></div>
@@ -38,21 +38,21 @@ tabindex="0"
             </div>
             <div class="player">
                 <Player
-                PlayerName="B"
-                File="@player2File"
-                RequestedFileCue="() => LoadSelectedFile(player2)"
-                PlayerCssColor="#279597"
-                OtherPlayer="@player1"
-                @ref="player2" />
+                    PlayerName="B"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    PlayerCssColor="#279597"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
             </div>
         </div>
 
         <PanelResize
-        Orientation="PanelResize.Orientations.Vertical"
-        ResizeElement="playersPanel" 
-        Name="main-resize-vertical"
-        OnResizeEnd="HandleDividerResize"
-        Constrains="playersConstrains" />
+            Orientation="PanelResize.Orientations.Vertical"
+            ResizeElement="playersPanel" 
+            Name="main-resize-vertical"
+            OnResizeEnd="HandleDividerResize"
+            Constrains="playersConstrains" />
 
         <div class="media">
             <div class="sources panel" @ref="mediaProviderPanel">
@@ -60,11 +60,11 @@ tabindex="0"
             </div>
 
             <PanelResize
-            Orientation="PanelResize.Orientations.Horizontal"
-            ResizeElement="mediaProviderPanel"
-            Name="main-resize-horizontal"
-            OnResizeEnd="HandleDividerResize"
-            Constrains="mediaProviderConstrains" />
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize"
+                Constrains="mediaProviderConstrains" />
 
             <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
         </div>
@@ -137,7 +137,7 @@ tabindex="0"
     }
 
     private void HandleKeyDown(KeyboardEventArgs e) {
-        Console.WriteLine(e);
+        //Console.WriteLine(e);
         switch(e.Code) {
             case "KeyA":
                 player1File = selectedFile;
