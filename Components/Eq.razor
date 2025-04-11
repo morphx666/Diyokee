@@ -13,7 +13,13 @@
 
     <div class="eq-options" style="display: @(eqOptionsVisible ? "block" : "none")">
         @foreach(var eq in equalizers) {
-            <div class="eq-option @(eq.Name == EqSettings.Name ? "selected" : "")" @onclick="@(() => { EqSettings = eq; eqOptionsVisible = false; })">
+            <div
+                class="eq-option @(eq.Name == EqSettings.Name ? "selected" : "")"
+                @onclick="@(() => {
+                    EqSettings = eq;
+                    UpdateEqValues();
+                    eqOptionsVisible = false;
+                })">
                 <div>@eq.Name</div>
                 <div class="frequencies">
                     <span>Low</span><span>@eq.Low.ToString("N2") Hz</span>
@@ -27,17 +33,17 @@
 
 <script>
     positionSubMenu = (mx, my, container) => {
-        setTimeout(() => {
-            const containerBounds = getElementBounds(container);
-            const subMenu = container.querySelector(".eq-options");
-            const subMenuBounds = getElementBounds(subMenu);
-            if(mx + subMenuBounds[2] < window.innerWidth) {
-                subMenu.style.left = `${mx - containerBounds[0]}px`;
-            } else {
-                subMenu.style.left = `${mx - containerBounds[0] - subMenuBounds[2]}px`;
-            }
-            subMenu.style.top = `${my - containerBounds[1]}px`;
-        }, 100);
+    setTimeout(() => {
+    const containerBounds = getElementBounds(container);
+    const subMenu = container.querySelector(".eq-options");
+    const subMenuBounds = getElementBounds(subMenu);
+    if(mx + subMenuBounds[2] < window.innerWidth) {
+    subMenu.style.left = `${mx - containerBounds[0]}px`;
+    } else {
+    subMenu.style.left = `${mx - containerBounds[0] - subMenuBounds[2]}px`;
+    }
+    subMenu.style.top = `${my - containerBounds[1]}px`;
+    }, 100);
     };
 </script>
 
@@ -83,6 +89,12 @@
         eqHi?.SetValue(0.5);
         eqMid?.SetValue(0.5);
         eqLo?.SetValue(0.5);
+    }
+
+    private void UpdateEqValues() {
+        ApplyEqHi(eqValues.Hi);
+        ApplyEqMid(eqValues.Mid);
+        ApplyEqLo(eqValues.Lo);
     }
 
     private async void ApplyEqHi(double value) {
