@@ -35,29 +35,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
-            @ref="waveform" />
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        Loop="loop"
+        @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -72,8 +72,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-            @onmousedown="(e) => HandlePlayClick(e, false)"
-            @onmouseup="HandleStopAndSnapClick">
+        @onmousedown="(e) => HandlePlayClick(e, false)"
+        @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -96,8 +96,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                        class="button @(loopSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetLoopSize(size.Item2)">
+                    class="button @(loopSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetLoopSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -106,8 +106,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                        class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetJumpSize(size.Item2)">
+                    class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -117,6 +117,7 @@
                     <div class="button-thin" @onclick="() => DoJump(+1)"><i class="fa-solid fa-caret-right"></i></div>
                 </div>
             </div>
+            <div class="lock-button"><i class="fa-solid @(syncLoopJump ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
         </div>
     }
 </div>
@@ -165,6 +166,7 @@
     };
     private double loopSize = 4.0;
     private double jumpSize = 8.0;
+    private bool syncLoopJump = true;
 
     private List<(double X, double Seconds)> beatMarkers = new();
     private double cuePoint = 0;
@@ -497,6 +499,7 @@
     }
 
     private void ToggleLoop() {
+        if(file == null) return;
         loop.Enabled = !loop.Enabled;
         SetLoopSize(loopSize);
     }
@@ -504,6 +507,7 @@
     private SYNCPROC syncProc = null!;
     private void SetLoopSize(double size) {
         loopSize = size;
+        if(syncLoopJump) jumpSize = loopSize;
 
         double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
         if(!IsPlaying || !(position >= loop.Start && position <= loop.End)) loop.Start = position;
@@ -530,7 +534,16 @@
     }
 
     private void SetJumpSize(double size) {
-        jumpSize = size;
+        if(syncLoopJump) {
+            SetLoopSize(size);
+        } else {
+            jumpSize = size;
+        }
+    }
+
+    private void ToggleLoopJumpSync() {
+        syncLoopJump = !syncLoopJump;
+        if(syncLoopJump) jumpSize = loopSize;
     }
 
     private void DoLoop(int handle, int channel, int data, IntPtr user) {
