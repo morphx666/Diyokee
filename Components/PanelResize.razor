@@ -63,11 +63,11 @@
         if(Orientation == Orientations.Vertical) {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, -1, resizeElementBounds!.Height
-        });
+    });
         } else {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, resizeElementBounds!.Width, -1
-        });
+    });
         }
     }
 
@@ -121,10 +121,10 @@
 
                             if(Orientation == Orientations.Vertical) {
                                 resizeElementBounds.Height += offset;
-                                dividerBounds!.Y += offset;
+                                dividerBounds!.Y = resizeElementBounds.Height + dividerBounds.Height / 2;
                             } else {
                                 resizeElementBounds.Width += offset;
-                                dividerBounds!.X += offset;
+                                dividerBounds!.X = resizeElementBounds.Width + dividerBounds.Width / 2;
                             }
                             await ApplyNewSize();
                         } else {
