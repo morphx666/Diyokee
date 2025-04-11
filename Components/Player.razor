@@ -35,36 +35,36 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@PlayerCssColor"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@(file?.DownbeatAt ?? -1)"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformBarWidth="@waveformBarWidth"
-        WaveformWidth="@waveformWidth"
-        Loop="loop"
-        @ref="waveform" />
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformBarWidth="@waveformBarWidth"
+            WaveformWidth="@waveformWidth"
+            Loop="loop"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
 
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
-            <Eq ValueChanged="ApplyEq" @ref="eqCtrls" />
+            <Eq ValueChanged="ApplyEqValues" @ref="eqControls" />
         }
     </div>
 
@@ -72,8 +72,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-        @onmousedown="(e) => HandlePlayClick(e, false)"
-        @onmouseup="HandleStopAndSnapClick">
+            @onmousedown="(e) => HandlePlayClick(e, false)"
+            @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -96,8 +96,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                    class="button @(loopSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetLoopSize(size.Item2)">
+                        class="button @(loopSize == size.Item2 ? "selected" : "")"
+                        @onclick="() => SetLoopSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -106,8 +106,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                    class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetJumpSize(size.Item2)">
+                        class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                        @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -138,7 +138,7 @@
     private Waveform? waveform;
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
-    private Eq? eqCtrls;
+    private Eq eqControls = null!;
 
     private double fileBPM = 0;
     private const int waveformBarWidth = 5;
@@ -319,22 +319,22 @@
         //OtherPlayer?.SyncBPMToOtherPlayer(); // TODO: Add option to enable/disable this feature
     }
 
-    private void ApplyEq(Eq.EqValues eqValues) {
+    private void ApplyEqValues(Eq.EqValues eqValues) {
         // Lo
         eqParams.lBand = 0;
-        eqParams.fCenter = 125;
+        eqParams.fCenter = eqControls.EqSettings.Low;
         eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // Mid
         eqParams.lBand = 1;
-        eqParams.fCenter = 1000;
+        eqParams.fCenter = eqControls.EqSettings.Mid;
         eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // Hi
         eqParams.lBand = 2;
-        eqParams.fCenter = 8000;
+        eqParams.fCenter = eqControls.EqSettings.Hi;
         eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
@@ -412,6 +412,7 @@
     }
 
     private void SetupEQ() {
+        // Based on the X:42
         // set peaking equalizer effect with no bands
         eqHandle = Bass.BASS_ChannelSetFX(fxHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
 
@@ -422,20 +423,20 @@
 
         // create 1st band for bass
         eqParams.lBand = 0;
-        eqParams.fCenter = 125;
+        eqParams.fCenter = eqControls.EqSettings.Low;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // create 2nd band for mid
         eqParams.lBand = 1;
-        eqParams.fCenter = 1000;
+        eqParams.fCenter = eqControls.EqSettings.Mid;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // create 3rd band for treble
         eqParams.lBand = 2;
-        eqParams.fCenter = 8000;
+        eqParams.fCenter = eqControls.EqSettings.Hi;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-        eqCtrls?.Reset();
+        eqControls?.Reset();
     }
 
     public bool SetParameters() {

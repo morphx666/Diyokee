@@ -1,12 +1,12 @@
-﻿using System.Diagnostics;
-
-namespace Diyokee {
+﻿namespace Diyokee {
     public class MouseState {
         public double X { get; set; }
         public double Y { get; set; }
         public long ButtonsDown { get; set; }
         public bool IsCaptured {get;set; }
         public double WheelDelta { get; set; }
+        public bool LeftShiftDown { get; set; }
+        public bool RightShiftDown { get; set; }
 
         public override string ToString() {
             return $"{ButtonsDown} ({X}, {Y})";

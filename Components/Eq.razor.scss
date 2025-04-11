@@ -1,6 +1,65 @@
 ﻿.knobs-container {
+    position: relative;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 6px;
+
+    .eq-options {
+        position: absolute;
+        top: 0;
+        left: -1000vw;
+        width: fit-content;
+        height: auto;
+        z-index: 2;
+
+        background-color: var(--panel-background-color-light);
+        border-bottom: 1px solid var(--panel-background-color-dark-dark);
+        box-shadow: 0 0px 12px 4px rgba(0, 0, 0, 0.6);
+        border-radius: 6px;
+        overflow: hidden;
+
+        .eq-option {
+            display: grid;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            padding: 0.4rem calc(0.4rem + 6px) 0.4rem 0.4rem;
+            gap: 0.5rem;
+            cursor: pointer;
+            border-left: 6px solid var(--panel-background-color-light);
+
+            div:first-child {
+                text-align: center;
+            }
+
+            &.selected {
+                border-left: 6px solid var(--pale-blue-hover);
+            }
+
+            &:hover {
+                border-left: 6px solid var(--pale-blue-hover);
+                background-color: var(--pale-blue-hover);
+
+                &.selected {
+                    border-left: 6px solid var(--pale-blue);
+                }
+            }
+
+            &:not(:last-child) {
+                border-bottom: 1px solid var(--panel-background-color-dark);
+            }
+
+            .frequencies {
+                display: grid;
+                grid-template-columns: auto auto;
+                color: var(--app-background-color);
+
+                span:nth-child(2n) {
+                    margin-left: 0.2rem;
+                    color: var(--ctrl-highlight);
+                    text-align: right;
+                }
+            }
+        }
+    }
 }

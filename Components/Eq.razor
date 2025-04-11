@@ -1,13 +1,62 @@
-﻿<div class="knobs-container">
+﻿@inject IJSRuntime JS
+
+<div
+    class="knobs-container"
+    @oncontextmenu="OpenSubMenu"
+    @onblur="@(() => eqOptionsVisible = false)"
+    @oncontextmenu:preventDefault="true"
+    tabindex="0"
+    @ref="knobs">
     <Knob Name="HI" @ref="eqHi" ValueChanged="ApplyEqHi" />
     <Knob Name="MID" @ref="eqMid" ValueChanged="ApplyEqMid" />
     <Knob Name="LO" @ref="eqLo" ValueChanged="ApplyEqLo" />
+
+    <div class="eq-options" style="display: @(eqOptionsVisible ? "block" : "none")">
+        @foreach(var eq in equalizers) {
+            <div class="eq-option @(eq.Name == EqSettings.Name ? "selected" : "")" @onclick="@(() => { EqSettings = eq; eqOptionsVisible = false; })">
+                <div>@eq.Name</div>
+                <div class="frequencies">
+                    <span>Low</span><span>@eq.Low.ToString("N2") Hz</span>
+                    <span>Mid</span><span>@eq.Mid.ToString("N2") Hz</span>
+                    <span>Hi</span><span>@eq.Hi.ToString("N2") Hz</span>
+                </div>
+            </div>
+        }
+    </div>
 </div>
+
+<script>
+    positionSubMenu = (mx, my, container) => {
+        setTimeout(() => {
+            const containerBounds = getElementBounds(container);
+            const subMenu = container.querySelector(".eq-options");
+            const subMenuBounds = getElementBounds(subMenu);
+            if(mx + subMenuBounds[2] < window.innerWidth) {
+                subMenu.style.left = `${mx - containerBounds[0]}px`;
+            } else {
+                subMenu.style.left = `${mx - containerBounds[0] - subMenuBounds[2]}px`;
+            }
+            subMenu.style.top = `${my - containerBounds[1]}px`;
+        }, 100);
+    };
+</script>
 
 @code {
     private Knob? eqHi;
     private Knob? eqMid;
     private Knob? eqLo;
+    private ElementReference? knobs;
+
+    private bool eqOptionsVisible = false;
+
+    private List<Equalizer> equalizers = [
+        new() {Name = "Pioneer DJM", Low = 70, Mid = 1000, Hi = 13000},
+        new() {Name = "EVO 4", Low = 200, Mid = 1200, Hi = 6500},
+        new() {Name = "Allen & Heath Xone 42", Low = 420, Mid = 1200, Hi = 2700},
+        new() {Name = "Rane", Low = 300, Mid = 1200, Hi = 4000},
+        new() {Name = "Behringer DDM", Low = 330, Mid = 1400, Hi = 4200}
+    ];
+    public Equalizer EqSettings { get; set; }
 
     public struct EqValues {
         public double Hi;
@@ -19,10 +68,15 @@
     [Parameter]
     public EventCallback<EqValues> ValueChanged { get; set; }
 
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
     public Eq() {
         eqValues.Hi = 0.5;
         eqValues.Mid = 0.5;
         eqValues.Lo = 0.5;
+
+        EqSettings = equalizers[0];
     }
 
     public void Reset() {
@@ -54,5 +108,10 @@
 
             await InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void OpenSubMenu(MouseEventArgs e) {
+        JS.InvokeVoidAsync("positionSubMenu", mouseState.X, mouseState.Y, knobs);
+        eqOptionsVisible = true;
     }
 }
