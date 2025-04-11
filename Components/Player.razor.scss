@@ -206,13 +206,13 @@
 
         .loop-size-container {
             display: flex;
-            flex-direction: row;
-            
+            flex-direction: row;            
 
             .button {
                 cursor: pointer;
                 padding: 4px 8px;
                 background-color: var(--panel-background-color-dark);
+                font-family: var(--mono-font-family);
 
                 &.selected {
                     background-color: rgb(var(--primary));

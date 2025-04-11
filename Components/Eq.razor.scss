@@ -53,11 +53,14 @@
                 display: grid;
                 grid-template-columns: auto auto;
                 color: var(--app-background-color);
+                align-items: center;
 
                 span:nth-child(2n) {
+                    font-size: 0.7rem;
                     margin-left: 0.2rem;
                     color: var(--ctrl-highlight);
                     text-align: right;
+                    font-family: var(--mono-font-family);
                 }
             }
         }

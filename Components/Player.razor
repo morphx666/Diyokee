@@ -412,7 +412,7 @@
     }
 
     private void SetupEQ() {
-        // Based on the X:42
+        if(eqControls == null) return;
         // set peaking equalizer effect with no bands
         eqHandle = Bass.BASS_ChannelSetFX(fxHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
 
