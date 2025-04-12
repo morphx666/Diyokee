@@ -19,15 +19,19 @@
     top: 50%;
     width: 80%;
     max-width: 1024px;
-    height: fit-content;
     z-index: 99;
     display: none;
+    height: fit-content;
 
     background-color: var(--panel-background-color-dark-dark);
     box-shadow: 0 0px 24px 4px rgba(0, 0, 0, 0.6);
     border-radius: 0 0 6px 6px;
 
     transform: translate(-50%, -50%);
+
+    .scroller {
+        max-height: 75%;
+    }
 
     &.show {
         display: block;
@@ -59,6 +63,7 @@
         flex-direction: column;
         gap: 0.5rem;
         padding: 1rem;
+        max-height: 80vh;
 
         .row {
             display: flex;
@@ -71,57 +76,6 @@
             flex-direction: row;
             align-items: center;
             flex: 1;
-
-            label {
-                display: inline-block;
-                color: var(--panel-background-color-light-light);
-                min-width: 4rem;
-                text-align: right;
-                padding-right: 0.4rem;
-            }
-
-            input:not([type="checkbox"]), select {
-                flex: 1;
-
-                appearance: none;
-                font-family: Montserrat;
-                color: var(--text-white);
-                outline: none;
-                background-color: var(--panel-background-color-dark);
-                border: none;
-                padding: 0.3rem;
-                font-size: 0.9rem;
-
-                &[type="number"], &.as-number {
-                    appearance: textfield;
-                    text-align: center;
-                    max-width: 4rem;
-                    font-family: var(--mono-font-family);
-                    line-height: 0.1rem;
-
-                    &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
-                        display: none;
-                    }
-                }
-            }
-
-            input[type="checkbox"] {
-                appearance: none;
-                color: var(--text-white);
-                outline: none;
-                background-color: var(--panel-background-color-dark);
-                width: 1rem;
-                height: 1rem;
-
-                &:checked::after {
-                    content: "\f00c";
-                    font-family: "FontAwesome Solid";
-                    font-size: 0.8rem;
-                    display: block;
-                    margin: 1px 0 0 2px;
-                    color: var(--text-white);
-                }
-            }
 
             &:has(select) {
                 position: relative;
@@ -166,6 +120,57 @@
                         }
                     }
                 }
+            }
+        }
+
+        label {
+            display: inline-block;
+            color: var(--panel-background-color-light-light);
+            min-width: 4rem;
+            text-align: right;
+            padding-right: 0.4rem;
+        }
+
+        input:not([type="checkbox"]), select {
+            flex: 1;
+
+            appearance: none;
+            font-family: Montserrat;
+            color: var(--text-white);
+            outline: none;
+            background-color: var(--panel-background-color-dark);
+            border: none;
+            padding: 0.3rem;
+            font-size: 0.9rem;
+
+            &[type="number"], &.as-number {
+                appearance: textfield;
+                text-align: center;
+                max-width: 4rem;
+                font-family: var(--mono-font-family);
+                line-height: 0.1rem;
+
+                &::-webkit-inner-spin-button, &::-webkit-outer-spin-button {
+                    display: none;
+                }
+            }
+        }
+
+        input[type="checkbox"] {
+            appearance: none;
+            color: var(--text-white);
+            outline: none;
+            background-color: var(--panel-background-color-dark);
+            width: 1rem;
+            height: 1rem;
+
+            &:checked::after {
+                content: "\f00c";
+                font-family: "FontAwesome Solid";
+                font-size: 0.8rem;
+                display: block;
+                margin: 1px 0 0 2px;
+                color: var(--text-white);
             }
         }
 

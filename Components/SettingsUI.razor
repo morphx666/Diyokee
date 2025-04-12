@@ -9,15 +9,19 @@
     <div class="header">
         <h4>Audio</h4>
 
-        <div class="field">
-            <label for="main-output">Main Output</label>
-            <InputSelect id="main-output" @bind-value="mainOutputDevice">
-                @foreach(var device in outputDevices) {
-                    <option value="@device.Name">@device.Name</option>
-                }
-            </InputSelect>
-        </div>
-        <span class="note" hidden="@(settings.Audio.MainOutputDevice == mainOutputDevice)">This setting will take effect after restarting the application</span>
+        @if(useAudioMatrix) {
+            <AudioMatrix />
+        } else {
+            <div class="field">
+                <label for="main-output">Main Output</label>
+                <InputSelect id="main-output" @bind-value="mainOutputDevice">
+                    @foreach(var device in outputDevices) {
+                        <option value="@device.Name">@device.Name</option>
+                    }
+                </InputSelect>
+            </div>
+            <span class="note" hidden="@(settings.Audio.MainOutputDevice == mainOutputDevice)">This setting will take effect after restarting the application</span>
+        }
     </div>
 
     <div class="header">
@@ -74,6 +78,7 @@
     private string mainOutputDevice = "";
     private bool mainOutputDeviceAcVisible = false;
     private List<Device> outputDevices = new();
+    private bool useAudioMatrix = false;
 
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;

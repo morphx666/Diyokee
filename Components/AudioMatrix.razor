@@ -1,0 +1,225 @@
+﻿@using Un4seen.Bass
+
+<div class="container scroller">
+    <div class="device">
+        <div class="outputs-names">
+            <div>Master</div>
+            <div>Monitor</div>
+        </div>
+    </div>
+    @foreach(var device in AudioDevices) {
+        <div class="device">
+            <h5>@device.Name</h5>
+            <div class="channels">
+                @foreach(var channel in device.Channels) {
+                    <div class="channel">@channel</div>
+                    <div class="outputs-select">
+                        <input type="checkbox" />
+                        <input type="checkbox" />
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    public class AudioDevice {
+        public enum AudioChannel {
+            FrontStereo,
+            FrontLeft,
+            FrontRight,
+
+            SideStereo,
+            SideLeft,
+            SideRight,
+
+            RearStereo,
+            RearLeft,
+            RearRight,
+
+            CenterAndLFE,
+            Center,
+            LFE,
+
+            Out_0,
+            Out_1,
+            Out_2,
+            Out_3,
+            Out_4,
+            Out_5,
+            Out_6,
+            Out_7,
+            Out_8,
+            Out_9,
+            Out_10,
+            Out_11,
+            Out_12,
+            Out_13,
+            Out_14,
+            Out_15,
+            Out_16,
+            Out_17,
+            Out_18,
+            Out_19,
+            Out_20,
+            Out_21,
+            Out_22,
+            Out_23,
+            Out_24,
+            Out_25,
+            Out_26,
+            Out_27,
+            Out_28,
+            Out_29,
+            Out_30,
+            Out_31,
+            Out_32,
+            Out_33,
+            Out_34,
+            Out_35,
+            Out_36,
+            Out_37,
+            Out_38,
+            Out_39,
+            Out_40,
+            Out_41,
+            Out_42,
+            Out_43,
+            Out_44,
+            Out_45,
+            Out_46,
+            Out_47,
+            Out_48,
+            Out_49,
+            Out_50,
+            Out_51,
+            Out_52,
+            Out_53,
+            Out_54,
+            Out_55,
+            Out_56,
+            Out_57,
+            Out_58,
+            Out_59,
+            Out_60,
+            Out_61,
+            Out_62,
+            Out_63,
+            Out_64,
+            Out_65,
+            Out_66,
+            Out_67,
+            Out_68,
+            Out_69,
+            Out_70,
+            Out_71,
+            Out_72,
+            Out_73,
+            Out_74,
+            Out_75,
+            Out_76,
+            Out_77,
+            Out_78,
+            Out_79,
+            Out_80,
+            Out_81,
+            Out_82,
+            Out_83,
+            Out_84,
+            Out_85,
+            Out_86,
+            Out_87,
+            Out_88,
+            Out_89,
+            Out_90,
+            Out_91,
+            Out_92,
+            Out_93,
+            Out_94,
+            Out_95,
+            Out_96,
+            Out_97,
+            Out_98,
+            Out_99,
+        }
+
+        public string Name { get; set; }
+        public int Index { get; set; }
+        public List<AudioChannel> Channels { get; set; } = [];
+    }
+
+    public List<AudioDevice> AudioDevices { get; set; } = new();
+
+    public AudioMatrix() {
+        // Skip the first two devices: No Sound and Default
+        for(int i = 2; i < Bass.BASS_GetDeviceCount(); i++) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
+
+            AudioDevice device = new() {
+                Name = deviceInfo.name,
+                Index = i
+            };
+
+            if(deviceInfo.IsEnabled) {
+                Bass.BASS_Init(i, 44100, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);
+                Bass.BASS_SetDevice(i);
+                BASS_INFO info = Bass.BASS_GetInfo();
+
+                switch(info.speakers) {
+                    case < 2:
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        break;
+                    case 2:
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+                        break;
+                    case 4:
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+
+                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+                        break;
+                    case 6:
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+
+                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+
+                        device.Channels.Add(AudioDevice.AudioChannel.CenterAndLFE);
+                        device.Channels.Add(AudioDevice.AudioChannel.Center);
+                        device.Channels.Add(AudioDevice.AudioChannel.LFE);
+                        break;
+
+                    case 8:
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+
+                        device.Channels.Add(AudioDevice.AudioChannel.RearStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.RearLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.RearRight);
+
+                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
+                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+                        
+
+                        device.Channels.Add(AudioDevice.AudioChannel.CenterAndLFE);
+                        device.Channels.Add(AudioDevice.AudioChannel.Center);
+                        device.Channels.Add(AudioDevice.AudioChannel.LFE);
+                        break;
+                }
+            }
+        
+            AudioDevices.Add(device);
+        }
+    }
+}

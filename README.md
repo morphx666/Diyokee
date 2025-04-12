@@ -4,36 +4,15 @@ A work in progress DJ mixing webapp with streaming support
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s2.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
-The program uses the settings defined in the `settings.json` file.  
-Preliminary support for an integrated settings dialog is being worked on, but for now, you can edit the file manually.
-To access the settings dialog press the "S" key on your keyboard.
 
-```json
-{
-  "cert-file": "<optional path to cert file>",
-  "cert-password": "<optional cert file password>",
-  "bassnet-reg-email": "<optional bass registered email>",
-  "bassnet-reg-key": "<optional bass registration key>",
-  "webhost-url": "http[s]://[host|ip]:port",
-  "encoder": {
-    "enabled": true|false,
-    "port": <valid port number>,
-    "url": "<optional path to the stream>",
-    "bitrate": <64|128|192|320>
-  },
-  "media-providers": [
-    {
-      "type": "<local is the only supported type>",
-      "name": "<optional name of the provider>",
-      "root-directory": "<path to the folder contaning the media files>"
-    }
-  ]
-}
-```
+To access the settings dialog press the `Ctrl+S` key on your keyboard.  
+[Audio routing](https://xfx.net/ftp/diyokee-releases/diyokee-settings-audiomatrix.png) has not yet been implemented, but you can select the audio device to use for playback.
+Some settings cannot be yet configured by the Settings dialog, but you can edit the `settings.json` file manually.
 
 ## Basic usage
 
-- To load a track into a player, click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.
+- To load a track into a player, click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.  
+  You can also use `Ctrl+A` or `Ctrl+B` keys on your keyboard to load a track into the A or B player, respectively.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button to start playing.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" width="12"> button to stop playback and move to the beginning of the track.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
