@@ -85,7 +85,6 @@ namespace Diyokee {
                 return settings;
             } else {
                 Settings settings = new();
-                await settings.Save();
                 return settings;
             }
         }

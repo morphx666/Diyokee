@@ -36,29 +36,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
         <Waveform CssColor="@Settings.Color"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
-            @ref="waveform" />
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        Loop="loop"
+        @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -97,8 +97,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                        class="button @(loopSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetLoopSize(size.Item2, false)">
+                    class="button @(loopSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -195,9 +195,6 @@
     public EventCallback RequestedFileCue { get; set; }
 
     [Parameter]
-    public bool IsMasterClock { get; set; } = false;
-
-    [Parameter]
     public PlayerSettings Settings { get; set; } = null!;
 
     [Parameter]
@@ -213,6 +210,11 @@
         get => enableMouseEvents;
         set {
             enableMouseEvents = value;
+            if(!MinimalMode) {
+                EqControls.EnableMouseEvents = value;
+                faderTempo!.EnableMouseEvents = value;
+            }
+            faderVolume!.EnableMouseEvents = value;
             waveform!.EnableMouseEvents = value;
             waveformFull!.EnableMouseEvents = value;
         }
@@ -229,7 +231,7 @@
         } else {
             this.file = file;
             SetParameters();
-            SetLoopSize(loopSize, true);
+            SetLoopSize(loopSize, false);
         }
     }
 

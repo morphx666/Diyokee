@@ -139,6 +139,9 @@
     [Parameter]
     public FilesUI Files { get; set; } = null!;
 
+    [Parameter]
+    public EventCallback OnClose { get; set; } = default!;
+
     public bool IsOpen { get => dialog.IsOpen; }
 
     public void Open(DFile? file) {
@@ -178,6 +181,8 @@
         genresAcVisible = false;
         albumsAcVisible = false;
         playerVisible = true;
+
+        OnClose.InvokeAsync(null);
     }
 
     private int DownbeatAtHours {

@@ -5,8 +5,12 @@
         public long ButtonsDown { get; set; }
         public bool IsCaptured {get;set; }
         public double WheelDelta { get; set; }
+
+        // https://stackoverflow.com/questions/22029033/can-javascript-tell-the-difference-between-left-and-right-shift-key
         public bool LeftShiftDown { get; set; }
         public bool RightShiftDown { get; set; }
+
+        public bool Enabled { get; set; } = true;
 
         public override string ToString() {
             return $"{ButtonsDown} ({X}, {Y})";

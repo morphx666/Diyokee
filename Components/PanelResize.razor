@@ -106,7 +106,7 @@
             await Task.Run(async () => {
                 bool isValid = false;
                 while(true) {
-                    if(!isValid && mouseState != null && dividerBounds != null &&
+                    if(!isValid && dividerBounds != null &&
                         !mouseState.IsCaptured &&
                         mouseState.ButtonsDown == 1 &&
                         dividerBounds.Contains(mouseState.X, mouseState.Y)) {

@@ -55,6 +55,16 @@
 
     private bool eqOptionsVisible = false;
 
+    private bool enableMouseEvents = true;
+    public bool EnableMouseEvents { 
+        get => enableMouseEvents;
+        set {
+            eqHi.EnableMouseEvents = value;
+            eqMid.EnableMouseEvents = value;
+            eqLo.EnableMouseEvents = value;
+        }
+    }
+
     public EqualizerProfile EqProfile { 
         get => eqProfile;
         set {
@@ -80,7 +90,7 @@
     public EventCallback<EqualizerProfile> EqProfileChanged { get; set; }
 
     [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
+    private MouseState mouseState { get; set; } = null!;
 
     public Eq() {
         eqValues.Hi = 0.5;
@@ -122,6 +132,7 @@
     }
 
     private void OpenSubMenu(MouseEventArgs e) {
+        if(!mouseState.Enabled) return;
         JS.InvokeVoidAsync("positionSubMenu", mouseState.X, mouseState.Y, knobs);
         eqOptionsVisible = true;
     }

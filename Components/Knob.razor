@@ -23,6 +23,8 @@
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
+    public bool EnableMouseEvents { get; set; } = true;
+
     private ElementReference knobElement;
     private Bounds? knobBounds;
     private double knobSize = 0;
@@ -75,7 +77,10 @@
             await Task.Run(async () => {
                 bool isValid = false;
                 while(true) {
-                    if(!isValid && mouseState != null && knobBounds != null &&
+                    await Task.Delay(50);
+                    if(!EnableMouseEvents) continue;
+
+                    if(!isValid && knobBounds != null &&
                         !mouseState.IsCaptured &&
                         (mouseState.ButtonsDown == 1) &&
                         knobBounds.Contains(mouseState.X, mouseState.Y)) {
@@ -115,8 +120,6 @@
 
                         mouseState.WheelDelta = 0;
                     }
-
-                    await Task.Delay(50);
                 }
             });
         }

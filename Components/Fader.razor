@@ -34,7 +34,9 @@
     public EventCallback<double> ValueChanged { get; set; }
 
     [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
+    private MouseState mouseState { get; set; } = null!;
+
+    public bool EnableMouseEvents { get; set; } = true;
 
     private ElementReference faderElement;
     private double rangeTop = 0;
@@ -114,7 +116,10 @@
             await Task.Run(async () => {
                 bool isValid = false;
                 while(true) {
-                    if(!isValid && mouseState != null && faderBounds != null &&
+                    await Task.Delay(50);
+                    if(!EnableMouseEvents) continue;
+
+                    if(!isValid && faderBounds != null &&
                         !mouseState.IsCaptured &&
                         mouseState.ButtonsDown == 1 &&
                         faderBounds.Contains(mouseState.X, mouseState.Y)) {
@@ -154,8 +159,6 @@
 
                         mouseState.WheelDelta = 0;
                     }
-
-                    await Task.Delay(50);
                 }
             });
         }

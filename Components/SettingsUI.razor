@@ -2,6 +2,7 @@
     <ModalDialog
         Title="Settings"
         OnSave="Save"
+        OnClose="Close"
         @ref="dialog">
 
     @if(settings == null) return;
@@ -77,6 +78,9 @@
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;
 
+    [Parameter]
+    public EventCallback OnClose { get; set; } = default!;
+
     private Settings settings = default!;
 
     public void Open() {
@@ -97,11 +101,12 @@
 
     public void Close() {
         dialog.Close();
+
+        OnClose.InvokeAsync(null);
     }
 
     public async void Save() {
         settings.Audio.MainOutputDevice = mainOutputDevice;
-        await settings.Save();
 
         Program.Settings = settings;
         Close();

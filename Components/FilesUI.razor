@@ -56,7 +56,7 @@
     </div>
 </div>
 
-<TrackProperties Files="this" @ref="trackProperties" />
+<TrackProperties Files="this" @ref="trackProperties" OnClose="TrackSettingsDialogClosed" />
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
@@ -88,6 +88,12 @@
 
     [Parameter]
     public EventCallback<DFile> SelectedFileChanged { get; set; }
+
+    [Parameter]
+    public EventCallback TrackSettingsDialogOpen { get; set; }
+
+    [Parameter]
+    public EventCallback TrackSettingsDialogClosed { get; set; }
 
     [Parameter]
     public string RelativePath { get; set; } = "";
@@ -363,6 +369,8 @@
                 await Task.Delay(250);
             }
             trackProperties!.Open(files.FirstOrDefault(f => f.Filename == selectedFile));
+
+            await TrackSettingsDialogOpen.InvokeAsync(null);
         });
     }
 

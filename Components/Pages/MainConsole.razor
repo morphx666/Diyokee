@@ -63,11 +63,16 @@
                 OnResizeEnd="HandleDividerResize"
                 Constrains="mediaProviderConstrains" />
 
-            <FilesUI Provider="@mediaProvider" RelativePath="@selectedFolder" SelectedFileChanged="SelectedFileChanged" />
+            <FilesUI
+                Provider="@mediaProvider"
+                RelativePath="@selectedFolder"
+                SelectedFileChanged="SelectedFileChanged"
+                TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
+                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)" />
         </div>
     </CascadingValue>
 
-    <SettingsUI OnSave="UpdateApp" @ref="settingsUi" />
+    <SettingsUI OnSave="UpdateApp" OnClose="() => SetPlayersMouseCapturing(true)" @ref="settingsUi" />
 </div>
 
 @code {
@@ -143,6 +148,7 @@
                 player2File = selectedFile;
                 break;
             case "KeyS":
+                SetPlayersMouseCapturing(false);
                 settingsUi.Open();
                 break;
         }
@@ -169,13 +175,12 @@
         mouseState.WheelDelta = e.DeltaY;
     }
 
-    private async void HandleDividerResize((string name, double value) args) {
+    private void HandleDividerResize((string name, double value) args) {
         if(Program.Settings.UIElements.ContainsKey(args.name)) {
             Program.Settings.UIElements[args.name] = args.value.ToString();
         } else {
             Program.Settings.UIElements.Add(args.name, args.value.ToString());
         }
-        await Program.Settings.Save();
     }
 
     private CancellationTokenSource? cancellationTokenSource = null;
@@ -215,6 +220,11 @@
 
         shouldRender = true;
         await InvokeAsync(StateHasChanged);
+    }
+
+    private void SetPlayersMouseCapturing(bool state) {
+        player1!.EnableMouseEvents = state;
+        player2!.EnableMouseEvents = state;
     }
 
     protected override bool ShouldRender() {
