@@ -7,8 +7,6 @@
 
 <PageTitle>Diyokee</PageTitle>
 
-@* READ: https://developer.mozilla.org/en-US/docs/Web/CSS/CSSOM_view/Coordinate_systems *@
-
 <div
     class="main-console"
     tabindex="0"
@@ -20,11 +18,10 @@
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
-                <Player 
-                    PlayerName="A"
+                <Player
+                    Settings="Program.Settings.Playback.Players[0]"
                     File="@player1File"
                     RequestedFileCue="() => LoadSelectedFile(player1)"
-                    PlayerCssColor="#977696"
                     OtherPlayer="@player2"
                     @ref="player1" />
             </div>
@@ -38,10 +35,9 @@
             </div>
             <div class="player">
                 <Player
-                    PlayerName="B"
+                    Settings="Program.Settings.Playback.Players[1]"
                     File="@player2File"
                     RequestedFileCue="() => LoadSelectedFile(player2)"
-                    PlayerCssColor="#279597"
                     OtherPlayer="@player1"
                     @ref="player2" />
             </div>

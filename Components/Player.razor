@@ -7,6 +7,7 @@
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
 @using Un4seen.Bass.AddOn.Mix
+@using static Diyokee.Settings
 @inject IJSRuntime JS
 
 <div class="player-container">
@@ -27,44 +28,44 @@
                 <span>@GetBpmAdjustment()</span>
                 <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
             </div>
-            <div class="player-name" style="background-color: @PlayerCssColor">
-                @PlayerName
+            <div class="player-name" style="background-color: @Settings.Color">
+                @Settings.Name
             </div>
         </div>
     }
 
     <div class="waveform-full">
-        <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            @ref="waveformFull" />
+        <Waveform CssColor="@Settings.Color"
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform">
-        <Waveform CssColor="@PlayerCssColor"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformBarWidth="@waveformBarWidth"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
-            @ref="waveform" />
+        <Waveform CssColor="@Settings.Color"
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@(file?.DownbeatAt ?? -1)"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformBarWidth="@waveformBarWidth"
+        WaveformWidth="@waveformWidth"
+        Loop="loop"
+        @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
 
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
-            <Eq ValueChanged="ApplyEqValues" @ref="eqControls" />
+            <Eq ValueChanged="ApplyEqValues" EqProfileChanged="EqProfileChanged" @ref="EqControls" />
         }
     </div>
 
@@ -72,14 +73,14 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-            @onmousedown="(e) => HandlePlayClick(e, false)"
-            @onmouseup="HandleStopAndSnapClick">
+        @onmousedown="(e) => HandlePlayClick(e, false)"
+        @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
         @if(!MinimalMode) {
             <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
-            <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.PlayerName ?? "")</div>
+            <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.Settings.Name ?? "")</div>
             <div class="sync-adjust">
                 <span>SYNC</span>
                 <div class="sync-buttons">
@@ -96,8 +97,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                        class="button @(loopSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetLoopSize(size.Item2)">
+                    class="button @(loopSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetLoopSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -106,8 +107,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                        class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetJumpSize(size.Item2)">
+                    class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                    @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -117,7 +118,7 @@
                     <div class="button-thin" @onclick="() => DoJump(+1)"><i class="fa-solid fa-caret-right"></i></div>
                 </div>
             </div>
-            <div class="lock-button"><i class="fa-solid @(syncLoopJump ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
+            <div class="lock-button"><i class="fa-solid @(loopJumpLock ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
         </div>
     }
 </div>
@@ -138,7 +139,7 @@
     private Waveform? waveform;
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
-    private Eq eqControls = null!;
+    public Eq EqControls = null!;
 
     private double fileBPM = 0;
     private const int waveformBarWidth = 5;
@@ -166,7 +167,7 @@
     };
     private double loopSize = 8.0;
     private double jumpSize = 8.0;
-    private bool syncLoopJump = true;
+    private bool loopJumpLock = true;
 
     private List<(double X, double Seconds)> beatMarkers = new();
     private double cuePoint = 0;
@@ -180,6 +181,8 @@
         get => file;
         set {
             if(value != null && lastFilename != value.Filename) {
+                if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
+
                 lastFilename = value.Filename;
                 file = value;
                 Stop(false);
@@ -189,16 +192,13 @@
     }
 
     [Parameter]
-    public string PlayerName { get; set; } = "";
-
-    [Parameter]
     public EventCallback RequestedFileCue { get; set; }
 
     [Parameter]
-    public string PlayerCssColor { get; set; } = "#444";
+    public bool IsMasterClock { get; set; } = false;
 
     [Parameter]
-    public bool IsMasterClock { get; set; } = false;
+    public PlayerSettings Settings { get; set; } = null!;
 
     [Parameter]
     public Player? OtherPlayer { get; set; } = null;
@@ -316,28 +316,36 @@
         double tempo = ((1.0 + (faderTempo?.Value ?? 0.5)) / 1.5 - 1.0) * 100.0;
 
         Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
-        //OtherPlayer?.SyncBPMToOtherPlayer(); // TODO: Add option to enable/disable this feature
+        if(Program.Settings.Playback.SyncPlayersBpm) {
+            // FIXME: Implement to login to avoid recursion
+            //OtherPlayer?.SyncBPMToOtherPlayer();
+        }
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
         // Lo
         eqParams.lBand = 0;
-        eqParams.fCenter = eqControls.EqSettings.Low;
+        eqParams.fCenter = EqControls.EqProfile.Low;
         eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // Mid
         eqParams.lBand = 1;
-        eqParams.fCenter = eqControls.EqSettings.Mid;
+        eqParams.fCenter = EqControls.EqProfile.Mid;
         eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // Hi
         eqParams.lBand = 2;
-        eqParams.fCenter = eqControls.EqSettings.Hi;
+        eqParams.fCenter = EqControls.EqProfile.Hi;
         eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
+    }
+
+    private void EqProfileChanged(EqualizerProfile eqProfile) {
+        if(OtherPlayer != null) OtherPlayer.EqControls.EqProfile = eqProfile;
+        UpdateSettings();
     }
 
     private string CalcBpm() {
@@ -412,7 +420,7 @@
     }
 
     private void SetupEQ() {
-        if(eqControls == null) return;
+        if(EqControls == null) return;
         // set peaking equalizer effect with no bands
         eqHandle = Bass.BASS_ChannelSetFX(fxHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
 
@@ -423,20 +431,20 @@
 
         // create 1st band for bass
         eqParams.lBand = 0;
-        eqParams.fCenter = eqControls.EqSettings.Low;
+        eqParams.fCenter = EqControls.EqProfile.Low;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // create 2nd band for mid
         eqParams.lBand = 1;
-        eqParams.fCenter = eqControls.EqSettings.Mid;
+        eqParams.fCenter = EqControls.EqProfile.Mid;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // create 3rd band for treble
         eqParams.lBand = 2;
-        eqParams.fCenter = eqControls.EqSettings.Hi;
+        eqParams.fCenter = EqControls.EqProfile.Hi;
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-        eqControls?.Reset();
+        EqControls?.Reset();
     }
 
     public bool SetParameters() {
@@ -509,7 +517,8 @@
     private SYNCPROC syncProc = null!;
     private void SetLoopSize(double size) {
         loopSize = size;
-        if(syncLoopJump) jumpSize = loopSize;
+        if(loopJumpLock) jumpSize = loopSize;
+        UpdateSettings();
 
         double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
         if(!IsPlaying || !(position >= loop.Start && position <= loop.End)) loop.Start = position;
@@ -536,16 +545,25 @@
     }
 
     private void SetJumpSize(double size) {
-        if(syncLoopJump) {
+        if(loopJumpLock) {
             SetLoopSize(size);
         } else {
             jumpSize = size;
         }
+        UpdateSettings();
     }
 
     private void ToggleLoopJumpSync() {
-        syncLoopJump = !syncLoopJump;
-        if(syncLoopJump) jumpSize = loopSize;
+        loopJumpLock = !loopJumpLock;
+        if(loopJumpLock) jumpSize = loopSize;
+        UpdateSettings();
+    }
+
+    private void UpdateSettings() {
+        Settings.LoopJumpLock = loopJumpLock;
+        Settings.LoopSize = loopSize;
+        Settings.JumpSize = jumpSize;
+        Program.Settings.Playback.EqProfile = EqControls.EqProfile.Name;
     }
 
     private void DoLoop(int handle, int channel, int data, IntPtr user) {
@@ -611,7 +629,11 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender && faderVolume != null && (faderTempo != null || MinimalMode)) {
             faderVolume!.SetInitialValue(0.8);
-            if(!MinimalMode) faderTempo.SetInitialValue(0.5);
+            if(!MinimalMode) {
+                faderTempo.SetInitialValue(0.5);
+                EqControls.EqProfile = EqControls.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? EqControls.EqualizerProfiles[0];
+                loopJumpLock = Settings.LoopJumpLock;
+            }
             await InvokeAsync(StateHasChanged);
         }
 
