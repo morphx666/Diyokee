@@ -7,3 +7,22 @@
     font-size: 0.7rem;
     color: var(--secondary-light);
 }
+
+.field label {
+    text-align: left !important;
+}
+
+h4 {
+    margin-bottom: 1rem;
+}
+
+h5 {
+    margin-bottom: 0.6rem;
+}
+
+.sub-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-left: 2rem;
+}

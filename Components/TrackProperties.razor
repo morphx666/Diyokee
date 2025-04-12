@@ -1,12 +1,13 @@
 ﻿@using Diyokee.Data
 @using Microsoft.EntityFrameworkCore
+@using static Diyokee.Settings
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 @inject IJSRuntime JS
 
 <ModalDialog Title="Track Properties"
-             @ref="dialog"
-             OnClose="Close"
-             OnSave="Save">
+    @ref="dialog"
+    OnClose="Close"
+    OnSave="Save">
     <div class="field">
         <label for="artist">Artist</label>
         <InputText id="artist" @bind-value="file.Artist" />
@@ -21,13 +22,13 @@
         <div class="field">
             <label for="album">Album</label>
             <InputText id="album"
-                       @bind-value="file.Album"
-                       @onclick="@(async () => {
+            @bind-value="file.Album"
+            @onclick="@(async () => {
                             albumsAcVisible = true;
                             player.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
-                       @onblur="@(async () => {
+            @onblur="@(async () => {
                             await Task.Delay(100); // Process item onclick first (if any)
                             albumsAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -35,7 +36,7 @@
             <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                 @foreach(var album in albums) {
                     <div class="item @(album == file.Album ? "selected" : "")"
-                         @onclick="@(async () => {
+                    @onclick="@(async () => {
                             file.Album = album;
                             albumsAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -49,13 +50,13 @@
         <div class="field">
             <label for="genre">Genre</label>
             <InputText id="genre"
-                       @bind-value="file.Genre"
-                       @onclick="@(async () => {
+            @bind-value="file.Genre"
+            @onclick="@(async () => {
                             genresAcVisible = true;
                             player.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
-                       @onblur="@(async () => {
+            @onblur="@(async () => {
                             await Task.Delay(100); // Process item onclick first (if any)
                             genresAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -63,7 +64,7 @@
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
                     <div class="item @(genre == file.Genre ? "selected" : "")"
-                         @onclick="@(async () => {
+                    @onclick="@(async () => {
                             file.Genre = genre;
                             genresAcVisible = false;
                             player.EnableMouseEvents = true;
@@ -101,10 +102,13 @@
         </div>
 
         @if(playerVisible) {
-            <Player PlayerName="Preview"
-                    PlayerCssColor="#82871f"
-                    MinimalMode="true"
-                    @ref="player" />
+            <Player
+                Settings="@(new() {
+                        Name="Preview",
+                        Color="#82871f"
+                    })"
+                MinimalMode="true"
+                @ref="player" />
         }
     </div>
 

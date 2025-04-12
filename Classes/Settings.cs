@@ -3,6 +3,13 @@ using System.Text.Json;
 
 namespace Diyokee {
     public class Settings {
+        public class EqualizerProfile {
+            public string Name { get; set; } = string.Empty;
+            public float Low { get; set; } = 0.0f;
+            public float Mid { get; set; } = 0.0f;
+            public float Hi { get; set; } = 0.0f;
+        }
+
         public class MediaProvider {
             [JsonProperty("type")] public string Type { get; set; } = "local";
             [JsonProperty("name")] public string Name { get; set; } = "Local";
@@ -43,7 +50,7 @@ namespace Diyokee {
         [JsonProperty("cert-password")] public string CertPassword { get; set; } = "";
         [JsonProperty("bassnet-reg-email")] public string BassNetRegEmail { get; set; } = "";
         [JsonProperty("bassnet-reg-key")] public string BassNetRegKey { get; set; } = "";
-        [JsonProperty("media-providers")] public List<MediaProvider> MediaProviders { get; set; } = [new()];
+        [JsonProperty("media-providers")] public List<MediaProvider> MediaProviders { get; set; } = [];
         [JsonProperty("encoder")] public EncoderOptions Encoder { get; set; } = new();
         [JsonProperty("ui")] public Dictionary<string, string> UIElements { get; set; } = new() {
             ["main-resize-horizontal"] = "400",
@@ -51,6 +58,37 @@ namespace Diyokee {
         };
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();
+
+        public List<EqualizerProfile> EqualizerProfiles { get; } = [];
+
+        public async static Task<Settings> Load() {
+            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+            if(File.Exists(Path.Combine(workingDirectory, "settings.json"))) {
+                Settings settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
+
+                if(settings.MediaProviders.Count == 0) {
+                    settings.MediaProviders.Add(new());
+                }
+
+                if(settings.EqualizerProfiles.Count == 0) {
+                    settings.EqualizerProfiles.AddRange([
+                        new() {Name = "Pioneer DJM", Low = 70, Mid = 1000, Hi = 13000},
+                        new() {Name = "EVO 4", Low = 200, Mid = 1200, Hi = 6500},
+                        new() {Name = "Allen & Heath Xone 42", Low = 420, Mid = 1200, Hi = 2700},
+                        new() {Name = "Allen & Heath Xone 4D", Low = 120, Mid = 1400, Hi = 10000},
+                        new() {Name = "Rane", Low = 300, Mid = 1200, Hi = 4000},
+                        new() {Name = "Behringer DDM", Low = 330, Mid = 1400, Hi = 4200}
+                    ]);
+                }
+
+                settings.AutoSave();
+                return settings;
+            } else {
+                Settings settings = new();
+                await settings.Save();
+                return settings;
+            }
+        }
 
         public void AutoSave() {
             Task.Run(async () => {
@@ -61,23 +99,14 @@ namespace Diyokee {
             });
         }
 
-        public async static Task<Settings> Load() {
-            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            if(File.Exists(Path.Combine(workingDirectory, "settings.json"))) {
-                Settings settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
-                settings.MediaProviders.RemoveAt(0); // FIXME: Delete the provider created by the ctor
-                settings.AutoSave();
-                return settings;
-            } else {
-                Settings settings = new();
-                await settings.Save();
-                return settings;
-            }
-        }
-
         public async Task Save() {
             string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
             await File.WriteAllTextAsync(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
+        }
+
+        public object Clone() {
+            var clone = JsonConvert.SerializeObject(this, Formatting.Indented);
+            return JsonConvert.DeserializeObject(clone, GetType()) ?? new Settings();
         }
     }
 }

@@ -52,22 +52,6 @@ namespace Diyokee {
 
         public object Clone() {
             return this.MemberwiseClone();
-            return new DFile {
-                Id = Id,
-                Artist = Artist,
-                Title = Title,
-                Genre = Genre,
-                Album = Album,
-                Year = Year,
-                Filename = Filename,
-                Duration = Duration,
-                Waveform = Waveform,
-                BPM = BPM,
-                DownbeatAt = DownbeatAt,
-                Key = Key,
-                ReplayGain = ReplayGain,
-                HasReplayGain = HasReplayGain
-            };
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿@inject IJSRuntime JS
+﻿@using static Diyokee.Settings
+@inject IJSRuntime JS
 
 <div class="knobs-container"
      @oncontextmenu="OpenSubMenu"
@@ -11,7 +12,7 @@
     <Knob Name="LO" @ref="eqLo" ValueChanged="ApplyEqLo" />
 
     <div class="eq-options" style="display: @(eqOptionsVisible ? "block" : "none")">
-        @foreach(var eq in EqualizerProfiles) {
+        @foreach(var eq in Program.Settings.EqualizerProfiles) {
             <div class="eq-option @(eq.Name == EqProfile.Name ? "selected" : "")"
                  @onclick="@(() => {
                     EqProfile = eq;
@@ -31,17 +32,17 @@
 
 <script>
     positionSubMenu = (mx, my, container) => {
-    setTimeout(() => {
-    const containerBounds = getElementBounds(container);
-    const subMenu = container.querySelector(".eq-options");
-    const subMenuBounds = getElementBounds(subMenu);
-    if(mx + subMenuBounds[2] < window.innerWidth) {
-    subMenu.style.left = `${mx - containerBounds[0]}px`;
-    } else {
-    subMenu.style.left = `${mx - containerBounds[0] - subMenuBounds[2]}px`;
-    }
-    subMenu.style.top = `${my - containerBounds[1]}px`;
-    }, 100);
+        setTimeout(() => {
+            const containerBounds = getElementBounds(container);
+            const subMenu = container.querySelector(".eq-options");
+            const subMenuBounds = getElementBounds(subMenu);
+            if(mx + subMenuBounds[2] < window.innerWidth) {
+                subMenu.style.left = `${mx - containerBounds[0]}px`;
+            } else {
+                subMenu.style.left = `${mx - containerBounds[0] - subMenuBounds[2]}px`;
+            }
+            subMenu.style.top = `${my - containerBounds[1]}px`;
+        }, 100);
     };
 </script>
 
@@ -54,13 +55,6 @@
 
     private bool eqOptionsVisible = false;
 
-    public List<EqualizerProfile> EqualizerProfiles = [
-        new() {Name = "Pioneer DJM", Low = 70, Mid = 1000, Hi = 13000},
-        new() {Name = "EVO 4", Low = 200, Mid = 1200, Hi = 6500},
-        new() {Name = "Allen & Heath Xone 42", Low = 420, Mid = 1200, Hi = 2700},
-        new() {Name = "Rane", Low = 300, Mid = 1200, Hi = 4000},
-        new() {Name = "Behringer DDM", Low = 330, Mid = 1400, Hi = 4200}
-    ];
     public EqualizerProfile EqProfile { 
         get => eqProfile;
         set {
@@ -93,7 +87,7 @@
         eqValues.Mid = 0.5;
         eqValues.Lo = 0.5;
 
-        EqProfile = EqualizerProfiles[0];
+        EqProfile = Program.Settings.EqualizerProfiles[0];
     }
 
     public void Reset() {

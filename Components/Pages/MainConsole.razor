@@ -1,6 +1,7 @@
 ﻿@using System.Diagnostics
 @using Diyokee
 @using Diyokee.MediaProviders
+@using static Diyokee.Settings
 @inject IJSRuntime JS
 
 @page "/"
@@ -66,7 +67,7 @@
         </div>
     </CascadingValue>
 
-    <SettingsUI @ref="settingsUi" />
+    <SettingsUI OnSave="UpdateApp" @ref="settingsUi" />
 </div>
 
 @code {
@@ -205,6 +206,15 @@
     private void ApplyCrossfaderVolume(double value) {
         player1?.SetCrossFaderVolume(value >= 0.5 ? 1 : 2 * value);
         player2?.SetCrossFaderVolume(value <= 0.5 ? 1 : 2 * (1 - value));
+    }
+
+    private async void UpdateApp() {
+        EqualizerProfile equalizerProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
+        player1!.EqControls.EqProfile = equalizerProfile;
+        player2!.EqControls.EqProfile = equalizerProfile;
+
+        shouldRender = true;
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override bool ShouldRender() {
