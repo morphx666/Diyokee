@@ -97,8 +97,8 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div
-                    class="button @(loopSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetLoopSize(size.Item2)">
+                        class="button @(loopSize == size.Item2 ? "selected" : "")"
+                        @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -229,7 +229,7 @@
         } else {
             this.file = file;
             SetParameters();
-            SetLoopSize(loopSize);
+            SetLoopSize(loopSize, true);
         }
     }
 
@@ -511,17 +511,17 @@
     private void ToggleLoop() {
         if(file == null) return;
         loop.Enabled = !loop.Enabled;
-        SetLoopSize(loopSize);
+        SetLoopSize(loopSize, true);
     }
 
     private SYNCPROC syncProc = null!;
-    private void SetLoopSize(double size) {
+    private void SetLoopSize(double size, bool resetStart) {
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
         UpdateSettings();
 
         double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
-        if(!IsPlaying || !(position >= loop.Start && position <= loop.End)) loop.Start = position;
+        if(resetStart) loop.Start = position;
         this.loop.End = loop.Start + loopSize / beatsPerSecond;
 
         if(loop.BASSHandle != 0) {
@@ -546,7 +546,7 @@
 
     private void SetJumpSize(double size) {
         if(loopJumpLock) {
-            SetLoopSize(size);
+            SetLoopSize(size, false);
         } else {
             jumpSize = size;
         }
