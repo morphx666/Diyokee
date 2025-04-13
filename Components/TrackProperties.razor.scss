@@ -30,9 +30,22 @@
             opacity: 1;
         }
     }
+}
 
-    ::deep #bpm {
+::deep {
+    #bpm, #key {
         max-width: calc(6rem - 6px);
+    }
+
+    #notation {
+        margin-left: 0.5rem;
+        height: 1.8rem;
+        width: 7.2rem;
+        font-size: 0.7rem;
+    }
+
+    [readonly="true"] {
+        cursor: default;
     }
 }
 

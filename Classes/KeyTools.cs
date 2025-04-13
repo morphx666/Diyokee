@@ -45,7 +45,7 @@ namespace Diyokee {
             "D minor", "F major", "A minor", "C major", "E minor", "G major", "B minor", "D major", "F# minor", "A major", "C# minor", "E major",
         ];
 
-        private static readonly Dictionary<Notations, string[]> notationToKeysMap = new() {
+        public static readonly Dictionary<Notations, string[]> NotationToKeysMap = new() {
             { Notations.CamelotKey, camelot },
             { Notations.OpenKey, openKey },
             { Notations.MusicKey, musicKey },
@@ -80,7 +80,7 @@ namespace Diyokee {
                 if(!IsValidKey(key)) return key;
 
                 var keyIndex = GetKeyIndex(key);
-                return notationToKeysMap[newNotation][keyIndex];
+                return NotationToKeysMap[newNotation][keyIndex];
             } catch {
                 //Debugger.Break();
                 return key;
@@ -94,7 +94,7 @@ namespace Diyokee {
             //var newKeyIndex = (keyIndex + step) % notationToKeysMap[notation].Length;
             var newKeyIndex = CalculateNewKeyIndex(keyIndex, step, toggleScale);
 
-            return notationToKeysMap[notation][newKeyIndex];
+            return NotationToKeysMap[notation][newKeyIndex];
         }
 
         private bool IsValidKey(string key) {

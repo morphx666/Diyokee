@@ -5,9 +5,9 @@
 @inject IJSRuntime JS
 
 <ModalDialog Title="Track Properties"
-    @ref="dialog"
-    OnClose="Close"
-    OnSave="Save">
+@ref="dialog"
+OnClose="Close"
+OnSave="Save">
     <div class="field">
         <label for="artist">Artist</label>
         <InputText id="artist" @bind-value="file.Artist" />
@@ -52,15 +52,15 @@
             <InputText id="genre"
             @bind-value="file.Genre"
             @onclick="@(async () => {
-                            genresAcVisible = true;
-                            player.EnableMouseEvents = false;
-                            await JS.InvokeVoidAsync("scrollToSelectedItem");
-                        })"
+                                genresAcVisible = true;
+                                player.EnableMouseEvents = false;
+                                await JS.InvokeVoidAsync("scrollToSelectedItem");
+                            })"
             @onblur="@(async () => {
-                            await Task.Delay(100); // Process item onclick first (if any)
-                            genresAcVisible = false;
-                            player.EnableMouseEvents = true;
-                        })" />
+                                await Task.Delay(100); // Process item onclick first (if any)
+                                genresAcVisible = false;
+                                player.EnableMouseEvents = true;
+                            })" />
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
                     <div class="item @(genre == file.Genre ? "selected" : "")"
@@ -101,16 +101,74 @@
                 <div class="recalculate" @onclick="() => BpmMultiply(2.0)"><i class="fa-solid fa-xmark"></i>2</div>
                 <div class="recalculate" @onclick="() => BpmMultiply(0.5)"><i class="fa-solid fa-divide"></i>2</div>
             </div>
+
+            <div class="field">
+                <label for="key">Key</label>
+                <InputText
+                    id="key"
+                    class="as-number"
+                    ReadOnly="true"
+                    @bind-value="FileKeyInSelectedNotation"
+                    @onclick="@(async () => {
+                                    keysAcVisible = true;
+                                    player.EnableMouseEvents = false;
+                                    await JS.InvokeVoidAsync("scrollToSelectedItem");
+                                })"
+                    @onblur="@(async () => {
+                                    await Task.Delay(100); // Process item onclick first (if any)
+                                    keysAcVisible = false;
+                                    player.EnableMouseEvents = true;
+                                })" />
+                <div class="autocomplete scroller @(keysAcVisible ? "show" : "")">
+                    @foreach(var key in KeyTools.NotationToKeysMap[selectedNotation]) {
+                        <div class="item @(key == file.Key ? "selected" : "")"
+                        @onclick="@(async () => {
+                                file.Key = key;
+                                keysAcVisible = false;
+                                player.EnableMouseEvents = true;
+                            })">
+                            @key
+                        </div>
+                    }
+                </div>
+
+                <InputText
+                    id="notation"
+                    ReadOnly="true"
+                    @bind-value="NotationAsString"
+                    @onclick="@(async () => {
+                            notationsAcVisible = true;
+                            player.EnableMouseEvents = false;
+                            await JS.InvokeVoidAsync("scrollToSelectedItem");
+                        })"
+                    @onblur="@(async () => {
+                            await Task.Delay(100); // Process item onclick first (if any)
+                            notationsAcVisible = false;
+                            player.EnableMouseEvents = true;
+                        })" />
+                <div class="autocomplete scroller @(notationsAcVisible ? "show" : "")">
+                    @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
+                        <div class="item @(notation == NotationAsString ? "selected" : "")"
+                             @onclick="@(async () => {
+                                NotationAsString = notation;
+                                notationsAcVisible = false;
+                                player.EnableMouseEvents = true;
+                            })">
+                            @notation
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
 
         @if(playerVisible) {
             <Player
-                Settings="@(new() {
+            Settings="@(new() {
                         Name="Preview",
                         Color="#82871f"
                     })"
-                MinimalMode="true"
-                @ref="player" />
+            MinimalMode="true"
+            @ref="player" />
         }
     </div>
 
@@ -129,9 +187,15 @@
 
     private bool genresAcVisible = false;
     private bool albumsAcVisible = false;
+    private bool keysAcVisible = false;
+    private bool notationsAcVisible = false;
 
     private List<string> genres = [];
     private List<string> albums = [];
+    private List<string> keys = [];
+
+    private KeyTools keyTools = new();
+    private KeyTools.Notations selectedNotation = KeyTools.Notations.CamelotKey;
 
     private int lastHrValue;
     private int lastMinValue;
@@ -248,5 +312,18 @@
     private async void BpmMultiply(double factor) {
         BPM *= (float)factor;
         await InvokeAsync(StateHasChanged);
+    }
+
+    private string NotationAsString {
+        get => selectedNotation.ToString();
+        set {
+            if(!Enum.TryParse(value, out KeyTools.Notations result)) return;
+            selectedNotation = result;
+        }
+    }
+
+    private string FileKeyInSelectedNotation {
+        get => keyTools.ConvertTo(file.Key, selectedNotation);
+        set => file.Key = value;
     }
 }
