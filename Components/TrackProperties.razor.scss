@@ -2,11 +2,7 @@
     max-width: 8rem;
 }
 
-::deep #bpm {
-    max-width: calc(6rem - 6px);
-}
-
-.downbeat-container {
+.bpm-container {
     label {
         line-height: 1rem;
     }
@@ -21,17 +17,22 @@
             width: 2.5rem;
         }
     }
-}
 
-.recalculate {
-    margin-left: 0.5rem;
-    cursor: pointer;
-    opacity: 0.7;
+    .recalculate {
+        margin-left: 0.5rem;
+        cursor: pointer;
+        opacity: 0.7;
+        white-space: nowrap;
 
-    transition: opacity 250ms;
+        transition: opacity 250ms;
 
-    &:hover {
-        opacity: 1;
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    ::deep #bpm {
+        max-width: calc(6rem - 6px);
     }
 }
 

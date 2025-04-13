@@ -82,7 +82,7 @@ namespace Diyokee {
                 var keyIndex = GetKeyIndex(key);
                 return notationToKeysMap[newNotation][keyIndex];
             } catch {
-                Debugger.Break();
+                //Debugger.Break();
                 return key;
             }
         }

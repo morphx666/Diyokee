@@ -78,7 +78,7 @@
     private string mainOutputDevice = "";
     private bool mainOutputDeviceAcVisible = false;
     private List<Device> outputDevices = new();
-    private bool useAudioMatrix = false;
+    private bool useAudioMatrix = true;
 
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;

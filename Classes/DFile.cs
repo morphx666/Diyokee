@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using System.Text;
 
 namespace Diyokee {
     // Migrations:
@@ -19,6 +20,7 @@ namespace Diyokee {
         public string Key { get; set; } = "";
         public double ReplayGain { get; set; } = 0;
         public bool HasReplayGain { get; set; } = false;
+        [NotMapped] public bool IsValid { get; set; } = true;
 
         private string waveformUnZipped = "";
         public string WaveformUnZipped {

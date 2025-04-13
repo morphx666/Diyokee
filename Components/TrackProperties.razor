@@ -83,21 +83,23 @@
 
     <div class="row">
         <div class="inner-properties-container">
-            <div class="field downbeat-container">
+            <div class="field bpm-container">
                 <label>Down beat</label>
                 <div class="field downbeat">
                     <InputNumber id="downbeatH" @bind-value="DownbeatAtHours" @oninput="(e) => DownbeatAtHours = int.Parse(e.Value.ToString())" hidden="true" /><span hidden="true">:</span>
                     <InputNumber id="downbeatM" @bind-value="DownbeatAtMinutes" @oninput="(e) => DownbeatAtMinutes = int.Parse(e.Value.ToString())" /><span>:</span>
                     <InputNumber id="downbeatM" @bind-value="DownbeatAtSeconds" @oninput="(e) => DownbeatAtSeconds = int.Parse(e.Value.ToString())" /><span>:</span>
-                    <InputNumber id="downbeatMs" @bind-value="DownbeatAtMiliSeconds" @oninput="(e) => DownbeatAtMiliSeconds = int.Parse(e.Value.ToString())" />
+                    <InputNumber id="downbeatMs" @bind-value="DownbeatAtMilliSeconds" @oninput="(e) => DownbeatAtMilliSeconds = int.Parse(e.Value.ToString())" />
                 </div>
                 <div class="recalculate" @onclick="ReCalcDownbeat"><i class="fa-solid fa-arrow-rotate-right"></i></div>
             </div>
 
-            <div class="field">
+            <div class="field bpm-container">
                 <label for"bpm">BPM</label>
-                <InputNumber id="bpm" class="as-number" @bind-value="Bpm" @oninput="(e) => Bpm = float.Parse(e.Value.ToString())" />
+                <InputNumber id="bpm" class="as-number" @bind-value="BPM" @oninput="(e) => BPM = float.Parse(e.Value.ToString())" />
                 <div class="recalculate" @onclick="ReCalcBpm"><i class="fa-solid fa-arrow-rotate-right"></i></div>
+                <div class="recalculate" @onclick="() => BpmMultiply(2.0)"><i class="fa-solid fa-xmark"></i>2</div>
+                <div class="recalculate" @onclick="() => BpmMultiply(0.5)"><i class="fa-solid fa-divide"></i>2</div>
             </div>
         </div>
 
@@ -190,7 +192,7 @@
         set {
             if(lastHrValue == value) return;
             lastHrValue = value;
-            file.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMiliSeconds);
+            file.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
@@ -200,7 +202,7 @@
         set {
             if(lastMinValue == value) return;
             lastMinValue = value;
-            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMiliSeconds);
+            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
@@ -210,12 +212,12 @@
         set {
             if(lastSecValue == value) return;
             lastSecValue = value;
-            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMiliSeconds);
+            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
-    private int DownbeatAtMiliSeconds {
+    private int DownbeatAtMilliSeconds {
         get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[2].Split('.')[1]);
         set {
             if(lastMsValue == value) return;
@@ -225,7 +227,7 @@
         }
     }
 
-    private float Bpm {
+    private float BPM {
         get => file.BPM;
         set {
             file.BPM = value;
@@ -234,12 +236,17 @@
     }
 
     private async void ReCalcBpm() {
-        file.BPM = Files.CalcBpm(file);
+        BPM = Files.CalcBpm(file);
         await InvokeAsync(StateHasChanged);
     }
 
     private async void ReCalcDownbeat() {
         file.DownbeatAt = Files.CalcDownbeat(file);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void BpmMultiply(double factor) {
+        BPM *= (float)factor;
         await InvokeAsync(StateHasChanged);
     }
 }

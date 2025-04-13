@@ -40,6 +40,10 @@
 
                 cursor: pointer;
 
+                &.invalid {
+                    background-color: rgb(var(--secondary));
+                }
+
                 &.selected {
                     background-color: var(--pale-blue)
                 }
