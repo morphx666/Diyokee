@@ -574,13 +574,17 @@
 
     private void DoJump(int direction) {
         long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
-        long offset = direction * Bass.BASS_ChannelSeconds2Bytes(fxHandle, jumpSize / beatsPerSecond);
-        if((p + offset < 0) || (p + offset > trackLengthBytes)) return;
-        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle,  p + offset);
+        long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(fxHandle, jumpSize / beatsPerSecond);
+        if(offset > trackLengthBytes) return;
+        if(offset < 0) offset = 0;
+
+        // FIXME: This doesn't work correctly while playing; may have to ask Ian about it ;)
+        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN);
     }
 
     private async Task MonitorBeats() {
         double threshold = 0.01;
+        bool lastState = false;
         while(true) {
             await Task.Delay(1);
 

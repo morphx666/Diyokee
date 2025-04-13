@@ -12,7 +12,7 @@
     class="main-console"
     tabindex="0"
     @onkeydown="HandleKeyDown"
-    @onkeydown:preventDefault="true"
+    @onkeydown:preventDefault="false"
     @onmousedown="HandleMouseDown"
     @onmousemove="HandleMouseMove"
     @onmouseup="HandleMouseUp"
@@ -21,11 +21,11 @@
         <div class="players" @ref="playersPanel">
             <div class="player">
                 <Player
-                Settings="Program.Settings.Playback.Players[0]"
-                File="@player1File"
-                RequestedFileCue="() => LoadSelectedFile(player1)"
-                OtherPlayer="@player2"
-                @ref="player1" />
+                    Settings="Program.Settings.Playback.Players[0]"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
             </div>
             <div class="mixer">
                 <div class="controls"></div>
@@ -37,20 +37,20 @@
             </div>
             <div class="player">
                 <Player
-                Settings="Program.Settings.Playback.Players[1]"
-                File="@player2File"
-                RequestedFileCue="() => LoadSelectedFile(player2)"
-                OtherPlayer="@player1"
-                @ref="player2" />
+                    Settings="Program.Settings.Playback.Players[1]"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
             </div>
         </div>
 
         <PanelResize
-        Orientation="PanelResize.Orientations.Vertical"
-        ResizeElement="playersPanel" 
-        Name="main-resize-vertical"
-        OnResizeEnd="HandleDividerResize"
-        Constrains="playersConstrains" />
+            Orientation="PanelResize.Orientations.Vertical"
+            ResizeElement="playersPanel" 
+            Name="main-resize-vertical"
+            OnResizeEnd="HandleDividerResize"
+            Constrains="playersConstrains" />
 
         <div class="media">
             <div class="sources panel" @ref="mediaProviderPanel">
@@ -58,18 +58,18 @@
             </div>
 
             <PanelResize
-            Orientation="PanelResize.Orientations.Horizontal"
-            ResizeElement="mediaProviderPanel"
-            Name="main-resize-horizontal"
-            OnResizeEnd="HandleDividerResize"
-            Constrains="mediaProviderConstrains" />
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize"
+                Constrains="mediaProviderConstrains" />
 
             <FilesUI
-            Provider="@mediaProvider"
-            RelativePath="@selectedFolder"
-            SelectedFileChanged="SelectedFileChanged"
-            TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
-            TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)" />
+                Provider="@mediaProvider"
+                RelativePath="@selectedFolder"
+                SelectedFileChanged="SelectedFileChanged"
+                TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
+                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)" />
         </div>
     </CascadingValue>
 
@@ -140,13 +140,15 @@
     }
 
     private void HandleKeyDown(KeyboardEventArgs e) {
-        if(e.CtrlKey) {
+        if(e.CtrlKey && e.AltKey) {
             switch(e.Code) {
                 case "KeyA":
                     player1File = selectedFile;
+                    shouldRender = true;
                     break;
                 case "KeyB":
                     player2File = selectedFile;
+                    shouldRender = true;
                     break;
                 case "KeyS":
                     SetPlayersMouseCapturing(false);

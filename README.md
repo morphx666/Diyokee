@@ -5,14 +5,14 @@ A work in progress DJ mixing webapp with streaming support
 
 ## App settings
 
-To access the settings dialog press the `Ctrl+S` key on your keyboard.  
+To access the settings dialog press the `Ctrl+Alt+S` key on your keyboard.  
 [Audio routing](https://xfx.net/ftp/diyokee-releases/diyokee-settings-audiomatrix.png) has not yet been implemented, but you can select the audio device to use for playback.
 Some settings cannot be yet configured by the Settings dialog, but you can edit the `settings.json` file manually.
 
 ## Basic usage
 
 - To load a track into a player, click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.  
-  You can also use `Ctrl+A` or `Ctrl+B` keys on your keyboard to load a track into the A or B player, respectively.
+  You can also use `Ctrl+Alt+A` or `Ctrl+Alt+B` keys on your keyboard to load a track into the A or B player, respectively.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button to start playing.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" width="12"> button to stop playback and move to the beginning of the track.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
