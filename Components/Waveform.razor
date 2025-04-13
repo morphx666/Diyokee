@@ -97,8 +97,10 @@
 
             double lastMousePosX = 0;
             await Task.Run(async () => {
+                double sensitivity = 0.75;
+                int delay = 60;
                 while(true) {
-                    await Task.Delay(60);
+                    await Task.Delay(delay);
                     if(!EnableMouseEvents) continue;
 
                     if(!IsMouseDown && mouseState != null && canvasBounds != null &&
@@ -116,7 +118,7 @@
                         if(mouseState?.ButtonsDown == 1) {
                             switch(Mode) {
                                 case Modes.AudioSynced:
-                                    PlaybackHead -= (long)(mouseState.X - lastMousePosX);
+                                    PlaybackHead -= (long)((mouseState.X - lastMousePosX) * sensitivity);
                                     lastMousePosX = mouseState.X;
                                     break;
                                 case Modes.Full:
@@ -132,8 +134,7 @@
             });
         }
 
-        if(ctx == null) ctx = await canvas.CreateCanvas2DAsync();
-        if(ctx != null) {
+        if((ctx = await canvas.CreateCanvas2DAsync()) != null) {
             try {
                 switch(Mode) {
                     case Modes.AudioSynced:

@@ -32,7 +32,12 @@
             <InputCheckbox id="lock-onplay" @bind-value="settings.Playback.LockOnPlay" />
         </div>
 
-        @* This could be removed is it's already available as a dropdown menu for each player *@
+        <div class="field">
+            <label for="sync-playback">Start playback in-sync with other player</label>
+            <InputCheckbox id="sync-playback" @bind-value="settings.Playback.SyncPlayback" />
+        </div>
+
+        @* This could be removed. It's already available as a dropdown menu for each player *@
         <div class="field">
             <label for="eq-profile">Equalizer Profile</label>
             <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
@@ -78,7 +83,7 @@
     private string mainOutputDevice = "";
     private bool mainOutputDeviceAcVisible = false;
     private List<Device> outputDevices = new();
-    private bool useAudioMatrix = true;
+    private bool useAudioMatrix = false;
 
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;

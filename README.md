@@ -44,7 +44,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-04-11
+Windows|x64|Working|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-04-13
 Linux|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-04-11
 Linux|Arm|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2025-04-11
 MacOS|x64|Working[^1]|[⭳](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-04-11

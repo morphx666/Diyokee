@@ -47,13 +47,13 @@
     [readonly="true"] {
         cursor: default;
     }
-}
 
-::deep .player-container {
-    height: 250px;
-    width: 100%;
+    .player-container {
+        height: 250px;
+        width: 100%;
 
-    background-color: var(--panel-background-color-light);
+        background-color: var(--panel-background-color-light);
+    }
 }
 
 .filename {

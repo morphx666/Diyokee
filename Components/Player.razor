@@ -70,7 +70,7 @@
     </div>
 
     <div class="transport">
-        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, true)"><i class="fa-solid fa-play"></i></div>
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
             @onmousedown="(e) => HandlePlayClick(e, false)"
@@ -520,7 +520,7 @@
         SetLoopSize(loopSize, true);
     }
 
-    private SYNCPROC syncProc = null!;
+    private SYNCPROC loopSyncProc = null!;
     private void SetLoopSize(double size, bool resetStart) {
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
@@ -533,7 +533,7 @@
         if(loop.BASSHandle != 0) {
             Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
             loop.BASSHandle = 0;
-        } else if(syncProc == null) syncProc = new SYNCPROC(DoLoop);
+        } else if(loopSyncProc == null) loopSyncProc = new SYNCPROC(DoLoop);
 
         if(loop.Enabled) {
             loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.Start);
@@ -545,7 +545,7 @@
             }
 
             Bass.BASS_ChannelLock(fxHandle, true);
-            loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, syncProc, IntPtr.Zero);
+            loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
             Bass.BASS_ChannelLock(fxHandle, false);
         }
     }
@@ -588,7 +588,10 @@
 
     private async Task MonitorBeats() {
         double threshold = 0.01;
-        bool lastState = false;
+        bool beatFlag = false;
+        bool lastInBeat = false;
+        bool checkFlag = true;
+        int interval = 0;
         while(true) {
             await Task.Delay(1);
 
@@ -598,14 +601,32 @@
                 double beatsInterval = 1 / beatsPerSecond;
                 double d = playbackPosition / beatsInterval;
                 double fp = d - Math.Floor(d);
-                InBeat = fp < threshold;
+                bool inBeat = fp < threshold;
+
+                if(inBeat && checkFlag) {
+                    beatFlag = !beatFlag;
+                    lastInBeat = inBeat;
+                    checkFlag = false;
+                    this.InBeat = beatFlag;
+                } else if(!inBeat && !checkFlag) {
+                    checkFlag = true;
+                }
+
+                if(++interval > 30) {
+                    float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                    float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
+
+                    vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], beatFlag ? 2 : 1);
+
+                    interval = 0;
+                }
             }
         }
     }
 
     private async Task MonitorPlayback() {
-        int delay = 60;
         int intervals = 0;
+        int delay = 60;
         while(true) {
             await Task.Delay(delay);
 
@@ -622,11 +643,11 @@
                 }
                 //playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
 
-                float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
-                if(levelsReal != null && levelsMonitor != null) {
-                    vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0]);
-                }
+                // float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                // float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
+                // if(levelsReal != null && levelsMonitor != null) {
+                //     vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], 0);
+                // }
 
                 await waveform.Refresh();
                 if(intervals % 5 == 0) await waveformFull!.Refresh();

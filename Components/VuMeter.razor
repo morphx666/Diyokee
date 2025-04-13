@@ -19,12 +19,14 @@
 
     private double levelReal = 0.0;
     private double levelMonitor = 0.0;
+    private int beat = 0;
     private int vuSize = 5;
 
-    public async void SetLevel(double real, double monitor) {
-        if(levelReal == real && levelMonitor == monitor) return;
+    public async void SetLevel(double real, double monitor, int beat) {
+        if(levelReal == real && levelMonitor == monitor && beat == this.beat) return;
         levelReal = real;
         levelMonitor = monitor;
+        this.beat = beat;
         await InvokeAsync(StateHasChanged);
     }
 
@@ -32,7 +34,7 @@
     public async Task OnResize() {
         double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
         canvasWidth = (long)canvasSize[0];
-        canvasHeight = (long)canvasSize[1];
+        canvasHeight = (long)canvasSize[1] - 8;
         canvasRatio = canvasSize[2];
 
         await InvokeAsync(StateHasChanged);
@@ -62,7 +64,7 @@
 
         await ctx.ClearRectAsync(0, 0, cw, ch);
 
-        double max_ch = ch - (ch % vuSize);
+        double max_ch = (ch-10) - ((ch-10) % vuSize);
         for(int y = (int)((ch - max_ch) / 2); y < max_ch; y += vuSize) {
             double levelReal2y = (1 - levelReal) * max_ch;
             double levelMonitor2y = (1 - levelMonitor) * max_ch;
@@ -86,9 +88,23 @@
             } else {
                 await ctx.SetFillStyleAsync("#0c0");
             }
-            
+
             await ctx.FillRectAsync(0, y, cw, vuSize - 1);
         }
+
+        await ctx.SetStrokeStyleAsync("#111");
+
+        await ctx.BeginPathAsync();
+        await ctx.SetFillStyleAsync(beat == 1 ? "#f88" : "#444");
+        await ctx.ArcAsync(4, ch - 3, 3, 0, 2 * Math.PI);
+        await ctx.FillAsync();
+        await ctx.StrokeAsync();
+
+        await ctx.BeginPathAsync();
+        await ctx.SetFillStyleAsync(beat == 2 ? "#08f" : "#444");
+        await ctx.ArcAsync(cw - 4, ch - 3, 3, 0, 2 * Math.PI);
+        await ctx.FillAsync();
+        await ctx.StrokeAsync();
 
         await ctx.EndBatchAsync();
     }

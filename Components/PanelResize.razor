@@ -105,7 +105,9 @@
 
             await Task.Run(async () => {
                 bool isValid = false;
+                int delay = 60;
                 while(true) {
+                    await Task.Delay(delay);
                     if(!isValid && dividerBounds != null &&
                         !mouseState.IsCaptured &&
                         mouseState.ButtonsDown == 1 &&
@@ -138,8 +140,6 @@
                             }
                         }
                     }
-
-                    await Task.Delay(50);
                 }
             });
         }

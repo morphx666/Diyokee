@@ -76,8 +76,9 @@
 
             await Task.Run(async () => {
                 bool isValid = false;
+                int delay = 60;
                 while(true) {
-                    await Task.Delay(50);
+                    await Task.Delay(delay);
                     if(!EnableMouseEvents) continue;
 
                     if(!isValid && knobBounds != null &&
