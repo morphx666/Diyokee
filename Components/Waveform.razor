@@ -8,6 +8,12 @@
 <div class="waveform-container">
     <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
     <div class="cursor" style="@GetCursorCss()"></div>
+    @if(Mode == Modes.AudioSynced) {
+        <div class="zoom-controls">
+            <div @onclick="() => Zoom(+1)"><i class="fa-solid fa-plus"></i></div>
+            <div @onclick="() => Zoom(-1)"><i class="fa-solid fa-minus"></i></div>
+        </div>
+    }
 </div>
 
 @code {
@@ -24,6 +30,8 @@
     private long canvasWidth = 0;
     private long canvasHeight = 0;
     private double canvasRatio = 1.0;
+    private Bounds? canvasBounds;
+    private Bounds? zoomControlsBounds;
 
     private long waveformId = 0;
     private long lastWaveformId = 0;
@@ -31,9 +39,6 @@
 
     [Parameter]
     public string CssColor { get; set; } = "#444";
-
-    [Parameter]
-    public int WaveformBarWidth { get; set; }
 
     [Parameter]
     public double[] Peaks { get; set; } = [];
@@ -61,12 +66,14 @@
     [Parameter]
     public Loop Loop { get; set; } = new();
 
+    [Parameter]
+    public Player Player { get; set; }
+
     public bool EnableMouseEvents { get; set; } = true;
 
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
-    private Bounds? canvasBounds;
 
     public async Task Refresh() {
         await InvokeAsync(StateHasChanged);
@@ -84,6 +91,12 @@
         canvasRatio = canvasSize[2];
 
         canvasBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", canvas.CanvasReference));
+        zoomControlsBounds = new(new double[] { // FIXME: This will fail if the browser is zoomed in/out
+            canvasBounds.X + canvasWidth - 25,
+            canvasBounds.Y,
+            25,
+            46
+        });
         if(Mode == Modes.Full) forceRenderWaveformFull = true;
     }
 
@@ -103,11 +116,13 @@
                     await Task.Delay(delay);
                     if(!EnableMouseEvents) continue;
 
-                    if(!IsMouseDown && mouseState != null && canvasBounds != null &&
-                        !mouseState.IsCaptured &&
-                        mouseState.ButtonsDown == 1 &&
-                        canvasBounds.Contains(mouseState.X, mouseState.Y)) {
-
+                    if(!IsMouseDown
+                        && mouseState != null
+                        && canvasBounds != null
+                        && !mouseState.IsCaptured
+                        && mouseState.ButtonsDown == 1
+                        && canvasBounds.Contains(mouseState.X, mouseState.Y)
+                        && !zoomControlsBounds.Contains(mouseState.X, mouseState.Y)) {
                         await Task.Delay(15); // Wait for the mouse to settle before setting the initial mousedown position
                         lastMousePosX = mouseState.X;
                         mouseState.IsCaptured = true;
@@ -225,11 +240,11 @@
 
         // Render waveform
         await ctx.SetFillStyleAsync(CssColor);
-        for(int i = (int)Math.Max(0, (PlaybackHead - cw2) / WaveformBarWidth - 1); i < Peaks.Length; i++) {
-            double x = i * WaveformBarWidth + cw2 - PlaybackHead;
+        for(int i = (int)Math.Max(0, (PlaybackHead - cw2) / Player.WaveformBarWidth - 1); i < Peaks.Length; i++) {
+            double x = i * Player.WaveformBarWidth + cw2 - PlaybackHead;
             if(x >= cw) break;
             double y = ch2 - Peaks[i] / MaxPeak * ch2;
-            await ctx.FillRectAsync(x, y, WaveformBarWidth - 1, ch - y * 2);
+            await ctx.FillRectAsync(x, y, Player.WaveformBarWidth - 1, ch - y * 2);
         }
 
         // Render beat markers
@@ -258,11 +273,22 @@
             double x2 = Loop.End * SecondsToPosX + cw2 - PlaybackHead;
 
             //if((x1 >= 0 && x1 <= cw) || (x2 >= 0 && x2 <= cw)) {
-                await ctx.SetFillStyleAsync(CssColor + "55");
-                await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
+            await ctx.SetFillStyleAsync(CssColor + "55");
+            await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
             //}
         }
 
         await ctx.EndBatchAsync();
+    }
+
+    private async void Zoom(int factor) {
+        Player.WaveformBarWidth += factor;
+        if(Player.WaveformBarWidth < 2) Player.WaveformBarWidth = 2;
+        if(Player.WaveformBarWidth > 10) Player.WaveformBarWidth = 10;
+        Player.SetParameters();
+
+        if(!Player.MinimalMode) {
+            Program.Settings.Playback.WaveformZoom = Player.WaveformBarWidth;
+        }        
     }
 }

@@ -36,6 +36,7 @@ namespace Diyokee {
                 new() { Name = "A", Color = "#977696" },
                 new() { Name = "B", Color = "#279597" },
             ];
+            [JsonProperty("waveform-zoom")] public int WaveformZoom { get; set; } = 5;
         }
 
         public class PlayerSettings {

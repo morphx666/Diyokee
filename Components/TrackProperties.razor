@@ -1,10 +1,12 @@
 ﻿@using Diyokee.Data
 @using Microsoft.EntityFrameworkCore
+@using System.Diagnostics
 @using static Diyokee.Settings
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 @inject IJSRuntime JS
 
-<ModalDialog Title="Track Properties"
+<ModalDialog
+    Title="Track Properties"
     @ref="dialog"
     OnClose="Close"
     OnSave="Save">
@@ -163,11 +165,11 @@
 
         @if(playerVisible) {
             <Player
-            Settings="@(new() {
-                        Name="Preview",
-                        Color="#82871f"
-                    })"
-            MinimalMode="true"
+                Settings="@(new() {
+                            Name="Preview",
+                            Color="#82871f"
+                        })"
+                MinimalMode="true"
             @ref="player" />
         }
     </div>
@@ -231,6 +233,7 @@
                 await Task.Delay(10);
             }
 
+            player.WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
             player!.SetFile(this.file);
             dialog.Open();
         });

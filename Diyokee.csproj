@@ -4,8 +4,8 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyVersion>2025.4.14.2729</AssemblyVersion>
-		<FileVersion>2025.4.14.2729</FileVersion>
+		<AssemblyVersion>2025.4.14.2751</AssemblyVersion>
+		<FileVersion>2025.4.14.2751</FileVersion>
 		<Title>Diyokee</Title>
 		<UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
 	</PropertyGroup>

@@ -120,10 +120,11 @@
                     await Task.Delay(delay);
                     if(!EnableMouseEvents) continue;
 
-                    if(!isValid && faderBounds != null &&
-                        !mouseState.IsCaptured &&
-                        mouseState.ButtonsDown == 1 &&
-                        faderBounds.Contains(mouseState.X, mouseState.Y)) {
+                    if(!isValid
+                        && faderBounds != null
+                        && !mouseState.IsCaptured
+                        && mouseState.ButtonsDown == 1
+                        && faderBounds.Contains(mouseState.X, mouseState.Y)) {
 
                         mouseState.IsCaptured = true;
                         isValid = true;

@@ -108,11 +108,11 @@
                 int delay = 60;
                 while(true) {
                     await Task.Delay(delay);
-                    if(!isValid && dividerBounds != null &&
-                        !mouseState.IsCaptured &&
-                        mouseState.ButtonsDown == 1 &&
-                        dividerBounds.Contains(mouseState.X, mouseState.Y)) {
-
+                    if(!isValid
+                        && dividerBounds != null
+                        && !mouseState.IsCaptured
+                        && mouseState.ButtonsDown == 1
+                        && dividerBounds.Contains(mouseState.X, mouseState.Y)) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }
