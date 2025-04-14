@@ -1,2 +1,2 @@
 @echo off
-dotnet watch
+dotnet watch run --launch-profile https

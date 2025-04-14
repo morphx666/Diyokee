@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        // {
+        //     "name": "Debug",
+        //     "type": "PowerShell",
+        //     "request": "launch",
+        //     "script": "${workspaceFolder}/go.bat",
+        //     "postDebugTask": {
+        //         "label": "kill Diyokee",
+        //         "command": "taskkill",
+        //         "args": [
+        //             "/f",
+        //             "/fi",
+        //             "\"IMAGENAME eq Diyokee-server.exe\""
+        //         ],
+        //     }
+        // },
+    ]
+}

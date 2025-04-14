@@ -8,7 +8,7 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "https://xfx.no-ip.org:5000/",
-      "dotnetRunMessages": true
+      "dotnetRunMessages": true,
     },
     "watch": {
       "commandName": "Project",

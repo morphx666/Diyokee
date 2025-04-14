@@ -38,7 +38,7 @@
         <Waveform CssColor="@Settings.Color"
             Mode="Waveform.Modes.Full"
             BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            DownbeatAt="@fileDownbeatAt"
             MaxPeak="@maxPeak"
             Peaks="@peaks"
             SecondsToPosX="@secondsToPosX"
@@ -51,7 +51,7 @@
         <Waveform CssColor="@Settings.Color"
             Mode="Waveform.Modes.AudioSynced"
             BeatMarkers="@beatMarkers"
-            DownbeatAt="@(file?.DownbeatAt ?? -1)"
+            DownbeatAt="@fileDownbeatAt"
             MaxPeak="@maxPeak"
             Peaks="@peaks"
             SecondsToPosX="@secondsToPosX"
@@ -96,8 +96,7 @@
             <div class="button-thin led @(loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
-                    <div
-                        class="button @(loopSize == size.Item2 ? "selected" : "")"
+                    <div class="button @(loopSize == size.Item2 ? "selected" : "")"
                         @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
@@ -106,8 +105,7 @@
             <div class="button-thin no-click">Jump</div>
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
-                    <div
-                        class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                    <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
                         @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
@@ -142,6 +140,7 @@
     public Eq EqControls = null!;
 
     private double fileBPM = 0;
+    private double fileDownbeatAt = 0;
     private const int waveformBarWidth = 5;
     private int waveformWidth = 0;
     private long trackLengthBytes = 0;
@@ -151,6 +150,7 @@
     private double[] peaks = [];
     private double maxPeak = 1.0;
     private double beatsPerSecond;
+    private double secondsPerBeat;
     private double secondsToPosX;
     private double currentTempoValue;
 
@@ -204,6 +204,8 @@
     public bool MinimalMode { get; set; } = false;
 
     public bool InBeat { get; set; } = false;
+
+    public int InBeatIndex { get; set; } = 1;
 
     private bool enableMouseEvents = true;
     public bool EnableMouseEvents {
@@ -281,9 +283,9 @@
                 Task.Run(async () => { // TODO: This should be optional
                     while(true) {
                         await Task.Delay(1);
-                        if(OtherPlayer.InBeat) {
+                        if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == InBeatIndex) {
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
-                            long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, (1 / beatsPerSecond) / 10);
+                            long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
                             BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p + offset);
 
                             BassMix.BASS_Mixer_ChannelPlay(fxHandle);
@@ -465,9 +467,12 @@
 
         waveformWidth = peaks.Length * waveformBarWidth;
         beatsPerSecond = file!.BPM / 60.0;
+        secondsPerBeat = 1.0 / beatsPerSecond;
         secondsToPosX = 1.0 / (file.Duration == 0 ? 1 : file.Duration) * waveformWidth;
 
+        // Cache values to avoid having to check for nullability every time
         fileBPM = file.BPM;
+        fileDownbeatAt = file.DownbeatAt;
 
         // x = s / file.Duration * waveformWidth
         // s = x / waveformWidth * file.Duration
@@ -479,18 +484,18 @@
     }
 
     private void GenerateBeatMarkers() {
-        if(file!.DownbeatAt == -1) return;
+        if(fileDownbeatAt == -1) return;
 
-        double t1 = file.DownbeatAt;
-        double t2 = t1 - 1 / beatsPerSecond;
-        while(t1 < file.Duration || t2 >= 0) {
+        double t1 = fileDownbeatAt;
+        double t2 = t1 - secondsPerBeat;
+        while(t1 < file!.Duration || t2 >= 0) {
             if(t1 < file.Duration) {
                 beatMarkers.Add((t1 * secondsToPosX, t1));
-                t1 += 1 / beatsPerSecond;
+                t1 += secondsPerBeat;
             }
             if(t2 >= 0) {
                 beatMarkers.Insert(0, (t2 * secondsToPosX, t2));
-                t2 -= 1 / beatsPerSecond;
+                t2 -= secondsPerBeat;
             }
         }
     }
@@ -586,37 +591,34 @@
         BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN);
     }
 
+    // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it
+    // Disabling it would disable the playback sync and the beat monitor
     private async Task MonitorBeats() {
         double threshold = 0.01;
-        bool beatFlag = false;
-        bool lastInBeat = false;
-        bool checkFlag = true;
         int interval = 0;
         while(true) {
             await Task.Delay(1);
 
-            if(IsPlaying) {
+            if(Bass.BASS_ChannelIsActive(fxHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
                 playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
 
-                double beatsInterval = 1 / beatsPerSecond;
-                double d = playbackPosition / beatsInterval;
-                double fp = d - Math.Floor(d);
-                bool inBeat = fp < threshold;
-
-                if(inBeat && checkFlag) {
-                    beatFlag = !beatFlag;
-                    lastInBeat = inBeat;
-                    checkFlag = false;
-                    this.InBeat = beatFlag;
-                } else if(!inBeat && !checkFlag) {
-                    checkFlag = true;
+                InBeat = false;
+                for(int i = 0; i < beatMarkers.Count; i++) {
+                    if(Math.Abs(beatMarkers[i].Seconds - playbackPosition) < threshold) {
+                        InBeatIndex = i % 2 + 1;
+                        InBeat = true;
+                        break;
+                    }
                 }
 
                 if(++interval > 30) {
-                    float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                    float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
-
-                    vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], beatFlag ? 2 : 1);
+                    if(IsPlaying) {
+                        float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                        float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
+                        vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], InBeatIndex);
+                    } else {
+                        vuMeter?.SetLevel(0, 0, InBeatIndex);
+                    }
 
                     interval = 0;
                 }
@@ -641,13 +643,6 @@
                     waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle) * waveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
                 }
-                //playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
-
-                // float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                // float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
-                // if(levelsReal != null && levelsMonitor != null) {
-                //     vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], 0);
-                // }
 
                 await waveform.Refresh();
                 if(intervals % 5 == 0) await waveformFull!.Refresh();

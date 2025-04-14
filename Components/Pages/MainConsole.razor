@@ -16,7 +16,8 @@
     @onmousedown="HandleMouseDown"
     @onmousemove="HandleMouseMove"
     @onmouseup="HandleMouseUp"
-    @onmousewheel="HandleMouseWheel">
+    @onmousewheel="HandleMouseWheel"
+    @onwheel="HandleMouseWheel">
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">

@@ -34,7 +34,7 @@
     public async Task OnResize() {
         double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
         canvasWidth = (long)canvasSize[0];
-        canvasHeight = (long)canvasSize[1] - 8;
+        canvasHeight = (long)canvasSize[1];
         canvasRatio = canvasSize[2];
 
         await InvokeAsync(StateHasChanged);
