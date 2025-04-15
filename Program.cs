@@ -23,6 +23,7 @@ internal class Program {
 #endif
 
         Settings = Settings.Load().GetAwaiter().GetResult();
+        AutoSave();
 
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
@@ -100,6 +101,15 @@ internal class Program {
         SetupBASS();
 
         app.Run();
+    }
+
+    private static void AutoSave() {
+        Task.Run(async () => {
+            while(true) {
+                await Task.Delay(5000);
+                await Settings.Save();
+            }
+        });
     }
 
     private static void SetupBASS() {

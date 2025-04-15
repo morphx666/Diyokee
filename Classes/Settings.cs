@@ -84,21 +84,11 @@ namespace Diyokee {
                     ]);
                 }
 
-                settings.AutoSave();
                 return settings;
             } else {
                 Settings settings = new();
                 return settings;
             }
-        }
-
-        public void AutoSave() {
-            Task.Run(async () => {
-                while(true) {
-                    await Task.Delay(5000);
-                    await Save();
-                }
-            });
         }
 
         public async Task Save() {
