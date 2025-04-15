@@ -36,29 +36,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Player="this"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
-    <div class="waveform">
+    <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Loop="loop"
-        Player="this"
-        @ref="waveform" />
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Loop="loop"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />

@@ -59,6 +59,10 @@
                     <label for="@($"player{player.Name}-color")">Color</label>
                     <InputText id="@($"player{player.Name}-color")" @bind-value="player.Color" />
                 </div>
+                <div class="field">
+                    <label for="reverse-controls">Reverse Controls Order</label>
+                    <InputCheckbox id="reverse-controls" @bind-value="player.ReverseControls" />
+                </div>
             </div>
         }
     </div>

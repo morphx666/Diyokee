@@ -69,6 +69,10 @@
         
         background-color: var(--panel-background-color-light);
 
+        &.reverse {
+            flex-direction: row-reverse;
+        }
+
         ::deep .vumeter-container {
             min-width: 32px;
             max-width: 32px;

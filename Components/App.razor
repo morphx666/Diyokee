@@ -92,6 +92,10 @@
                 });
             }, 500);
         };
+
+        forceRefresh = () => {
+            window.dispatchEvent(new Event('resize'));
+        }
     </script>
 </body>
 

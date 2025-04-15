@@ -9,24 +9,24 @@
 <PageTitle>Diyokee</PageTitle>
 
 <div
-    class="main-console"
-    tabindex="0"
-    @onkeydown="HandleKeyDown"
-    @onkeydown:preventDefault="false"
-    @onmousedown="HandleMouseDown"
-    @onmousemove="HandleMouseMove"
-    @onmouseup="HandleMouseUp"
-    @onmousewheel="HandleMouseWheel"
-    @onwheel="HandleMouseWheel">
+class="main-console"
+tabindex="0"
+@onkeydown="HandleKeyDown"
+@onkeydown:preventDefault="false"
+@onmousedown="HandleMouseDown"
+@onmousemove="HandleMouseMove"
+@onmouseup="HandleMouseUp"
+@onmousewheel="HandleMouseWheel"
+@onwheel="HandleMouseWheel">
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
                 <Player
-                    Settings="Program.Settings.Playback.Players[0]"
-                    File="@player1File"
-                    RequestedFileCue="() => LoadSelectedFile(player1)"
-                    OtherPlayer="@player2"
-                    @ref="player1" />
+                Settings="Program.Settings.Playback.Players[0]"
+                File="@player1File"
+                RequestedFileCue="() => LoadSelectedFile(player1)"
+                OtherPlayer="@player2"
+                @ref="player1" />
             </div>
             <div class="mixer">
                 <div class="controls"></div>
@@ -38,20 +38,20 @@
             </div>
             <div class="player">
                 <Player
-                    Settings="Program.Settings.Playback.Players[1]"
-                    File="@player2File"
-                    RequestedFileCue="() => LoadSelectedFile(player2)"
-                    OtherPlayer="@player1"
-                    @ref="player2" />
+                Settings="Program.Settings.Playback.Players[1]"
+                File="@player2File"
+                RequestedFileCue="() => LoadSelectedFile(player2)"
+                OtherPlayer="@player1"
+                @ref="player2" />
             </div>
         </div>
 
         <PanelResize
-            Orientation="PanelResize.Orientations.Vertical"
-            ResizeElement="playersPanel" 
-            Name="main-resize-vertical"
-            OnResizeEnd="HandleDividerResize"
-            Constrains="playersConstrains" />
+        Orientation="PanelResize.Orientations.Vertical"
+        ResizeElement="playersPanel" 
+        Name="main-resize-vertical"
+        OnResizeEnd="HandleDividerResize"
+        Constrains="playersConstrains" />
 
         <div class="media">
             <div class="sources panel" @ref="mediaProviderPanel">
@@ -59,18 +59,18 @@
             </div>
 
             <PanelResize
-                Orientation="PanelResize.Orientations.Horizontal"
-                ResizeElement="mediaProviderPanel"
-                Name="main-resize-horizontal"
-                OnResizeEnd="HandleDividerResize"
-                Constrains="mediaProviderConstrains" />
+            Orientation="PanelResize.Orientations.Horizontal"
+            ResizeElement="mediaProviderPanel"
+            Name="main-resize-horizontal"
+            OnResizeEnd="HandleDividerResize"
+            Constrains="mediaProviderConstrains" />
 
             <FilesUI
-                Provider="@mediaProvider"
-                RelativePath="@selectedFolder"
-                SelectedFileChanged="SelectedFileChanged"
-                TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
-                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)" />
+            Provider="@mediaProvider"
+            RelativePath="@selectedFolder"
+            SelectedFileChanged="SelectedFileChanged"
+            TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
+            TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)" />
         </div>
     </CascadingValue>
 
@@ -222,6 +222,8 @@
         EqualizerProfile equalizerProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
         player1!.EqControls.EqProfile = equalizerProfile;
         player2!.EqControls.EqProfile = equalizerProfile;
+
+        await JS.InvokeVoidAsync("forceRefresh");
 
         shouldRender = true;
         await InvokeAsync(StateHasChanged);

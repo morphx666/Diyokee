@@ -45,6 +45,7 @@ namespace Diyokee {
             [JsonProperty("loopjump-lock")] public bool LoopJumpLock { get; set; } = true;
             [JsonProperty("loop-size")] public double LoopSize { get; set; } = 8;
             [JsonProperty("jump-size")] public double JumpSize { get; set; } = 8;
+            [JsonProperty("reverse-controls")] public bool ReverseControls { get; set; } = false;
         }
 
         [JsonProperty("webhost-url")] public string WebHostUrl { get; set; } = "http://localhost:5000";
