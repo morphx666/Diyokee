@@ -37,7 +37,10 @@ OnClose="Close"
             <InputCheckbox id="sync-playback" @bind-value="settings.Playback.SyncPlayback" />
         </div>
 
-        @* This could be removed. It's already available as a dropdown menu for each player *@
+        @*
+            FIXME: This could be removed. It's already available as a dropdown menu for each player.
+            Or perhaps we should remove the dropdown menus from the main UI
+        *@
         <div class="field">
             <label for="eq-profile">Equalizer Profile</label>
             <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
@@ -47,21 +50,21 @@ OnClose="Close"
             </InputSelect>
         </div>
 
-        @foreach((Settings.PlayerSettings player, int index) playerWithIndex in settings.Playback.Players.ToArrayWithIndex()) {
+        @foreach((Settings.PlayerSettings player, int index) withIndex in settings.Playback.Players.WithIndex()) {
             <div class="sub-header">
-                <h5>Player @(playerWithIndex.index + 1)</h5>
+                <h5>Player @(withIndex.index + 1)</h5>
 
                 <div class="field">
-                    <label for="@($"player{playerWithIndex.index}-name")">Name</label>
-                    <InputText id="@($"player{playerWithIndex.index}-name")" @bind-value="playerWithIndex.player.Name" />
+                    <label for="@($"player{withIndex.index}-name")">Name</label>
+                    <InputText id="@($"player{withIndex.index}-name")" @bind-value="withIndex.player.Name" />
                 </div>
                 <div class="field">
-                    <label for="@($"player{playerWithIndex.index}-color")">Color</label>
-                    <InputText id="@($"player{playerWithIndex.index}-color")" @bind-value="playerWithIndex.player.Color" />
+                    <label for="@($"player{withIndex.index}-color")">Color</label>
+                    <InputText id="@($"player{withIndex.index}-color")" @bind-value="withIndex.player.Color" />
                 </div>
                 <div class="field">
-                    <label for="@($"player{playerWithIndex.index}-reverse-controls")">Reverse Controls Order</label>
-                    <InputCheckbox id="@($"player{playerWithIndex.index}-reverse-controls")" @bind-value="playerWithIndex.player.ReverseControls" />
+                    <label for="@($"player{withIndex.index}-reverse-controls")">Reverse Controls Order</label>
+                    <InputCheckbox id="@($"player{withIndex.index}-reverse-controls")" @bind-value="withIndex.player.ReverseControls" />
                 </div>
             </div>
         }
