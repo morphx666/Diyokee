@@ -1,10 +1,10 @@
 ﻿@using Un4seen.Bass
-    <ModalDialog
-        Title="Settings"
-        OnSave="Save"
-        OnClose="Close"
-        @ref="dialog">
 
+<ModalDialog
+Title="Settings"
+OnSave="Save"
+OnClose="Close"
+@ref="dialog">
     @if(settings == null) return;
     <div class="header">
         <h4>Audio</h4>
@@ -47,21 +47,21 @@
             </InputSelect>
         </div>
 
-        @foreach(var player in settings.Playback.Players) {
+        @foreach((Settings.PlayerSettings player, int index) playerWithIndex in settings.Playback.Players.ToArrayWithIndex()) {
             <div class="sub-header">
-                <h5>Player @player.Name</h5>
-            
+                <h5>Player @(playerWithIndex.index + 1)</h5>
+
                 <div class="field">
-                    <label for="@($"player{player.Name}-name")">Name</label>
-                    <InputText id="@($"player{player.Name}-name")" @bind-value="player.Name" />
+                    <label for="@($"player{playerWithIndex.index}-name")">Name</label>
+                    <InputText id="@($"player{playerWithIndex.index}-name")" @bind-value="playerWithIndex.player.Name" />
                 </div>
                 <div class="field">
-                    <label for="@($"player{player.Name}-color")">Color</label>
-                    <InputText id="@($"player{player.Name}-color")" @bind-value="player.Color" />
+                    <label for="@($"player{playerWithIndex.index}-color")">Color</label>
+                    <InputText id="@($"player{playerWithIndex.index}-color")" @bind-value="playerWithIndex.player.Color" />
                 </div>
                 <div class="field">
-                    <label for="reverse-controls">Reverse Controls Order</label>
-                    <InputCheckbox id="reverse-controls" @bind-value="player.ReverseControls" />
+                    <label for="@($"player{playerWithIndex.index}-reverse-controls")">Reverse Controls Order</label>
+                    <InputCheckbox id="@($"player{playerWithIndex.index}-reverse-controls")" @bind-value="playerWithIndex.player.ReverseControls" />
                 </div>
             </div>
         }
