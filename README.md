@@ -59,5 +59,7 @@ This project wouldn't have been possible without the following:
 - [Icons8](https://icons8.com/)
 - [Font Awesome](https://fontawesome.com/)
 
+![Alt](https://repobeats.axiom.co/api/embed/c2c1360a9361b0aa67fab23ec95bcf536a4421b4.svg "Repobeats analytics image")
+
 [^1]: File attributes may be lost when running the app under linux-like systems, including MacOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
