@@ -1,11 +1,11 @@
 # Diyokee
-A work in progress DJ mixing webapp with streaming support
+A work in progress, DJ mixing webapp with streaming support
 
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s2.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
 
-To access the settings dialog press the `Ctrl+Alt+S` key on your keyboard.  
+To access the settings dialog, press the `Ctrl+Alt+S` key on your keyboard.  
 [Audio routing](https://xfx.net/ftp/diyokee-releases/diyokee-settings-audiomatrix.png) has not yet been implemented, but you can select the audio device to use for playback.
 Some settings cannot be yet configured by the Settings dialog, but you can edit the `settings.json` file manually.
 
@@ -59,5 +59,7 @@ This project wouldn't have been possible without the following:
 - [Icons8](https://icons8.com/)
 - [Font Awesome](https://fontawesome.com/)
 
-[^1]: File attributes may be lost when running the app under linux-like systems, including MacOS.  
+![Alt](https://repobeats.axiom.co/api/embed/c2c1360a9361b0aa67fab23ec95bcf536a4421b4.svg "Repobeats analytics image")
+
+[^1]: File attributes may be lost when running the app under Linux-like systems, including macOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
