@@ -1,11 +1,13 @@
 ﻿@using Un4seen.Bass
 
 <ModalDialog
-Title="Settings"
-OnSave="Save"
-OnClose="Close"
-@ref="dialog">
+    Title="Settings"
+    OnSave="Save"
+    OnClose="Close"
+    @ref="dialog">
+
     @if(settings == null) return;
+
     <div class="header">
         <h4>Audio</h4>
 
@@ -60,7 +62,11 @@ OnClose="Close"
                 </div>
                 <div class="field">
                     <label for="@($"player{withIndex.index}-color")">Color</label>
-                    <InputText id="@($"player{withIndex.index}-color")" @bind-value="withIndex.player.Color" />
+                    <InputText
+                        class="as-number"
+                        id="@($"player{withIndex.index}-color")"
+                        @bind-value="withIndex.player.Color" />
+                    <div class="color" style="background-color: @(withIndex.player.Color)"></div>
                 </div>
                 <div class="field">
                     <label for="@($"player{withIndex.index}-reverse-controls")">Reverse Controls Order</label>
@@ -90,7 +96,7 @@ OnClose="Close"
     private string mainOutputDevice = "";
     private bool mainOutputDeviceAcVisible = false;
     private List<Device> outputDevices = new();
-    private bool useAudioMatrix = false;
+    private const bool useAudioMatrix = false;
 
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;

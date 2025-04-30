@@ -1,6 +1,11 @@
 ﻿h4 {
     color: var(--text-white);
     border-bottom: 1px solid var(--panel-background-color-light);
+    margin-bottom: 1rem;
+}
+
+h5 {
+    margin-bottom: 0.6rem;
 }
 
 .note {
@@ -10,15 +15,9 @@
 
 .field label {
     text-align: left !important;
+    max-width: unset !important;
 }
 
-h4 {
-    margin-bottom: 1rem;
-}
-
-h5 {
-    margin-bottom: 0.6rem;
-}
 
 .sub-header {
     display: flex;
@@ -27,6 +26,14 @@ h5 {
     margin-left: 2rem;
 }
 
-label {
-    max-width: unset !important;
+::deep input.as-number {
+    max-width: 5rem !important;
+}
+
+.color {
+    width: calc(1.7rem + 2px);
+    aspect-ratio: 1;
+    padding: 0px;
+    margin-left: 0.5rem;
+    border: 1px solid var(--panel-background-color-light);
 }

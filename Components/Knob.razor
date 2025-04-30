@@ -94,11 +94,7 @@
                         if(mouseState?.ButtonsDown == 1) {
                             double offset = mouseState.Y - knobBounds!.Y;
                             double newValue = (knobSize - offset) / knobSize;
-                            if(newValue < 0) {
-                                newValue = 0;
-                            } else if(newValue > 1) {
-                                newValue = 1;
-                            }
+                            newValue = Math.Clamp(newValue, 0, 1);
                             await InvokeAsync(async () => {
                                 await SetValue(newValue);
                                 StateHasChanged();
@@ -109,11 +105,7 @@
                         }
                     } else if(mouseState?.WheelDelta != 0 && knobBounds!.Contains(mouseState!.X, mouseState.Y)) {
                         double newValue = Value - (mouseState.WheelDelta / 2_000);
-                        if(newValue < 0) {
-                            newValue = 0;
-                        } else if(newValue > 1) {
-                            newValue = 1;
-                        }
+                        newValue = Math.Clamp(newValue, 0, 1);
                         await InvokeAsync(async () => {
                             await SetValue(newValue);
                             StateHasChanged();

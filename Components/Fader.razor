@@ -54,8 +54,7 @@
     }
 
     public async Task SetValue(double newValue, bool updateState = false) {
-        if(newValue < 0) newValue = 0;
-        else if(newValue > 1) newValue = 1;
+        newValue = Math.Clamp(newValue, 0, 1);
 
         if(Value == newValue) return;
         Value = newValue;
@@ -134,11 +133,7 @@
                         if(mouseState?.ButtonsDown == 1) {
                             double offset = Orientation == Orientations.Vertical ? mouseState.Y - faderBounds!.Y : mouseState.X - faderBounds!.X;
                             double newValue = (faderSize - (offset - gutterOffsetTop)) / faderSize;
-                            if(newValue < 0) {
-                                newValue = 0;
-                            } else if(newValue > 1) {
-                                newValue = 1;
-                            }
+                            newValue = Math.Clamp(newValue, 0, 1);
                             await InvokeAsync(async () => {
                                 await SetValue(newValue);
                                 StateHasChanged();
@@ -149,11 +144,7 @@
                         }
                     } else if(mouseState?.WheelDelta != 0 && faderBounds!.Contains(mouseState!.X, mouseState.Y)) {
                         double newValue = Value - (mouseState.WheelDelta / 2_000) * (Orientation == Orientations.Horizontal ? -1 : 1);
-                        if(newValue < 0) {
-                            newValue = 0;
-                        } else if(newValue > 1) {
-                            newValue = 1;
-                        }
+                        newValue = Math.Clamp(newValue, 0, 1);
                         await InvokeAsync(async () => {
                             await SetValue(newValue);
                             StateHasChanged();
