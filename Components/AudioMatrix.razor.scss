@@ -30,6 +30,10 @@
 
             font-size: 0.8rem;
             padding-bottom: 0.4rem;
+
+            div {
+                white-space: nowrap;
+            }
         }
 
         .channels {
@@ -45,12 +49,12 @@
 
                 transform-origin: 0 0;
                 transform: rotate(-75deg);
+                height: 1rem; // TODO: This fixes the unnecessary horizontal scrollbar. Make sure this doesn't break anything.
             }
 
             .outputs-select {
                 display: flex;
                 flex-direction: column;
-
                 margin-top: 0.5rem;
 
                 input {

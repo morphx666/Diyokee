@@ -10,20 +10,7 @@
 
     <div class="header">
         <h4>Audio</h4>
-
-        @if(useAudioMatrix) {
-            <AudioMatrix />
-        } else {
-            <div class="field">
-                <label for="main-output">Main Output</label>
-                <InputSelect id="main-output" @bind-value="mainOutputDevice">
-                    @foreach(var device in outputDevices) {
-                        <option value="@device.Name">@device.Name</option>
-                    }
-                </InputSelect>
-            </div>
-            <span class="note" hidden="@(settings.Audio.MainOutputDevice == mainOutputDevice)">This setting will take effect after restarting the application</span>
-        }
+        <AudioMatrix />
     </div>
 
     <div class="header">
@@ -78,25 +65,7 @@
 </ModalDialog>
 
 @code {
-    private struct Device {
-        public string Name;
-        public string Driver;
-
-        public Device(string name, string driver) {
-            Name = name;
-            Driver = driver;
-        }
-
-        override public string ToString() {
-            return Name;
-        }
-    }
     private ModalDialog dialog = null!;
-
-    private string mainOutputDevice = "";
-    private bool mainOutputDeviceAcVisible = false;
-    private List<Device> outputDevices = new();
-    private const bool useAudioMatrix = false;
 
     [Parameter]
     public EventCallback OnSave { get; set; } = default!;
@@ -108,17 +77,6 @@
 
     public void Open() {
         settings = (Settings)Program.Settings.Clone();
-        outputDevices.Clear();
-
-        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
-            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
-            outputDevices.Add(new(deviceInfo.name, deviceInfo.driver));
-
-            if(deviceInfo.name == settings.Audio.MainOutputDevice) {
-                mainOutputDevice = deviceInfo.name;
-            }
-        }
-
         dialog.Open();
     }
 
@@ -129,8 +87,6 @@
     }
 
     public async void Save() {
-        settings.Audio.MainOutputDevice = mainOutputDevice;
-
         Program.Settings = settings;
         Close();
 

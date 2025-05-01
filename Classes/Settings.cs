@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿// Ignore Spelling: Eq
+
+using Newtonsoft.Json;
 using System.Text.Json;
 
 namespace Diyokee {
@@ -24,7 +26,8 @@ namespace Diyokee {
         }
 
         public class AudioSettings {
-            [JsonProperty("main-output-device")] public string MainOutputDevice { get; set; } = "";
+            [JsonProperty("main-output-device")] public List<AudioDevice> MainOutputDevice { get; set; } = [];
+            [JsonProperty("main-output-channel")] public List<AudioDevice> MonitorDevice { get; set; } = [];
         }
 
         public class PlaybackSettings {
@@ -82,6 +85,10 @@ namespace Diyokee {
                         new() {Name = "Rane", Low = 300, Mid = 1200, Hi = 4000},
                         new() {Name = "Behringer DDM", Low = 330, Mid = 1400, Hi = 4200}
                     ]);
+                }
+
+                if(settings.Playback.EqProfile == "") {
+                    settings.Playback.EqProfile = settings.EqualizerProfiles[0].Name;
                 }
 
                 return settings;

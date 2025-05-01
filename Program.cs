@@ -11,6 +11,7 @@ using Microsoft.Data.Sqlite;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 internal class Program {
+    public const int SAMPLING_FREQUENCY = 44100;
     public static int BassMixHandle = 0;
     public static int BassLatencyMs = 0;
 
@@ -113,7 +114,7 @@ internal class Program {
     }
 
     private static void SetupBASS() {
-        BassMixHandle = BassMix.BASS_Mixer_StreamCreate(44100, 2, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
+        BassMixHandle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 2, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
         Bass.BASS_ChannelSetAttribute(BassMixHandle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
 
         if(Settings.Encoder.Enabled) {
@@ -123,7 +124,7 @@ internal class Program {
         Bass.BASS_ChannelPlay(BassMixHandle, true);
     }
 
-    public static bool InitBASS(string workingDirectory, ILogger logger) {
+    private static bool InitBASS(string workingDirectory, ILogger logger) {
         char c = Runtime.PathSeparator;
         string platform = Runtime.Platform.ToString().ToLower();
         string architecture = Environment.Is64BitProcess || Runtime.Platform == Runtime.Platforms.Mac ? "x64" : "x86";
@@ -163,27 +164,49 @@ internal class Program {
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 
-        int deviceIndex = -1;
-        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
-            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
-            Bass.BASS_GetDeviceInfo(i, deviceInfo);
-            if(deviceInfo.name == Settings.Audio.MainOutputDevice) {
-                deviceIndex = i;
-                break;
-            }
-        }
-        if(deviceIndex == -1) {
-            deviceIndex = Bass.BASS_GetDeviceCount() > 0 ? 1 : 0;
-            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(deviceIndex);
-            Settings.Audio.MainOutputDevice = deviceInfo.name;
-        }
-
-        Bass.BASS_Init(deviceIndex, 44100, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+        SetMainOutputDevice();
+        SetMonitorDevice();
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);
         BassLatencyMs = basInfo.latency;
 
         return true;
+    }
+
+    private static void SetMainOutputDevice() {
+        int deviceIndex = -1;
+        int defaultDeviceIndex = -1;
+        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
+            if(deviceInfo.IsDefault) defaultDeviceIndex = i;
+            Bass.BASS_GetDeviceInfo(i, deviceInfo);
+            if(Settings.Audio.MainOutputDevice.Any(d => d.Name == deviceInfo.name)) {
+                deviceIndex = i;
+                break;
+            }
+        }
+        if(deviceIndex == -1) {
+            deviceIndex = defaultDeviceIndex;
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(deviceIndex);
+            Settings.Audio.MainOutputDevice.Add(new(deviceInfo.name, AudioDevice.AudioChannel.FrontStereo));
+        }
+
+        Bass.BASS_Init(deviceIndex, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+    }
+
+    private static void SetMonitorDevice() {
+        int deviceIndex = -1;
+        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
+            Bass.BASS_GetDeviceInfo(i, deviceInfo);
+            if(Settings.Audio.MonitorDevice.Any(d => d.Name == deviceInfo.name)) {
+                deviceIndex = i;
+                break;
+            }
+        }
+        if(deviceIndex == -1) return;
+
+        Bass.BASS_Init(deviceIndex, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
     }
 }
