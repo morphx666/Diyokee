@@ -164,8 +164,8 @@ internal class Program {
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 
-        SetMainOutputDevice();
-        SetMonitorDevice();
+        SetUpDevice(Settings.Audio.MainOutputDevice);
+        SetUpDevice(Settings.Audio.MonitorDevice);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);
@@ -174,39 +174,23 @@ internal class Program {
         return true;
     }
 
-    private static void SetMainOutputDevice() {
-        int deviceIndex = -1;
+    private static void SetUpDevice(List<AudioDevice> devices) {
+        bool deviceIsSet = false;
         int defaultDeviceIndex = -1;
         for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
             if(deviceInfo.IsDefault) defaultDeviceIndex = i;
+
             Bass.BASS_GetDeviceInfo(i, deviceInfo);
-            if(Settings.Audio.MainOutputDevice.Any(d => d.Name == deviceInfo.name)) {
-                deviceIndex = i;
-                break;
+            if(devices.Any(d => d.Name == deviceInfo.name)) {
+                deviceIsSet = true;
+                Bass.BASS_Init(i, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
             }
         }
-        if(deviceIndex == -1) {
-            deviceIndex = defaultDeviceIndex;
-            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(deviceIndex);
+
+        if(!deviceIsSet) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(defaultDeviceIndex);
             Settings.Audio.MainOutputDevice.Add(new(deviceInfo.name, AudioDevice.AudioChannel.FrontStereo));
-        }
-
-        Bass.BASS_Init(deviceIndex, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
-    }
-
-    private static void SetMonitorDevice() {
-        int deviceIndex = -1;
-        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
-            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
-            Bass.BASS_GetDeviceInfo(i, deviceInfo);
-            if(Settings.Audio.MonitorDevice.Any(d => d.Name == deviceInfo.name)) {
-                deviceIndex = i;
-                break;
-            }
-        }
-        if(deviceIndex == -1) return;
-
-        Bass.BASS_Init(deviceIndex, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+        }        
     }
 }

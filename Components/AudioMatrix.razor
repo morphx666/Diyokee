@@ -29,7 +29,52 @@
     private bool[][] master = [];
     private bool[][] monitor = [];
 
-    public AudioMatrix() {
+    [Parameter]
+    public Settings Settings { get; set; } = default!;
+
+    private bool IsSelected(bool isMasterOutput, string deviceName, AudioDevice.AudioChannel channel) {
+        List<AudioDevice> devices = isMasterOutput ? Settings.Audio.MainOutputDevice : Settings.Audio.MonitorDevice;
+        foreach(var d in devices) {
+            if(d.Name == deviceName) return d.Channels.Contains(channel);
+        }
+        return false;
+    }
+
+    // FIXME: This is ridiculous. We need to find a way to trigger the update when the checkbox state changes.
+    // This works but it'd be easier if we could capture the @onchange event handler. INVESTIGATE!
+    private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
+        Task.Run(async () => {
+            await Task.Delay(25);
+
+            bool state = isMasterOutput ? master[deviceIndex][channelIndex] : monitor[deviceIndex][channelIndex];
+            List<AudioDevice> devices = isMasterOutput ? Settings.Audio.MainOutputDevice : Settings.Audio.MonitorDevice;
+
+            if(state && devices.Count == 0) { // First device selected
+                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
+            } else {
+                foreach(var d in devices) {
+                    if(d.Name == audioDevices[deviceIndex].Name) { // Device already exists; update channel state
+                        if(state) {
+                            if(!d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
+                                d.Channels.Add(audioDevices[deviceIndex].Channels[channelIndex]);
+                            }
+                        } else {
+                            if(d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
+                                d.Channels.Remove(audioDevices[deviceIndex].Channels[channelIndex]);
+                                if(d.Channels.Count == 0) devices.Remove(d); // Remove device if no channels are selected
+                            }
+                        }
+                        return;
+                    }
+                }
+
+                // Device does not exist; add it
+                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
+            }
+        });
+    }
+
+    private void BuildAudioMatrix() {
         int devicesCount = Bass.BASS_GetDeviceCount() - 2;
         master = new bool[devicesCount][];
         monitor = new bool[devicesCount][];
@@ -107,45 +152,11 @@
         }
     }
 
-    private bool IsSelected(bool isMasterOutput, string deviceName, AudioDevice.AudioChannel channel) {
-        List<AudioDevice> devices = isMasterOutput ? Program.Settings.Audio.MainOutputDevice : Program.Settings.Audio.MonitorDevice;
-        foreach(var d in devices) {
-            if(d.Name == deviceName) return d.Channels.Contains(channel);
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            BuildAudioMatrix();
+            StateHasChanged();
         }
-        return false;
-    }
-
-    // FIXME: This is ridiculous. We need to find a way to trigger the update when the checkbox state changes.
-    // This is not working correctly b/c the @onchange event cannot be set: INVESTIGATE
-    private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
-        Task.Run(async () => {
-            await Task.Delay(25);
-
-            bool state = isMasterOutput ? master[deviceIndex][channelIndex] : monitor[deviceIndex][channelIndex];
-            List<AudioDevice> devices = isMasterOutput ? Program.Settings.Audio.MainOutputDevice : Program.Settings.Audio.MonitorDevice;
-
-            if(state && devices.Count == 0) { // First device selected
-                Program.Settings.Audio.MonitorDevice.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
-            } else {
-                foreach(var d in devices) {
-                    if(d.Name == audioDevices[deviceIndex].Name) { // Device already exists; update channel state
-                        if(state) {
-                            if(!d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
-                                d.Channels.Add(audioDevices[deviceIndex].Channels[channelIndex]);
-                            }
-                        } else {
-                            if(d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
-                                d.Channels.Remove(audioDevices[deviceIndex].Channels[channelIndex]);
-                                if(d.Channels.Count == 0) devices.Remove(d); // Remove device if no channels are selected
-                            }
-                        }
-                        return;
-                    }
-                }
-
-                // Device does not exist; add it
-                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
-            }
-        });
+        base.OnAfterRender(firstRender);
     }
 }

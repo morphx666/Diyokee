@@ -27,7 +27,7 @@ namespace Diyokee {
 
         public class AudioSettings {
             [JsonProperty("main-output-device")] public List<AudioDevice> MainOutputDevice { get; set; } = [];
-            [JsonProperty("main-output-channel")] public List<AudioDevice> MonitorDevice { get; set; } = [];
+            [JsonProperty("monitor-device")] public List<AudioDevice> MonitorDevice { get; set; } = [];
         }
 
         public class PlaybackSettings {
