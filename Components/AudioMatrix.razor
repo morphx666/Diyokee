@@ -119,16 +119,16 @@
     // This is not working correctly b/c the @onchange event cannot be set: INVESTIGATE
     private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
         Task.Run(async () => {
-            await Task.Delay(50);
+            await Task.Delay(25);
 
             bool state = isMasterOutput ? master[deviceIndex][channelIndex] : monitor[deviceIndex][channelIndex];
             List<AudioDevice> devices = isMasterOutput ? Program.Settings.Audio.MainOutputDevice : Program.Settings.Audio.MonitorDevice;
 
-            if(state && devices.Count == 0) {
+            if(state && devices.Count == 0) { // First device selected
                 Program.Settings.Audio.MonitorDevice.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
             } else {
                 foreach(var d in devices) {
-                    if(d.Name == audioDevices[deviceIndex].Name) {
+                    if(d.Name == audioDevices[deviceIndex].Name) { // Device already exists; update channel state
                         if(state) {
                             if(!d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
                                 d.Channels.Add(audioDevices[deviceIndex].Channels[channelIndex]);
@@ -136,13 +136,14 @@
                         } else {
                             if(d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
                                 d.Channels.Remove(audioDevices[deviceIndex].Channels[channelIndex]);
-                                if(d.Channels.Count == 0) devices.Remove(d);
+                                if(d.Channels.Count == 0) devices.Remove(d); // Remove device if no channels are selected
                             }
                         }
                         return;
                     }
                 }
 
+                // Device does not exist; add it
                 devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
             }
         });

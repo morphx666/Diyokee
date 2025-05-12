@@ -36,29 +36,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Player="this"
-        @ref="waveformFull" />
+                  Mode="Waveform.Modes.Full"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@fileDownbeatAt"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Player="this"
+                  @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Loop="loop"
-        Player="this"
-        @ref="waveform" />
+                  Mode="Waveform.Modes.AudioSynced"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@fileDownbeatAt"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Loop="loop"
+                  Player="this"
+                  @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -73,8 +73,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-        @onmousedown="(e) => HandlePlayClick(e, false)"
-        @onmouseup="HandleStopAndSnapClick">
+             @onmousedown="(e) => HandlePlayClick(e, false)"
+             @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -97,7 +97,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetLoopSize(size.Item2, false)">
+                         @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -106,7 +106,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetJumpSize(size.Item2)">
+                         @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -224,6 +224,8 @@
     }
 
     public Player() {
+        loopSyncProc = new SYNCPROC(DoLoop);
+
         Task.Run(MonitorPlayback);
         Task.Run(MonitorBeats);
     }
@@ -391,9 +393,9 @@
         if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
     }
 
-    private DSPPROC dspProc = null!;
-    private double[] din = new double[5];
-    private double[] dout = new double[5];
+    // private DSPPROC dspProc = null!;
+    // private double[] din = new double[5];
+    // private double[] dout = new double[5];
     private void LoadFile() {
         IsPlaying = false;
 
@@ -406,14 +408,34 @@
 
         if(file == null || faderVolume == null) return;
 
-        streamHandle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_STREAM_PRESCAN | BASSFlag.BASS_ASYNCFILE | BASSFlag.BASS_SAMPLE_FLOAT);
-        BASSError bassErrorCode = Bass.BASS_ErrorGetCode();
+        BASSError bassErrorCode = BASSError.BASS_OK;
+
+        streamHandle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
+                                                                       | BASSFlag.BASS_STREAM_PRESCAN
+                                                                       | BASSFlag.BASS_ASYNCFILE
+                                                                       | BASSFlag.BASS_SAMPLE_FLOAT);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) {
             // TODO: Do something so the user knows the file cannot be played
         }
-        fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON | BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_FX_FREESOURCE);
-        BassMix.BASS_Mixer_StreamAddChannel(Program.BassMixHandle, fxHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE | BASSFlag.BASS_MIXER_CHAN_NORAMPIN | BASSFlag.BASS_MIXER_CHAN_BUFFER);
-        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
+
+        fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
+                                                            | BASSFlag.BASS_STREAM_DECODE
+                                                            | BASSFlag.BASS_FX_FREESOURCE);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) {
+            // TODO: Do something so the user knows the file cannot be played
+        }
+
+        bool r = BassMix.BASS_Mixer_StreamAddChannel(Program.BassMixHandle, fxHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE
+                                                                                      | BASSFlag.BASS_MIXER_CHAN_NORAMPIN
+                                                                                      | BASSFlag.BASS_MIXER_CHAN_BUFFER);
+        if(!r || bassErrorCode != BASSError.BASS_OK) {
+            // TODO: Do something so the user knows the file cannot be played
+        }
+
+        // See SetBassSpeaker from RemoteDJ
+        //  | BASSFlag.BASS_SPEAKER_FRONTLEFT | BASSFlag.BASS_MUSIC_MONO | BASSFlag.BASS_MIXER_CHAN_DOWNMIX);
 
         // // Resonant lowpass filter
         // // For highpass filter, just change the sign of the feedback (HPF = sample - out ?)
@@ -451,6 +473,7 @@
         // });
         // Bass.BASS_ChannelSetDSP(fxHandle, dspProc, IntPtr.Zero, 0);
 
+        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
         ApplyVolume(faderVolume!.Value);
         SetupEQ();
         faderTempo?.SetValue(0.5);
@@ -465,6 +488,18 @@
             while(!SetParameters()) await Task.Delay(1000);
             queueAutoSnap = !IsPlaying;
         });
+    }
+
+    private BASSFlag GetBassSpeakersFlags() {
+        BASSFlag mask = BASSFlag.BASS_DEFAULT;
+        string[] names = Enum.GetNames(typeof(BASSFlag));
+        int[] values = (int[])Enum.GetValues(typeof(BASSFlag));
+
+        for(int i = 0; i <= names.Length - 1; i++) {
+            mask = mask | (BASSFlag)values[i];
+        }
+
+        return mask;
     }
 
     private void SetupEQ() {
@@ -569,18 +604,18 @@
     private void SetLoopSize(double size, bool resetStart) {
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
-        UpdateSettings();
 
         double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
         if(resetStart) loop.Start = position;
-        this.loop.End = loop.Start + loopSize / beatsPerSecond;
+        loop.End = loop.Start + loopSize / beatsPerSecond;
 
-        if(loop.BASSHandle != 0) {
+        if(loop.BASSHandle != 0 && resetStart) {
             Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
             loop.BASSHandle = 0;
-        } else if(loopSyncProc == null) loopSyncProc = new SYNCPROC(DoLoop);
+        }
 
         if(loop.Enabled) {
+            bool resetLoop = position <= loop.End && loopSize > 1;
             loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.Start);
             loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.End);
 
@@ -589,10 +624,22 @@
                 return;
             }
 
-            Bass.BASS_ChannelLock(fxHandle, true);
-            loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
-            Bass.BASS_ChannelLock(fxHandle, false);
+            if(resetStart || resetLoop) {
+                loop.Reset = false;
+
+                Bass.BASS_ChannelLock(fxHandle, true);
+                if(loop.BASSHandle != 0) {
+                    Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
+                    loop.BASSHandle = 0;
+                }
+                loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelLock(fxHandle, false);
+            } else {
+                loop.Reset = true;
+            }
         }
+
+        UpdateSettings();
     }
 
     private void SetJumpSize(double size) {
@@ -618,7 +665,18 @@
     }
 
     private void DoLoop(int handle, int channel, int data, IntPtr user) {
-        if(loop.Enabled) BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, loop.StartBytes);
+        if(loop.Enabled) {
+            BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, loop.StartBytes);
+
+            if(loop.Reset) {
+                loop.Reset = false;
+
+                Bass.BASS_ChannelLock(fxHandle, true);
+                Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
+                loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelLock(fxHandle, false);
+            }
+        }
     }
 
     private void DoJump(int direction) {
@@ -699,7 +757,10 @@
             if(!MinimalMode) {
                 faderTempo.SetInitialValue(0.5);
                 EqControls.EqProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
+
                 loopJumpLock = Settings.LoopJumpLock;
+                loopSize = Settings.LoopSize;
+                jumpSize = Settings.JumpSize;
             }
             await InvokeAsync(StateHasChanged);
         }
