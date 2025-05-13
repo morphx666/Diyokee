@@ -12,7 +12,7 @@ using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 internal class Program {
     public const int SAMPLING_FREQUENCY = 44100;
-    public static int BassMixHandle = 0;
+    public static List<(int Handle, int DeviceIndex)> BassMixHandles = [];
     public static int BassLatencyMs = 0;
 
     public static Settings Settings = new();
@@ -114,14 +114,28 @@ internal class Program {
     }
 
     private static void SetupBASS() {
-        BassMixHandle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 2, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
-        Bass.BASS_ChannelSetAttribute(BassMixHandle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
+        foreach(var device in Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice)) {
+            int index = GetDeviceByIndex(device.Name);
+            Bass.BASS_SetDevice(index);
+            int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 2, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
+            Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);           
+            Bass.BASS_ChannelPlay(handle, true);
+            BassMixHandles.Add((handle, index));
+        }
 
+        // Attach to the first device, for now...
         if(Settings.Encoder.Enabled) {
-            int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandle, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
+            int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandles.First().Handle, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
             BassEnc.BASS_Encode_ServerInit(encodeHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
         }
-        Bass.BASS_ChannelPlay(BassMixHandle, true);
+    }
+
+    public static int GetDeviceByIndex(string name) {
+        for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
+            BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
+            if(deviceInfo.name == name) return i;
+        }
+        return 0; // No Sound
     }
 
     private static bool InitBASS(string workingDirectory, ILogger logger) {
