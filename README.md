@@ -1,12 +1,11 @@
 # Diyokee
 A work in progress, DJ mixing webapp with streaming support
 
-[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s2.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
+[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s3.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 
 ## App settings
 
 To access the settings dialog, press the `Ctrl+Alt+S` key on your keyboard.  
-[Audio routing](https://xfx.net/ftp/diyokee-releases/diyokee-settings-audiomatrix.png) has not yet been implemented, but you can select the audio device to use for playback.
 Some settings cannot be yet configured by the Settings dialog, but you can edit the `settings.json` file manually.
 
 ## Basic usage
