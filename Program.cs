@@ -206,7 +206,7 @@ internal class Program {
 
         if(!deviceIsSet && createIfNotSet) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(defaultDeviceIndex);
-            devices.Add(new(deviceInfo.name, AudioDevice.AudioChannel.FrontStereo));
+            devices.Add(new(deviceInfo.name, AudioDevice.DeviceSpeakers.FrontStereo));
         }        
     }
 }

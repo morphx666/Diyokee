@@ -526,19 +526,19 @@
     private float[,] GetSpeakersMatrix(int deviceIndex) {
         float[,] matrix;
         var audioDevices = Program.Settings.Audio.MainOutputDevice.Concat(Program.Settings.Audio.MonitorDevice).ToArray();
-        var channels = audioDevices[deviceIndex].Channels;
+        var channels = audioDevices[deviceIndex].Speakers;
         int index = Program.GetDeviceIndexByName(audioDevices[deviceIndex].Name);
         Bass.BASS_SetDevice(index);
         switch(Bass.BASS_GetInfo().speakers) {
             case 2:
                 matrix = new float[,] {
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontLeft) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontRight) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0
                         }
                 };
                 break;
@@ -546,20 +546,20 @@
             case 4:
                 matrix = new float[,] {
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontLeft) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontRight) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideLeft) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideRight) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0
                         }
                 };
                 break;
@@ -567,28 +567,28 @@
             case 6:
                 matrix = new float[,] {
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontLeft) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontRight) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.Center) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.Center) || channels.Contains(AudioDevice.DeviceSpeakers.CenterAndLFE)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.LFE) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.LFE) || channels.Contains(AudioDevice.DeviceSpeakers.CenterAndLFE)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideLeft) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideRight) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0
                         }
                 };
                 break;
@@ -596,36 +596,36 @@
             case 8:
                 matrix = new float[,] {
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontLeft) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.FrontRight) || channels.Contains(AudioDevice.DeviceSpeakers.FrontStereo)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.Center) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.Center) || channels.Contains(AudioDevice.DeviceSpeakers.CenterAndLFE)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.LFE) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.LFE) || channels.Contains(AudioDevice.DeviceSpeakers.CenterAndLFE)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideLeft) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.SideRight) || channels.Contains(AudioDevice.DeviceSpeakers.SideStereo)) ? 1 : 0
                         },
                         {
-                            (channels.Contains(AudioDevice.AudioChannel.RearLeft) || channels.Contains(AudioDevice.AudioChannel.RearStereo)) ? 1 : 0,
+                            (channels.Contains(AudioDevice.DeviceSpeakers.RearLeft) || channels.Contains(AudioDevice.DeviceSpeakers.RearStereo)) ? 1 : 0,
                             0
                         },
                         {
                             0,
-                            (channels.Contains(AudioDevice.AudioChannel.RearRight) || channels.Contains(AudioDevice.AudioChannel.RearStereo)) ? 1 : 0
+                            (channels.Contains(AudioDevice.DeviceSpeakers.RearRight) || channels.Contains(AudioDevice.DeviceSpeakers.RearStereo)) ? 1 : 0
                         }
                 };
                 break;

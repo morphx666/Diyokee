@@ -12,7 +12,7 @@
         <div class="device">
             <h5>@device.Name</h5>
             <div class="channels">
-                @foreach(var (channel, channelIndex) in device.Channels.WithIndex()) {
+                @foreach(var (channel, channelIndex) in device.Speakers.WithIndex()) {
                     <div class="channel">@channel</div>
                     <div class="outputs-select">
                         <input type="checkbox" @bind="master[deviceIndex][channelIndex]" @onmouseup="@(() => Update(true, deviceIndex, channelIndex))" id="@($"cb-master-{deviceIndex}{channelIndex}")" />
@@ -32,10 +32,10 @@
     [Parameter]
     public Settings Settings { get; set; } = default!;
 
-    private bool IsSelected(bool isMasterOutput, string deviceName, AudioDevice.AudioChannel channel) {
+    private bool IsSelected(bool isMasterOutput, string deviceName, AudioDevice.DeviceSpeakers channel) {
         List<AudioDevice> devices = isMasterOutput ? Settings.Audio.MainOutputDevice : Settings.Audio.MonitorDevice;
         foreach(var d in devices) {
-            if(d.Name == deviceName) return d.Channels.Contains(channel);
+            if(d.Name == deviceName) return d.Speakers.Contains(channel);
         }
         return false;
     }
@@ -43,25 +43,25 @@
     // FIXME: This is ridiculous. We need to find a way to trigger the update when the checkbox state changes.
     // This works but it'd be easier if we could capture the @onchange event handler. INVESTIGATE!
     private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
-        Task.Run(async () => {
+            Task.Run((Func<Task>)(async () => {
             await Task.Delay(25);
 
             bool state = isMasterOutput ? master[deviceIndex][channelIndex] : monitor[deviceIndex][channelIndex];
             List<AudioDevice> devices = isMasterOutput ? Settings.Audio.MainOutputDevice : Settings.Audio.MonitorDevice;
 
             if(state && devices.Count == 0) { // First device selected
-                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
+                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, (AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex]));
             } else {
                 foreach(var d in devices) {
                     if(d.Name == audioDevices[deviceIndex].Name) { // Device already exists; update channel state
                         if(state) {
-                            if(!d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
-                                d.Channels.Add(audioDevices[deviceIndex].Channels[channelIndex]);
+                            if(!d.Speakers.Contains((AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex])) {
+                                d.Speakers.Add((AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex]);
                             }
                         } else {
-                            if(d.Channels.Contains(audioDevices[deviceIndex].Channels[channelIndex])) {
-                                d.Channels.Remove(audioDevices[deviceIndex].Channels[channelIndex]);
-                                if(d.Channels.Count == 0) devices.Remove(d); // Remove device if no channels are selected
+                            if(d.Speakers.Contains((AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex])) {
+                                d.Speakers.Remove((AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex]);
+                                if(d.Speakers.Count == 0) devices.Remove(d); // Remove device if no channels are selected
                             }
                         }
                         return;
@@ -69,9 +69,9 @@
                 }
 
                 // Device does not exist; add it
-                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, audioDevices[deviceIndex].Channels[channelIndex]));
+                devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, (AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex]));
             }
-        });
+        }));
     }
 
     private void BuildAudioMatrix() {
@@ -90,64 +90,64 @@
 
                 switch(info.speakers) {
                     case < 2:
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontStereo);
                         break;
                     case 2:
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontRight);
                         break;
                     case 4:
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontRight);
 
-                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideRight);
                         break;
                     case 6:
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontRight);
 
-                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideRight);
 
-                        device.Channels.Add(AudioDevice.AudioChannel.CenterAndLFE);
-                        device.Channels.Add(AudioDevice.AudioChannel.Center);
-                        device.Channels.Add(AudioDevice.AudioChannel.LFE);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.CenterAndLFE);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.Center);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.LFE);
                         break;
 
                     case 8:
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.FrontRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.FrontRight);
 
-                        device.Channels.Add(AudioDevice.AudioChannel.RearStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.RearLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.RearRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.RearStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.RearLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.RearRight);
 
-                        device.Channels.Add(AudioDevice.AudioChannel.SideStereo);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideLeft);
-                        device.Channels.Add(AudioDevice.AudioChannel.SideRight);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideStereo);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideLeft);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.SideRight);
 
 
-                        device.Channels.Add(AudioDevice.AudioChannel.CenterAndLFE);
-                        device.Channels.Add(AudioDevice.AudioChannel.Center);
-                        device.Channels.Add(AudioDevice.AudioChannel.LFE);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.CenterAndLFE);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.Center);
+                        device.Speakers.Add(AudioDevice.DeviceSpeakers.LFE);
                         break;
                 }
             }
             audioDevices.Add(device);
 
-            master[i - 2] = new bool[device.Channels.Count];
-            monitor[i - 2] = new bool[device.Channels.Count];
+            master[i - 2] = new bool[device.Speakers.Count];
+            monitor[i - 2] = new bool[device.Speakers.Count];
 
-            for(int j = 0; j < device.Channels.Count; j++) {
-                master[i - 2][j] = IsSelected(true, device.Name, device.Channels[j]);
-                monitor[i - 2][j] = IsSelected(false, device.Name, device.Channels[j]);
+            for(int j = 0; j < device.Speakers.Count; j++) {
+                master[i - 2][j] = IsSelected(true, device.Name, device.Speakers[j]);
+                monitor[i - 2][j] = IsSelected(false, device.Name, device.Speakers[j]);
             }
         }
     }
