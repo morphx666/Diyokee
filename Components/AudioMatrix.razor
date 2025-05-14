@@ -1,4 +1,5 @@
 ﻿@using System.Diagnostics
+@using Newtonsoft.Json
 @using Un4seen.Bass
 
 <div class="container scroller">
@@ -23,11 +24,14 @@
         </div>
     }
 </div>
+<div class="restart-warning" hidden="@(!hideRestartRequiredMsg)">&nbsp;</div>
+<div class="restart-warning" hidden="@hideRestartRequiredMsg">Changes made to the AudioMatrix will require restarting the application</div>
 
 @code {
     private List<AudioDevice> audioDevices { get; set; } = new();
     private bool[][] master = [];
     private bool[][] monitor = [];
+    private bool hideRestartRequiredMsg = true;
 
     [Parameter]
     public Settings Settings { get; set; } = default!;
@@ -43,7 +47,7 @@
     // FIXME: This is ridiculous. We need to find a way to trigger the update when the checkbox state changes.
     // This works but it'd be easier if we could capture the @onchange event handler. INVESTIGATE!
     private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
-            Task.Run((Func<Task>)(async () => {
+        Task.Run((Func<Task>)(async () => {
             await Task.Delay(25);
 
             bool state = isMasterOutput ? master[deviceIndex][channelIndex] : monitor[deviceIndex][channelIndex];
@@ -64,13 +68,19 @@
                                 if(d.Speakers.Count == 0) devices.Remove(d); // Remove device if no channels are selected
                             }
                         }
-                        return;
+                        goto done;
                     }
                 }
 
                 // Device does not exist; add it
                 devices.Add(new AudioDevice(audioDevices[deviceIndex].Name, (AudioDevice.DeviceSpeakers)audioDevices[(int)deviceIndex].Speakers[channelIndex]));
             }
+
+        done:
+            var original = JsonConvert.SerializeObject(Program.Settings.Audio);
+            var updated = JsonConvert.SerializeObject(Settings.Audio);
+            hideRestartRequiredMsg = original == updated;
+            await InvokeAsync(StateHasChanged);
         }));
     }
 
