@@ -36,29 +36,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.Full"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@fileDownbeatAt"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Player="this"
-                  @ref="waveformFull" />
+        Mode="Waveform.Modes.Full"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@fileDownbeatAt"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformWidth="@waveformWidth"
+        Player="this"
+        @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
         <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.AudioSynced"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@fileDownbeatAt"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Loop="loop"
-                  Player="this"
-                  @ref="waveform" />
+        Mode="Waveform.Modes.AudioSynced"
+        BeatMarkers="@beatMarkers"
+        DownbeatAt="@fileDownbeatAt"
+        MaxPeak="@maxPeak"
+        Peaks="@peaks"
+        SecondsToPosX="@secondsToPosX"
+        WaveformWidth="@waveformWidth"
+        Loop="loop"
+        Player="this"
+        @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -73,8 +73,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-             @onmousedown="(e) => HandlePlayClick(e, false)"
-             @onmouseup="HandleStopAndSnapClick">
+        @onmousedown="(e) => HandlePlayClick(e, false)"
+        @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -97,7 +97,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                         @onclick="() => SetLoopSize(size.Item2, false)">
+                    @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -106,7 +106,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                         @onclick="() => SetJumpSize(size.Item2)">
+                    @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -332,7 +332,7 @@
         // X = (tempo / 100 * 1.5) - 1
         double tempo = ((1.0 + (faderTempo?.Value ?? 0.5)) / 1.5 - 1.0) * 100.0;
 
-        splitterStreams.ForEach(h => Bass.BASS_ChannelSetAttribute(h, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo));
+        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
         if(Program.Settings.Playback.SyncPlayersBpm) {
             // FIXME: Implement to login to avoid recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
