@@ -45,16 +45,28 @@
             switch(constrain.Key) {
                 case ConstrainKeys.Min:
                     if(Orientation == Orientations.Vertical) {
-                        if(resizeElementBounds!.Height < value) resizeElementBounds.Height = value;
+                        if(resizeElementBounds!.Height < value) {
+                            resizeElementBounds.Height = value;
+                            dividerBounds!.Y = value + dividerBounds.Height / 2;
+                        }
                     } else {
-                        if(resizeElementBounds!.Width < value) resizeElementBounds.Width = value;
+                        if(resizeElementBounds!.Width < value) {
+                            resizeElementBounds.Width = value;
+                            dividerBounds!.X = value + dividerBounds.Width / 2;
+                        }
                     }
                     break;
                 case ConstrainKeys.Max:
                     if(Orientation == Orientations.Vertical) {
-                        if(resizeElementBounds!.Height > value) resizeElementBounds.Height = value;
+                        if(resizeElementBounds!.Height > value) {
+                            resizeElementBounds.Height = value;
+                            dividerBounds!.Y = value + dividerBounds.Height / 2;
+                        }
                     } else {
-                        if(resizeElementBounds!.Width > value) resizeElementBounds.Width = value;
+                        if(resizeElementBounds!.Width > value) {
+                            resizeElementBounds.Width = value;
+                            dividerBounds!.X = value + dividerBounds.Width / 2;
+                        }
                     }
                     break;
             }
