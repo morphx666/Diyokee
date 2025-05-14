@@ -4,8 +4,8 @@
 		<TargetFramework>net9.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyVersion>2025.5.14.3068</AssemblyVersion>
-		<FileVersion>2025.5.14.3068</FileVersion>
+		<AssemblyVersion>2025.5.14.3074</AssemblyVersion>
+		<FileVersion>2025.5.14.3074</FileVersion>
 		<Title>Diyokee</Title>
 		<UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
 	</PropertyGroup>
@@ -15,7 +15,7 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
 	<PropertyGroup>
-		<DefaultItemExcludes>$(DefaultItemExcludes);PrepareReleases\**</DefaultItemExcludes>
+		<DefaultItemExcludes>$(DefaultItemExcludes);PrepareReleases\**;</DefaultItemExcludes>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageIcon>app-icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

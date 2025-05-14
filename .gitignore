@@ -370,3 +370,4 @@ settings.json
 !/bass/**
 .editorconfig
 PrepareReleases/
+MonitorChannels/
