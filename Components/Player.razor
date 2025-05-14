@@ -124,8 +124,10 @@
 @code {
     private int streamHandle = 0;
     private int fxHandle = 0;
-    private int eqHandle = 0;
+    private List<int> eqHandles = [];
     private BASS_BFX_PEAKEQ eqParams = new();
+    private List<int> splitterStreams = [];
+    private int masterSplitterHandle = 0;
     private string lastFilename = "";
 
     private double trackGain = 1;
@@ -278,9 +280,9 @@
     }
 
     public void Play(bool autoSync) {
-        if(fxHandle == 0) return;
+        if(masterSplitterHandle == 0) return;
         if(IsPlaying) {
-            BassMix.BASS_Mixer_ChannelPause(fxHandle);
+            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
             IsPlaying = false;
         } else {
             if(autoSync && (OtherPlayer?.IsPlaying ?? false)) {
@@ -288,42 +290,49 @@
                     while(true) {
                         await Task.Delay(1);
                         if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == InBeatIndex) {
-                            long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
+                            long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
-                            BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p + offset);
 
-                            BassMix.BASS_Mixer_ChannelPlay(fxHandle);
+                            Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                            splitterStreams.ForEach(h => {
+                                BassMix.BASS_Mixer_ChannelSetPosition(h, p + offset);
+                                BassMix.BASS_Mixer_ChannelPlay(h);
+                            });
+
                             IsPlaying = true;
                             break;
                         }
                     }
                 });
             } else {
-                BassMix.BASS_Mixer_ChannelPlay(fxHandle);
+                Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
         }
     }
 
     public void Stop(bool resetToCuePoint) {
-        if(fxHandle == 0) return;
-        BassMix.BASS_Mixer_ChannelPause(fxHandle);
-        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, resetToCuePoint ? cuePoint : 0));
+        if(masterSplitterHandle == 0) return;
+        splitterStreams.ForEach(h => {
+            BassMix.BASS_Mixer_ChannelPause(h);
+            BassMix.BASS_Mixer_ChannelSetPosition(h, Bass.BASS_ChannelSeconds2Bytes(h, resetToCuePoint ? cuePoint : 0));
+        });
         IsPlaying = false;
     }
 
     private void ApplyVolume(double value) {
-        if(fxHandle == 0) return;
-        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume));
+        if(masterSplitterHandle == 0) return;
+        splitterStreams.ForEach(h => Bass.BASS_ChannelSetAttribute(h, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume)));
     }
 
     private void ApplyTempo() {
-        if(fxHandle == 0) return;
+        if(masterSplitterHandle == 0) return;
         // tempo = ((1 + X) / 1.5 - 1) * 100
         // X = (tempo / 100 * 1.5) - 1
         double tempo = ((1.0 + (faderTempo?.Value ?? 0.5)) / 1.5 - 1.0) * 100.0;
 
-        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
+        splitterStreams.ForEach(h => Bass.BASS_ChannelSetAttribute(h, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo));
         if(Program.Settings.Playback.SyncPlayersBpm) {
             // FIXME: Implement to login to avoid recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
@@ -331,23 +340,25 @@
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
-        // Lo
-        eqParams.lBand = 0;
-        eqParams.fCenter = EqControls.EqProfile.Low;
-        eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+        eqHandles.ForEach(h => {
+            // Lo
+            eqParams.lBand = 0;
+            eqParams.fCenter = EqControls.EqProfile.Low;
+            eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
+            Bass.BASS_FXSetParameters(h, eqParams);
 
-        // Mid
-        eqParams.lBand = 1;
-        eqParams.fCenter = EqControls.EqProfile.Mid;
-        eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+            // Mid
+            eqParams.lBand = 1;
+            eqParams.fCenter = EqControls.EqProfile.Mid;
+            eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
+            Bass.BASS_FXSetParameters(h, eqParams);
 
-        // Hi
-        eqParams.lBand = 2;
-        eqParams.fCenter = EqControls.EqProfile.Hi;
-        eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+            // Hi
+            eqParams.lBand = 2;
+            eqParams.fCenter = EqControls.EqProfile.Hi;
+            eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
+            Bass.BASS_FXSetParameters(h, eqParams);
+        });
     }
 
     private void EqProfileChanged(EqualizerProfile eqProfile) {
@@ -408,7 +419,9 @@
 
         if(file == null || faderVolume == null) return;
 
-        CreateStreams();
+        if(CreateStreams() != BASSError.BASS_OK) {
+            // TODO: Do something so the user knows the file cannot be played
+        }
 
         // See SetBassSpeaker from RemoteDJ
         //  | BASSFlag.BASS_SPEAKER_FRONTLEFT | BASSFlag.BASS_MUSIC_MONO | BASSFlag.BASS_MIXER_CHAN_DOWNMIX);
@@ -466,7 +479,7 @@
         });
     }
 
-    private bool CreateStreams() {
+    private BASSError CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
 
         streamHandle = Bass.BASS_StreamCreateFile(file?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
@@ -474,84 +487,192 @@
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) {
-            // TODO: Do something so the user knows the file cannot be played
-            return false;
-        }
+        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
 
         fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
                                                             | BASSFlag.BASS_STREAM_DECODE
                                                             | BASSFlag.BASS_FX_FREESOURCE);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) {
-            // TODO: Do something so the user knows the file cannot be played
-            return false;
-        }
+        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
 
+        splitterStreams.Clear();
+        masterSplitterHandle = 0;
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(fxHandle, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SPLIT_POS | BASSFlag.BASS_SPLIT_SLAVE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(fxHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) {
-                // TODO: Do something so the user knows the file cannot be played
-                return false;
-            }
+            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+            splitterStreams.Add(splitterHandle);
 
             bool r = BassMix.BASS_Mixer_StreamAddChannel(mixHandle.Handle, splitterHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE
                                                                                            | BASSFlag.BASS_MIXER_CHAN_NORAMPIN
                                                                                            | BASSFlag.BASS_MIXER_CHAN_BUFFER
-                                                                                           | BASSFlag.BASS_STREAM_AUTOFREE);
-            // | BASSFlag.BASS_SPEAKER_FRONTLEFT | BASSFlag.BASS_MUSIC_MONO | BASSFlag.BASS_MIXER_CHAN_DOWNMIX);
+                                                                                           | BASSFlag.BASS_STREAM_AUTOFREE
+                                                                                           | BASSFlag.BASS_MIXER_CHAN_MATRIX);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) {
-                // TODO: Do something so the user knows the file cannot be played
-                return false;
-            }
+            if(!r || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+
+
+            float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
+            r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(!r || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
         }
 
-        return true;
+        masterSplitterHandle = splitterStreams[0];
+        return BASSError.BASS_OK;
     }
 
-    private BASSFlag GetBassSpeakersFlags() {
-        BASSFlag mask = BASSFlag.BASS_DEFAULT;
-        string[] names = Enum.GetNames(typeof(BASSFlag));
-        int[] values = (int[])Enum.GetValues(typeof(BASSFlag));
+    private float[,] GetSpeakersMatrix(int deviceIndex) {
+        float[,] matrix;
+        var audioDevices = Program.Settings.Audio.MainOutputDevice.Concat(Program.Settings.Audio.MonitorDevice).ToArray();
+        var channels = audioDevices[deviceIndex].Channels;
+        int index = Program.GetDeviceIndexByName(audioDevices[deviceIndex].Name);
+        Bass.BASS_SetDevice(index);
+        switch(Bass.BASS_GetInfo().speakers) {
+            case 2:
+                matrix = new float[,] {
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                        }
+                };
+                break;
 
-        for(int i = 0; i <= names.Length - 1; i++) {
-            mask = mask | (BASSFlag)values[i];
+            case 4:
+                matrix = new float[,] {
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                        }
+                };
+                break;
+
+            case 6:
+                matrix = new float[,] {
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.Center) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.LFE) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                        }
+                };
+                break;
+
+            case 8:
+                matrix = new float[,] {
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.FrontLeft) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.FrontRight) || channels.Contains(AudioDevice.AudioChannel.FrontStereo)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.Center) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.LFE) || channels.Contains(AudioDevice.AudioChannel.CenterAndLFE)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.SideLeft) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.SideRight) || channels.Contains(AudioDevice.AudioChannel.SideStereo)) ? 1 : 0
+                        },
+                        {
+                            (channels.Contains(AudioDevice.AudioChannel.RearLeft) || channels.Contains(AudioDevice.AudioChannel.RearStereo)) ? 1 : 0,
+                            0
+                        },
+                        {
+                            0,
+                            (channels.Contains(AudioDevice.AudioChannel.RearRight) || channels.Contains(AudioDevice.AudioChannel.RearStereo)) ? 1 : 0
+                        }
+                };
+                break;
+
+            default:
+                matrix = new float[,] {
+                        {
+                            0,
+                            0
+                        }
+                };
+                break;
         }
 
-        return mask;
-    }
-
-    private void GetBassSpeakerFlags() {
-
+        return matrix;
     }
 
     private void SetupEQ() {
         if(EqControls == null) return;
+        eqHandles.Clear();
+
         // set peaking equalizer effect with no bands
-        eqHandle = Bass.BASS_ChannelSetFX(fxHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+        splitterStreams.ForEach(h => {
+            int eqHandle = Bass.BASS_ChannelSetFX(h, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
 
-        // setup the EQ bands
-        eqParams.fQ = 0f;
-        eqParams.fBandwidth = 2.5f;
-        eqParams.lChannel = BASSFXChan.BASS_BFX_CHANALL;
+            // setup the EQ bands
+            eqParams.fQ = 0f;
+            eqParams.fBandwidth = 2.5f;
+            eqParams.lChannel = BASSFXChan.BASS_BFX_CHANALL;
 
-        // create 1st band for bass
-        eqParams.lBand = 0;
-        eqParams.fCenter = EqControls.EqProfile.Low;
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+            // create 1st band for bass
+            eqParams.lBand = 0;
+            eqParams.fCenter = EqControls.EqProfile.Low;
+            Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-        // create 2nd band for mid
-        eqParams.lBand = 1;
-        eqParams.fCenter = EqControls.EqProfile.Mid;
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+            // create 2nd band for mid
+            eqParams.lBand = 1;
+            eqParams.fCenter = EqControls.EqProfile.Mid;
+            Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-        // create 3rd band for treble
-        eqParams.lBand = 2;
-        eqParams.fCenter = EqControls.EqProfile.Hi;
-        Bass.BASS_FXSetParameters(eqHandle, eqParams);
+            // create 3rd band for treble
+            eqParams.lBand = 2;
+            eqParams.fCenter = EqControls.EqProfile.Hi;
+            Bass.BASS_FXSetParameters(eqHandle, eqParams);
+
+            eqHandles.Add(eqHandle);
+        });
 
         EqControls?.Reset();
     }
@@ -603,7 +724,7 @@
 
     private void SnapToClosestBeatMarker() {
         if(beatMarkers.Count == 0) return;
-        double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+        double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
 
         int closestIndex = 0;
         double closestDistance = float.MaxValue;
@@ -617,7 +738,8 @@
 
         double seconds = beatMarkers[closestIndex].Seconds;
         cuePoint = seconds;
-        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, Bass.BASS_ChannelSeconds2Bytes(fxHandle, cuePoint));
+        long position = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
     }
 
     private void ToggleLoop() {
@@ -631,19 +753,19 @@
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
 
-        double position = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
         if(resetStart) loop.Start = position;
         loop.End = loop.Start + loopSize / beatsPerSecond;
 
         if(loop.BASSHandle != 0 && resetStart) {
-            Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
+            Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
             loop.BASSHandle = 0;
         }
 
         if(loop.Enabled) {
             bool resetLoop = position <= loop.End && loopSize > 1;
-            loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.Start);
-            loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(fxHandle, loop.End);
+            loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.Start);
+            loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.End);
 
             if(loop.EndBytes > trackLengthBytes) {
                 loop.Enabled = false;
@@ -653,13 +775,13 @@
             if(resetStart || resetLoop) {
                 loop.Reset = false;
 
-                Bass.BASS_ChannelLock(fxHandle, true);
+                Bass.BASS_ChannelLock(masterSplitterHandle, true);
                 if(loop.BASSHandle != 0) {
-                    Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
+                    Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
                     loop.BASSHandle = 0;
                 }
-                loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                Bass.BASS_ChannelLock(fxHandle, false);
+                loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelLock(masterSplitterHandle, false);
             } else {
                 loop.Reset = true;
             }
@@ -692,27 +814,27 @@
 
     private void DoLoop(int handle, int channel, int data, IntPtr user) {
         if(loop.Enabled) {
-            BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, loop.StartBytes);
+            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, loop.StartBytes));
 
             if(loop.Reset) {
                 loop.Reset = false;
 
-                Bass.BASS_ChannelLock(fxHandle, true);
-                Bass.BASS_ChannelRemoveSync(fxHandle, loop.BASSHandle);
-                loop.BASSHandle = Bass.BASS_ChannelSetSync(fxHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                Bass.BASS_ChannelLock(fxHandle, false);
+                Bass.BASS_ChannelLock(masterSplitterHandle, true);
+                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
+                loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelLock(masterSplitterHandle, false);
             }
         }
     }
 
     private void DoJump(int direction) {
-        long p = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle);
-        long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(fxHandle, jumpSize / beatsPerSecond);
+        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
+        long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, jumpSize / beatsPerSecond);
         if(offset > trackLengthBytes) return;
         if(offset < 0) offset = 0;
 
         // FIXME: This doesn't work correctly while playing; may have to ask Ian about it ;)
-        BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN);
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
     }
 
     // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it
@@ -723,8 +845,8 @@
         while(true) {
             await Task.Delay(1);
 
-            if(Bass.BASS_ChannelIsActive(fxHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                playbackPosition = Bass.BASS_ChannelBytes2Seconds(fxHandle, BassMix.BASS_Mixer_ChannelGetPosition(fxHandle));
+            if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
+                playbackPosition = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
 
                 InBeat = false;
                 for(int i = 0; i < beatMarkers.Count; i++) {
@@ -737,8 +859,8 @@
 
                 if(++interval > 30) {
                     if(IsPlaying) {
-                        float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                        float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: fxHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
+                        float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                        float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
                         vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], InBeatIndex);
                     } else {
                         vuMeter?.SetLevel(0, 0, InBeatIndex);
@@ -756,15 +878,15 @@
         while(true) {
             await Task.Delay(delay);
 
-            if(Bass.BASS_ChannelIsActive(fxHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
+            if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
                 if(waveform!.IsMouseDown) {
                     long p = waveform.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, p));
                 } else if(waveformFull!.IsMouseDown) {
                     long p = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    BassMix.BASS_Mixer_ChannelSetPosition(fxHandle, p);
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, p));
                 } else {
-                    waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(fxHandle) * WaveformBarWidth / waveformStepLength;
+                    waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle) * WaveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
                 }
 

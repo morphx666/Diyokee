@@ -114,13 +114,15 @@ internal class Program {
     }
 
     private static void SetupBASS() {
+        int index = 0;
         foreach(var device in Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice)) {
-            int index = GetDeviceByIndex(device.Name);
-            Bass.BASS_SetDevice(index);
-            int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 2, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
+            int bassDeviceIndex = Program.GetDeviceIndexByName(device.Name);
+            Bass.BASS_SetDevice(bassDeviceIndex);
+
+            int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 8, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
             Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);           
             Bass.BASS_ChannelPlay(handle, true);
-            BassMixHandles.Add((handle, index));
+            BassMixHandles.Add((handle, index++));
         }
 
         // Attach to the first device, for now...
@@ -130,7 +132,7 @@ internal class Program {
         }
     }
 
-    public static int GetDeviceByIndex(string name) {
+    public static int GetDeviceIndexByName(string name) {
         for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
             if(deviceInfo.name == name) return i;
@@ -179,7 +181,7 @@ internal class Program {
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 
         SetUpDevice(Settings.Audio.MainOutputDevice);
-        SetUpDevice(Settings.Audio.MonitorDevice);
+        SetUpDevice(Settings.Audio.MonitorDevice, false);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);
@@ -188,7 +190,7 @@ internal class Program {
         return true;
     }
 
-    private static void SetUpDevice(List<AudioDevice> devices) {
+    private static void SetUpDevice(List<AudioDevice> devices, bool createIfNotSet = true) {
         bool deviceIsSet = false;
         int defaultDeviceIndex = -1;
         for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {
@@ -202,9 +204,9 @@ internal class Program {
             }
         }
 
-        if(!deviceIsSet) {
+        if(!deviceIsSet && createIfNotSet) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(defaultDeviceIndex);
-            Settings.Audio.MainOutputDevice.Add(new(deviceInfo.name, AudioDevice.AudioChannel.FrontStereo));
+            devices.Add(new(deviceInfo.name, AudioDevice.AudioChannel.FrontStereo));
         }        
     }
 }
