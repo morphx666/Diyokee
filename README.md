@@ -60,5 +60,5 @@ This project wouldn't have been possible without the following:
 
 ![Alt](https://repobeats.axiom.co/api/embed/c2c1360a9361b0aa67fab23ec95bcf536a4421b4.svg "Repobeats analytics image")
 
-[^1]: File attributes may be lost when running the app under Linux-like systems, including macOS.  
+[^1]: File attributes may be lost when unzipping the app under Linux-like systems, including macOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
