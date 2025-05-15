@@ -174,6 +174,7 @@ internal class Program {
         }
 
         if(Settings.BassNetRegEmail != "" && Settings.BassNetRegKey != "") {
+            // http://www.bass.radio42.com/index.html
             BassNet.Registration(Settings.BassNetRegEmail, Settings.BassNetRegKey);
         }
 

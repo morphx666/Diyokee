@@ -76,6 +76,7 @@
             flex-direction: row;
             align-items: center;
             flex: 1;
+            margin-bottom: 0.5rem;
 
             &:has(select) {
                 position: relative;
@@ -134,8 +135,7 @@
         label {
             display: inline-block;
             color: var(--panel-background-color-light-light);
-            min-width: 4rem;
-            max-width: 4rem;
+            min-width: 5rem;
             padding-right: 0.4rem;
         }
 

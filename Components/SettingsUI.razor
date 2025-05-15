@@ -1,16 +1,30 @@
 ﻿@using Un4seen.Bass
 
 <ModalDialog
-Title="Settings"
-OnSave="Save"
-OnClose="Close"
-@ref="dialog">
+    Title="Settings"
+    OnSave="Save"
+    OnClose="Close"
+    @ref="dialog">
 
     @if(settings == null) return;
 
     <div class="header">
         <h4>Audio</h4>
         <AudioMatrix Settings="settings" />
+    </div>
+
+    <div class="header">
+        <h4>Local Media</h4>
+
+        <div class="field">
+            <label for="local-media-name">Name</label>
+            <InputText id="local-media-name" @bind-value="settings.MediaProviders[0].Name" />
+        </div>
+
+        <div class="field">
+            <label for="local-media-location">Location</label>
+            <InputText id="local-media-location" @bind-value="settings.MediaProviders[0].RootDirectory" />
+        </div>
     </div>
 
     <div class="header">

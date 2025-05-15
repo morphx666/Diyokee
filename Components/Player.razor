@@ -122,13 +122,15 @@
 </div>
 
 @code {
+    private string lastFilename = "";
+
     private int streamHandle = 0;
     private int fxHandle = 0;
     private List<int> eqHandles = [];
     private BASS_BFX_PEAKEQ eqParams = new();
     private List<int> splitterStreams = [];
     private int masterSplitterHandle = 0;
-    private string lastFilename = "";
+    private SYNCPROC loopSyncProc = null!;
 
     private double trackGain = 1;
     private double crossFaderVolume = 1;
@@ -752,7 +754,6 @@
         SetLoopSize(loopSize, true);
     }
 
-    private SYNCPROC loopSyncProc = null!;
     private void SetLoopSize(double size, bool resetStart) {
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
