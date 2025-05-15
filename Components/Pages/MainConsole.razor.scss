@@ -14,8 +14,9 @@
     }
 
     .players {
-        display: grid;
-        grid-template-columns: calc(50% - 100px) 200px calc(50% - 100px);
+        display: flex;
+        flex-direction: row;
+        gap: 1px;
 
         min-height: 396px;
         max-height: 396px;
@@ -24,36 +25,53 @@
             display: flex;
             flex-direction: row;
             background-color: var(--panel-background-color-light);
+
+            width: 100%;
+        }
+    }
+
+    .mixer {
+        position: relative;
+        width: 100%;
+        background-color: var(--panel-background-color-dark);
+
+        .monitor-controls {
+            position: absolute;
+            top: 50%;
+            right: 0.5rem;
+            transform: translateY(-50%);
+
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 0.2rem;
+
+            i {
+                font-size: 0.6rem;
+                margin-top: -6px;
+            }
         }
 
-        .mixer {
+        .crossfade-controls {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             justify-content: space-between;
+            padding: 6px 8px;
+            cursor: pointer;
+            margin: 0 auto;
+            width: 20%;
 
-            background-color: var(--panel-background-color-dark);
-
-            .controls {
-                height: calc(5rem - 2px);
+            ::deep .fader-container {
+                width: 100%;
             }
 
-            .crossfade-controls {
+            .button-3d {
                 display: flex;
-                flex-direction: row;
-                justify-content: space-between;
-                padding: 6px 8px;
-                cursor: pointer;
-
-                ::deep .fader-container {
-                    width: 100%;
-                }
-
-                .button-3d {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 2rem;
-                }
+                align-items: center;
+                justify-content: center;
+                width: 1.6rem;
+                height: 2rem;
+                margin: auto 0;
             }
         }
     }
