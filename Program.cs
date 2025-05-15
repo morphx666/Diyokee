@@ -180,8 +180,8 @@ internal class Program {
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
 
-        SetUpDevice(Settings.Audio.MainOutputDevice);
-        SetUpDevice(Settings.Audio.MonitorDevice, false);
+        SetupDevice(Settings.Audio.MainOutputDevice);
+        SetupDevice(Settings.Audio.MonitorDevice, false);
 
         BASS_INFO basInfo = new();
         Bass.BASS_GetInfo(basInfo);
@@ -190,7 +190,7 @@ internal class Program {
         return true;
     }
 
-    private static void SetUpDevice(List<AudioDevice> devices, bool createIfNotSet = true) {
+    private static void SetupDevice(List<AudioDevice> devices, bool createIfNotSet = true) {
         bool deviceIsSet = false;
         int defaultDeviceIndex = -1;
         for(int i = 0; i < Bass.BASS_GetDeviceCount(); i++) {

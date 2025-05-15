@@ -540,7 +540,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
                         }
-                };
+        };
                 break;
 
             case 4:
@@ -561,7 +561,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
                         }
-                };
+        };
                 break;
 
             case 6:
@@ -590,7 +590,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
                         }
-                };
+        };
                 break;
 
             case 8:
@@ -627,7 +627,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
                         }
-                };
+        };
                 break;
 
             default:
@@ -636,7 +636,7 @@
                             0,
                             0
                         }
-                };
+        };
                 break;
         }
 
@@ -724,6 +724,11 @@
 
     private void SnapToClosestBeatMarker() {
         if(beatMarkers.Count == 0) return;
+        long position = GetClosestBeatMarker();
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
+    }
+
+    private long GetClosestBeatMarker() {
         double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
 
         int closestIndex = 0;
@@ -738,8 +743,7 @@
 
         double seconds = beatMarkers[closestIndex].Seconds;
         cuePoint = seconds;
-        long position = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
+        return Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
     }
 
     private void ToggleLoop() {
@@ -753,7 +757,7 @@
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
 
-        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
+        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
         if(resetStart) loop.Start = position;
         loop.End = loop.Start + loopSize / beatsPerSecond;
 
