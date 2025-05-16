@@ -25,8 +25,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Faders and knobs can be used by clicking and dragging or by moving the mouse over them and using the scroll wheel.
 - Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" width="12"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" width="12"> buttons under the SYNC section to perform small tempo adjustments.
 - You can click and drag over both waveforms (synced and full) to change the playback position.
-- Use the textbox at the bottom of the files list to search for files. The search is recursive.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-rotate-right.svg" width="12"> button in the search bar to re-analyze a track. When re-analyzing a track, the program will ignore the BPM from the track's id3 tags and will recalculate it.
+- Search for files in the textbox at the bottom of the files list. The search is recursive.
 - Double-click a track in the files list to open the Track Properties dialog.
   ![image](https://github.com/user-attachments/assets/fda34783-9973-49c9-8210-37f331cb5c5c)
 
@@ -60,5 +59,5 @@ This project wouldn't have been possible without the following:
 
 ![Alt](https://repobeats.axiom.co/api/embed/c2c1360a9361b0aa67fab23ec95bcf536a4421b4.svg "Repobeats analytics image")
 
-[^1]: File attributes may be lost when running the app under Linux-like systems, including macOS.  
+[^1]: File attributes may be lost when unzipping the app under Linux-like systems, including macOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
