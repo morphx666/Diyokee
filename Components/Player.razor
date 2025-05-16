@@ -36,29 +36,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.Full"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Player="this"
-        @ref="waveformFull" />
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
         <Waveform CssColor="@Settings.Color"
-        Mode="Waveform.Modes.AudioSynced"
-        BeatMarkers="@beatMarkers"
-        DownbeatAt="@fileDownbeatAt"
-        MaxPeak="@maxPeak"
-        Peaks="@peaks"
-        SecondsToPosX="@secondsToPosX"
-        WaveformWidth="@waveformWidth"
-        Loop="loop"
-        Player="this"
-        @ref="waveform" />
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Loop="loop"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -73,8 +73,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-        @onmousedown="(e) => HandlePlayClick(e, false)"
-        @onmouseup="HandleStopAndSnapClick">
+            @onmousedown="(e) => HandlePlayClick(e, false)"
+            @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -97,7 +97,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetLoopSize(size.Item2, false)">
+                        @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -106,7 +106,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                    @onclick="() => SetJumpSize(size.Item2)">
+                        @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -126,10 +126,12 @@
 
     private int streamHandle = 0;
     private int fxHandle = 0;
-    private List<int> eqHandles = [];
+    private int eqHandle = 0;
     private BASS_BFX_PEAKEQ eqParams = new();
+    private BASS_BFX_VOLUME gain = new();
     private List<int> splitterStreams = [];
     private int masterSplitterHandle = 0;
+    private int gainHandle = 0;
     private SYNCPROC loopSyncProc = null!;
 
     private double trackGain = 1;
@@ -342,25 +344,23 @@
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
-        eqHandles.ForEach(h => {
-            // Lo
-            eqParams.lBand = 0;
-            eqParams.fCenter = EqControls.EqProfile.Low;
-            eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
-            Bass.BASS_FXSetParameters(h, eqParams);
+        // Lo
+        eqParams.lBand = 0;
+        eqParams.fCenter = EqControls.EqProfile.Low;
+        eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-            // Mid
-            eqParams.lBand = 1;
-            eqParams.fCenter = EqControls.EqProfile.Mid;
-            eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
-            Bass.BASS_FXSetParameters(h, eqParams);
+        // Mid
+        eqParams.lBand = 1;
+        eqParams.fCenter = EqControls.EqProfile.Mid;
+        eqParams.fGain = (float)(eqValues.Mid * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-            // Hi
-            eqParams.lBand = 2;
-            eqParams.fCenter = EqControls.EqProfile.Hi;
-            eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
-            Bass.BASS_FXSetParameters(h, eqParams);
-        });
+        // Hi
+        eqParams.lBand = 2;
+        eqParams.fCenter = EqControls.EqProfile.Hi;
+        eqParams.fGain = (float)(eqValues.Hi * 30 - 15);
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
     }
 
     private void EqProfileChanged(EqualizerProfile eqProfile) {
@@ -466,6 +466,7 @@
 
         trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
         ApplyVolume(faderVolume!.Value);
+        SetGain(gain.fVolume);
         SetupEQ();
         faderTempo?.SetValue(0.5);
         if(loop.Enabled) ToggleLoop();
@@ -497,6 +498,14 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
 
+        eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+
+        // gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
+        // bassErrorCode = Bass.BASS_ErrorGetCode();
+        // if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+
         splitterStreams.Clear();
         masterSplitterHandle = 0;
         foreach(var mixHandle in Program.BassMixHandles) {
@@ -520,9 +529,19 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
         }
-
         masterSplitterHandle = splitterStreams[0];
+
+        gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+
         return BASSError.BASS_OK;
+    }
+
+    public void SetGain(float value) {
+        gain.fVolume = value;
+        if(gainHandle == 0) return;
+        Bass.BASS_FXSetParameters(gainHandle, gain);
     }
 
     private float[,] GetSpeakersMatrix(int deviceIndex) {
@@ -647,34 +666,25 @@
 
     private void SetupEQ() {
         if(EqControls == null) return;
-        eqHandles.Clear();
+        // setup the EQ bands
+        eqParams.fQ = 0f;
+        eqParams.fBandwidth = 2.5f;
+        eqParams.lChannel = BASSFXChan.BASS_BFX_CHANALL;
 
-        // set peaking equalizer effect with no bands
-        splitterStreams.ForEach(h => {
-            int eqHandle = Bass.BASS_ChannelSetFX(h, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+        // create 1st band for bass
+        eqParams.lBand = 0;
+        eqParams.fCenter = EqControls.EqProfile.Low;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-            // setup the EQ bands
-            eqParams.fQ = 0f;
-            eqParams.fBandwidth = 2.5f;
-            eqParams.lChannel = BASSFXChan.BASS_BFX_CHANALL;
+        // create 2nd band for mid
+        eqParams.lBand = 1;
+        eqParams.fCenter = EqControls.EqProfile.Mid;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
-            // create 1st band for bass
-            eqParams.lBand = 0;
-            eqParams.fCenter = EqControls.EqProfile.Low;
-            Bass.BASS_FXSetParameters(eqHandle, eqParams);
-
-            // create 2nd band for mid
-            eqParams.lBand = 1;
-            eqParams.fCenter = EqControls.EqProfile.Mid;
-            Bass.BASS_FXSetParameters(eqHandle, eqParams);
-
-            // create 3rd band for treble
-            eqParams.lBand = 2;
-            eqParams.fCenter = EqControls.EqProfile.Hi;
-            Bass.BASS_FXSetParameters(eqHandle, eqParams);
-
-            eqHandles.Add(eqHandle);
-        });
+        // create 3rd band for treble
+        eqParams.lBand = 2;
+        eqParams.fCenter = EqControls.EqProfile.Hi;
+        Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         EqControls?.Reset();
     }

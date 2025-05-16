@@ -1,6 +1,8 @@
 ﻿@using System.Diagnostics
 @using Diyokee
 @using Diyokee.MediaProviders
+@using Un4seen.Bass
+@using Un4seen.Bass.AddOn.Mix
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 
@@ -28,6 +30,12 @@
                     OtherPlayer="@player2"
                     @ref="player1" />
             </div>
+
+            <div class="global-controls">
+                <Knob Name="Gain" @ref="mainGain" ValueChanged="ApplyMainGain" />
+                <div class="button-thin" @onclick="OpenSettingsDialog"><i class="fa-solid fa-gear"></i></div>
+            </div>
+
             <div class="player">
                 <Player
                     Settings="Program.Settings.Playback.Players[1]"
@@ -105,6 +113,7 @@
     private Dictionary<PanelResize.ConstrainKeys, string> mediaProviderConstrains = new() { { PanelResize.ConstrainKeys.Min, "250" } };
 
     private Knob? monitorMix = null!;
+    private Knob? mainGain = null!;
 
     private bool shouldRender = true;
 
@@ -146,11 +155,15 @@
                     shouldRender = true;
                     break;
                 case "KeyS":
-                    SetPlayersMouseCapturing(false);
-                    settingsUi.Open();
+                    OpenSettingsDialog();
                     break;
             }
         }
+    }
+
+    private void OpenSettingsDialog() {
+        SetPlayersMouseCapturing(false);
+        settingsUi.Open();
     }
 
     private void HandleMouseDown(MouseEventArgs e) {
@@ -184,6 +197,12 @@
 
     private void ApplyMonitorMix(double value) {
 
+    }
+
+    private void ApplyMainGain(double value) {
+        value *= 2; // 0-1 to 0-2 range
+        player1?.SetGain((float)value);
+        player2?.SetGain((float)value);
     }
 
     private CancellationTokenSource? cancellationTokenSource = null;

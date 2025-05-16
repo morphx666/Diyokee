@@ -37,7 +37,7 @@ namespace Diyokee {
             [JsonProperty("sync-playback")] public bool SyncPlayback { get; set; } = true;
             [JsonProperty("players")] public PlayerSettings[] Players { get; set; } = [
                 new() { Name = "A", Color = "#977696" },
-                new() { Name = "B", Color = "#279597" },
+                new() { Name = "B", Color = "#279597", ReverseControls = true },
             ];
             [JsonProperty("waveform-zoom")] public int WaveformZoom { get; set; } = 5;
         }

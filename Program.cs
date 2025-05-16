@@ -9,6 +9,7 @@ using Un4seen.Bass.AddOn.Mix;
 using Newtonsoft.Json;
 using Microsoft.Data.Sqlite;
 using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using System.Diagnostics;
 
 internal class Program {
     public const int SAMPLING_FREQUENCY = 44100;

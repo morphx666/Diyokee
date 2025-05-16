@@ -17,6 +17,7 @@
         display: flex;
         flex-direction: row;
         gap: 1px;
+        background-color: var(--panel-background-color-dark-dark);
 
         min-height: 396px;
         max-height: 396px;
@@ -27,6 +28,19 @@
             background-color: var(--panel-background-color-light);
 
             width: 100%;
+        }
+
+        .global-controls {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: var(--panel-background-color-light);
+            padding: 113px 6px 6px;
+
+            .button-thin {
+                padding: 6px 0;
+                cursor: pointer;
+            }
         }
     }
 
@@ -59,7 +73,8 @@
             padding: 6px 8px;
             cursor: pointer;
             margin: 0 auto;
-            width: 20%;
+            width: 15%;
+            min-width: 18rem;
 
             ::deep .fader-container {
                 width: 100%;
