@@ -15,6 +15,7 @@ internal class Program {
     public const int SAMPLING_FREQUENCY = 44100;
     public static List<(int Handle, int DeviceIndex)> BassMixHandles = [];
     public static int BassLatencyMs = 0;
+    public static ILogger Logger = null!;
 
     public static Settings Settings = new();
 
@@ -98,8 +99,9 @@ internal class Program {
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        app.Logger.LogInformation("Setting up BASS...");
-        InitBASS(workingDirectory, app.Logger);
+        Logger = app.Logger;
+        Logger.LogInformation("Setting up BASS...");
+        InitBASS(workingDirectory);
         SetupBASS();
 
         app.Run();
@@ -141,7 +143,7 @@ internal class Program {
         return 0; // No Sound
     }
 
-    private static bool InitBASS(string workingDirectory, ILogger logger) {
+    private static bool InitBASS(string workingDirectory) {
         char c = Runtime.PathSeparator;
         string platform = Runtime.Platform.ToString().ToLower();
         string architecture = Environment.Is64BitProcess || Runtime.Platform == Runtime.Platforms.Mac ? "x64" : "x86";
@@ -156,7 +158,7 @@ internal class Program {
 
         string srcDir = Path.Combine(Runtime.RunningDirectory, $"bass{c}{platform}{c}{architecture}{c}");
 
-        logger.LogInformation(
+        Logger.LogInformation(
             $$"""
             Platform: {{Runtime.Platform}}
             Architecture: {{architecture}}

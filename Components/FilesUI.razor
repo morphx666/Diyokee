@@ -26,7 +26,7 @@
 
             @foreach(DFile file in files) {
                 @if(file.Artist == "...") {
-                    <div class="cell @((file.Filename == selectedFile) ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">
+                    <div class="cell @(file.Filename == selectedFile ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">
                         <img src="@Assets["/images/waiting.gif"]" />
                     </div>
                 } else {
@@ -163,14 +163,20 @@
         analyzingTask = await Task.Run(async () => {
             cache ??= await CacheDbContextFactory.CreateDbContextAsync();
 
-            files.ForEach(async file => {
-                if(cancellationTokenSource.IsCancellationRequested) return;
+            try {
+                files.ForEach(async file => {
+                    if(cancellationTokenSource.IsCancellationRequested) return;
 
-                await AnalyzeFile(file, cache, false);
+                    await AnalyzeFile(file, cache, false);
 
-                if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
-                await InvokeAsync(StateHasChanged);
-            });
+                    if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
+                    await InvokeAsync(StateHasChanged);
+                });
+            } catch(TaskCanceledException) {
+                // Ignore cancellation exception
+            } catch(Exception ex) {
+                Program.Logger.LogError($"Error analyzing files: {ex.Message}");
+            }
         }, cancellationTokenSource.Token).ContinueWith(async _ => {
             isSearching = false;
             searchButtonIcon = "fa-magnifying-glass";
@@ -244,7 +250,7 @@
                 if(file.Artist == "") file.Artist = tokens[0];
                 if(file.Title == "") file.Title = tokens[1].Replace(fileExtension, "");
             }
-            // This is for files where the only title is present and it has been set to the file name
+            // This is for files where only the title is present and it has been set to the file name
             if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace($"{file.Artist} - ", "").Trim();
 
             int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
