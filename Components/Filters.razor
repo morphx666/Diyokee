@@ -1,0 +1,49 @@
+﻿<div class="knobs-container"
+     @ref="knobs">
+    <Knob Name="FILTER" @ref="eqFilter" ValueChanged="ApplyEqFilter" />
+    <Knob Name="KEY" @ref="eqKey" ValueChanged="ApplyEqKey" Enabled="false" />
+</div>
+
+@code {
+    private ElementReference? knobs;
+    private Knob? eqFilter;
+    private Knob? eqKey;
+
+    public struct FilterKeyValues {
+        public double Filter;
+        public double Key;
+    }
+    public FilterKeyValues FiltersValues = new();
+
+    [Parameter]
+    public EventCallback<FilterKeyValues> ValueChanged { get; set; }
+
+    public Filters() {
+        FiltersValues.Filter = 0.5;
+        FiltersValues.Key = 0.5;
+    }
+
+    public void Reset() {
+        eqFilter?.SetValue(0.5);
+        eqKey?.SetValue(0.5);
+    }
+
+    private async void ApplyEqFilter(double value) {
+        FiltersValues.Filter = value;
+        await ValueChanged.InvokeAsync(FiltersValues);
+    }
+
+    private async void ApplyEqKey(double value) {
+        FiltersValues.Key = value;
+        await ValueChanged.InvokeAsync(FiltersValues);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            eqFilter?.SetInitialValue(FiltersValues.Filter);
+            eqKey?.SetInitialValue(FiltersValues.Key);
+
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+}

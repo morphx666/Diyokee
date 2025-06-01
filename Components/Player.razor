@@ -4,6 +4,7 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
+@using System.Runtime.InteropServices
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
 @using Un4seen.Bass.AddOn.Mix
@@ -66,6 +67,7 @@
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
             <Eq ValueChanged="ApplyEqValues" EqProfileChanged="EqProfileChanged" @ref="EqControls" />
+            <Filters ValueChanged="ApplyFilterValues" @ref=FilterControls />
         }
     </div>
 
@@ -144,6 +146,7 @@
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
     public Eq EqControls = null!;
+    public Filters FilterControls = null!;
 
     private double fileBPM = 0;
     private double fileDownbeatAt = 0;
@@ -368,6 +371,9 @@
         UpdateSettings();
     }
 
+    private void ApplyFilterValues(Filters.FilterKeyValues filtersValues) {
+    }
+
     private string CalcBpm() {
         double bpm = (file?.BPM ?? 0) * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
         return bpm.ToString("N2");
@@ -406,9 +412,6 @@
         if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
     }
 
-    // private DSPPROC dspProc = null!;
-    // private double[] din = new double[5];
-    // private double[] dout = new double[5];
     private void LoadFile() {
         IsPlaying = false;
 
@@ -421,48 +424,11 @@
 
         if(file == null || faderVolume == null) return;
 
-        if(CreateStreams() != BASSError.BASS_OK) {
+        var r = CreateStreams();
+        if(r.Error != BASSError.BASS_OK) {
             // TODO: Do something so the user knows the file cannot be played
+            Program.Logger.LogError($"Error creating stream ({r.Message}): {r.Error}");
         }
-
-        // See SetBassSpeaker from RemoteDJ
-        //  | BASSFlag.BASS_SPEAKER_FRONTLEFT | BASSFlag.BASS_MUSIC_MONO | BASSFlag.BASS_MIXER_CHAN_DOWNMIX);
-
-        // // Resonant lowpass filter
-        // // For highpass filter, just change the sign of the feedback (HPF = sample - out ?)
-        // // https://github.com/bdejong/musicdsp
-        // // http://192.168.1.8:88/Filters/26-moog-vcf-variation-2.html (RPi4 (/home/xfx/musicdsp/build/html): sudo python -m http.server 88)
-        // dspProc = new((int handle, int channel, IntPtr buffer, int length, IntPtr user) => {
-        //     int l4 = length / 4;
-        //     double[] input = new double[l4];
-        //     float[] data = new float[l4];
-        //     System.Runtime.InteropServices.Marshal.Copy(buffer, data, 0, l4);
-
-        //     double fc = 0.5;
-        //     double res = 3;
-        //     double f = fc * 1.16;
-        //     double fb = res * (1.0 - 0.15 * f * f);
-
-        //     for(int i = 0; i < l4; i++) {
-        //         input[i] = data[i];
-
-        //         input[i] -= dout[4] * fb;
-        //         input[i] *= 0.35013 * (f * f) * (f * f);
-        //         dout[1] = input[i] + 0.3 * din[1] + (1 - f) * dout[1]; // Pole 1
-        //         din[1] = input[i];
-        //         dout[2] = dout[1] + 0.3 * din[2] + (1 - f) * dout[2];  // Pole 2
-        //         din[2] = dout[1];
-        //         dout[3] = dout[2] + 0.3 * din[3] + (1 - f) * dout[3];  // Pole 3
-        //         din[3] = dout[2];
-        //         dout[4] = dout[3] + 0.3 * din[4] + (1 - f) * dout[4];  // Pole 4
-        //         din[4] = dout[3];
-
-        //         data[i] = (float)dout[4];
-        //     }
-
-        //     System.Runtime.InteropServices.Marshal.Copy(data, 0, buffer, l4);
-        // });
-        // Bass.BASS_ChannelSetDSP(fxHandle, dspProc, IntPtr.Zero, 0);
 
         trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
         ApplyVolume(faderVolume!.Value);
@@ -482,7 +448,7 @@
         });
     }
 
-    private BASSError CreateStreams() {
+    private (BASSError Error, string Message) CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
 
         streamHandle = Bass.BASS_StreamCreateFile(file?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
@@ -490,21 +456,22 @@
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC01");
 
         fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
                                                             | BASSFlag.BASS_STREAM_DECODE
                                                             | BASSFlag.BASS_FX_FREESOURCE);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC02");
 
         eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC03");
 
-        // gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
-        // bassErrorCode = Bass.BASS_ErrorGetCode();
-        // if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+        InitResonantFilter();
+        int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspProc, IntPtr.Zero, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
 
         splitterStreams.Clear();
         masterSplitterHandle = 0;
@@ -512,7 +479,7 @@
             int splitterHandle = BassMix.BASS_Split_StreamCreate(fxHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC04");
             splitterStreams.Add(splitterHandle);
 
             bool r = BassMix.BASS_Mixer_StreamAddChannel(mixHandle.Handle, splitterHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE
@@ -521,21 +488,21 @@
                                                                                            | BASSFlag.BASS_STREAM_AUTOFREE
                                                                                            | BASSFlag.BASS_MIXER_CHAN_MATRIX);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC05");
 
 
             float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
             r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC06");
         }
         masterSplitterHandle = splitterStreams[0];
 
         gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return bassErrorCode;
+        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC07");
 
-        return BASSError.BASS_OK;
+        return (BASSError.BASS_OK, "");
     }
 
     public void SetGain(float value) {
@@ -561,7 +528,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
                         }
-        };
+    };
                 break;
 
             case 4:
@@ -582,7 +549,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
                         }
-        };
+    };
                 break;
 
             case 6:
@@ -611,7 +578,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
                         }
-        };
+    };
                 break;
 
             case 8:
@@ -648,7 +615,7 @@
                             0,
                             speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
                         }
-        };
+    };
                 break;
 
             default:
@@ -657,7 +624,7 @@
                             0,
                             0
                         }
-        };
+    };
                 break;
         }
 
@@ -850,6 +817,46 @@
 
         // FIXME: This doesn't work correctly while playing; may have to ask Ian about it ;)
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
+    }
+
+    private DSPPROC dspProc = null!;
+    private double[] din = new double[5];
+    private double[] dout = new double[5];
+    private void InitResonantFilter() {
+        // Resonant lowpass filter
+        // For highpass filter, just change the sign of the feedback (HPF = sample - out ?)
+        // https://github.com/bdejong/musicdsp
+        // http://192.168.1.8:88/Filters/26-moog-vcf-variation-2.html (RPi4 (/home/xfx/musicdsp/build/html): sudo python -m http.server 88)
+        dspProc = new((int handle, int channel, IntPtr buffer, int length, IntPtr user) => {
+            int l4 = length / 4;
+            double[] input = new double[l4];
+            float[] data = new float[l4];
+            Marshal.Copy(buffer, data, 0, l4);
+
+            double fc = 0.5;
+            double res = FilterControls.FiltersValues.Filter * 4;
+            double f = fc * 1.16;
+            double fb = res * (1.0 - 0.15 * f * f);
+
+            for(int i = 0; i < l4; i++) {
+                input[i] = data[i];
+
+                input[i] -= dout[4] * fb;
+                input[i] *= 0.35013 * (f * f) * (f * f);
+                dout[1] = input[i] + 0.3 * din[1] + (1 - f) * dout[1]; // Pole 1
+                din[1] = input[i];
+                dout[2] = dout[1] + 0.3 * din[2] + (1 - f) * dout[2];  // Pole 2
+                din[2] = dout[1];
+                dout[3] = dout[2] + 0.3 * din[3] + (1 - f) * dout[3];  // Pole 3
+                din[3] = dout[2];
+                dout[4] = dout[3] + 0.3 * din[4] + (1 - f) * dout[4];  // Pole 4
+                din[4] = dout[3];
+
+                data[i] = (float)dout[4];
+            }
+
+            Marshal.Copy(data, 0, buffer, l4);
+        });
     }
 
     // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it

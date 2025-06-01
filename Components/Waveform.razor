@@ -67,7 +67,7 @@
     public Loop Loop { get; set; } = new();
 
     [Parameter]
-    public Player Player { get; set; }
+    public Player Player { get; set; } = null!;
 
     public bool EnableMouseEvents { get; set; } = true;
 
@@ -119,6 +119,7 @@
                     if(!IsMouseDown
                         && mouseState != null
                         && canvasBounds != null
+                        && zoomControlsBounds != null
                         && !mouseState.IsCaptured
                         && mouseState.ButtonsDown == 1
                         && canvasBounds.Contains(mouseState.X, mouseState.Y)

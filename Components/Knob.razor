@@ -2,7 +2,7 @@
 @inject IJSRuntime JS
 
 <div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
-    <div class="knob-container">
+    <div class="knob-container @(Enabled ? "" : "disabled")">
         <div class="knob" style="@GetKnobCss()">
             <div class="pointer"></div>
         </div>
@@ -24,6 +24,9 @@
     private MouseState? mouseState { get; set; } = null;
 
     public bool EnableMouseEvents { get; set; } = true;
+
+    [Parameter]
+    public bool Enabled { get; set; } = true;
 
     private ElementReference knobElement;
     private Bounds? knobBounds;
@@ -79,7 +82,7 @@
                 int delay = 60;
                 while(true) {
                     await Task.Delay(delay);
-                    if(!EnableMouseEvents) continue;
+                    if(!EnableMouseEvents || !Enabled) continue;
 
                     if(!isValid
                         && knobBounds != null

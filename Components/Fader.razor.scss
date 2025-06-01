@@ -3,6 +3,14 @@
     display: flex;
     flex-direction: column;
 
+    &.disabled {
+        pointer-events: none;
+
+        .fader {
+            opacity: 0.4;
+        }
+    }
+
     .name {
         width: 100%;
         text-align: center;

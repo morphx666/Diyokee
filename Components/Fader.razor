@@ -1,7 +1,7 @@
 ﻿@using Diyokee
 @inject IJSRuntime JS
 
-<div class="fader-container">
+<div class="fader-container @(Enabled ? "" : "disabled")">
     <div class="name">@((MarkupString)Name)</div>
     <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
         <div class="knob button-thin"
@@ -29,6 +29,9 @@
 
     [Parameter]
     public string Name { get; set; } = "";
+
+    [Parameter]
+    public bool Enabled { get; set; } = true;
 
     [Parameter]
     public EventCallback<double> ValueChanged { get; set; }
@@ -117,7 +120,7 @@
                 int delay = 60;
                 while(true) {
                     await Task.Delay(delay);
-                    if(!EnableMouseEvents) continue;
+                    if(!EnableMouseEvents || !Enabled) continue;
 
                     if(!isValid
                         && faderBounds != null

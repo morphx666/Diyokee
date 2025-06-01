@@ -2,11 +2,11 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    align-items: center;    
+    align-items: center;
 
     .name {
         font-size: 0.6rem;
-        margin-top: -0.25rem;
+        margin-top: -0.2rem;
     }
 
     .knob-container {
@@ -16,19 +16,27 @@
         height: 36px;
         border-radius: 50%;
 
+        &.disabled {
+            pointer-events: none;
+
+            .knob {
+                opacity: 0.4;
+            }
+        }
+
         .knob {
-                position: absolute;
-                top: calc(6px / 2);
-                left: calc(6px / 2);
-                width: calc(100% - 6px);
-                height: calc(100% - 6px);
+            position: absolute;
+            top: calc(6px / 2);
+            left: calc(6px / 2);
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
 
-                border: calc(6px / 2) solid var(--app-background-color);
-                border-radius: 50%;
+            border: calc(6px / 2) solid var(--app-background-color);
+            border-radius: 50%;
 
-                rotate: 0;
+            rotate: 0;
 
-                background-color: var(--panel-background-color-dark);
+            background-color: var(--panel-background-color-dark);
 
             .pointer {
                 position: absolute;
