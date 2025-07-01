@@ -293,7 +293,7 @@
             IsPlaying = false;
         } else {
             if(autoSync && (OtherPlayer?.IsPlaying ?? false)) {
-                Task.Run(async () => { // TODO: This should be optional
+                Task.Run(async () => {
                     while(true) {
                         await Task.Delay(1);
                         if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == InBeatIndex) {
@@ -468,10 +468,12 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC03");
 
-        InitResonantFilter();
-        int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspProc, IntPtr.Zero, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
+        if(!MinimalMode) {
+            InitResonantFilter();
+            int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspProc, IntPtr.Zero, 0);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
+        }
 
         splitterStreams.Clear();
         masterSplitterHandle = 0;
