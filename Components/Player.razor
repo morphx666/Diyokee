@@ -11,7 +11,11 @@
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 
-<div class="player-container">
+<div class="player-container"
+     ondragover="event.preventDefault();"
+     @ondrop="HandleDrop"
+     @ondragenter="HandleDragEnter"
+     @ondragleave="HandleDragLeave">
     @if(!MinimalMode) {
         <div class="header">
             <div class="file-info ellipsis">
@@ -211,6 +215,9 @@
     [Parameter]
     public bool MinimalMode { get; set; } = false;
 
+    [CascadingParameter]
+    private MouseState? mouseState { get; set; } = null;
+
     public bool InBeat { get; set; } = false;
 
     public int InBeatIndex { get; set; } = 1;
@@ -228,7 +235,9 @@
             }
             faderVolume!.EnableMouseEvents = value;
             waveform!.EnableMouseEvents = value;
+            waveform!.IsMouseDown = false;
             waveformFull!.EnableMouseEvents = value;
+            waveformFull!.IsMouseDown = false;
         }
     }
 
@@ -920,6 +929,28 @@
 
             if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
         }
+    }
+
+    int dragCounter = 0;
+    private void HandleDragEnter(DragEventArgs e) {
+        mouseState!.Enabled = false;
+        dragCounter += 1;
+    }
+
+    private void HandleDragLeave(DragEventArgs e) {
+        dragCounter -= 1;
+        if(dragCounter <= 0) {
+            mouseState!.Enabled = true;
+            dragCounter = 0;
+        }
+    }
+
+    private async Task HandleDrop(DragEventArgs e) {
+        mouseState!.Enabled = true;
+        mouseState!.ButtonsDown = 0;
+        mouseState!.IsCaptured = false;
+
+        await RequestedFileCue.InvokeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
