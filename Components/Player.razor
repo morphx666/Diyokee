@@ -350,7 +350,7 @@
 
         Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
         if(Program.Settings.Playback.SyncPlayersBpm) {
-            // FIXME: Implement to login to avoid recursion
+            // FIXME: Implement necessary checks to avoid infinite recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
         }
     }
