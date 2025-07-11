@@ -21,7 +21,8 @@ namespace Diyokee {
             Int16 maxValue = Int16.MaxValue;
             Int16[] buffer = new Int16[segmentLength];
             int fftSize = (int)FFTSizeConstants.FFTs16384;
-            ComplexDouble[] output = new ComplexDouble[fftSize];
+            int fftLen = fftSize / 2;
+            ComplexDouble[] fftOutput = new ComplexDouble[fftSize];
 
             double[] cqtResult = new double[12];
 
@@ -37,7 +38,7 @@ namespace Diyokee {
                     doubleBuffer[i] = (double)buffer[i] / maxValue * fftWindowValues[windowIndex];
                 }
 
-                FourierTransform(fftSize, doubleBuffer, output, false);
+                FourierTransform(fftSize, doubleBuffer, fftOutput, false);
 
                 int cqtIndex = 0;
                 for(int bin = 0; bin < 12; bin++) {
@@ -45,13 +46,12 @@ namespace Diyokee {
                     double binEnd = (bin + 1) * segmentLength;
                     ComplexDouble binSum = new();
 
-                    int len = output.Length / 2;
-                    for(int i = 0; i < len; i++) {
-                        double frequency =  binStart + (i * (binEnd - binStart) / len);
+                    for(int i = 0; i < fftLen; i++) {
+                        double frequency =  binStart + (i * (binEnd - binStart) / fftLen);
                         double omega = 2.0 * Math.PI * frequency / samplingRate;
-                        binSum += output[i] * ComplexDouble.Pow(Math.E, new(0, -omega * i));
+                        binSum += fftOutput[i] * ComplexDouble.Pow(Math.E, new(0, -omega * i));
                     }
-                    cqtResult[cqtIndex++] += binSum.Power();
+                    cqtResult[cqtIndex++] += binSum.Power(); // / fftSize;
                 }
             }
 

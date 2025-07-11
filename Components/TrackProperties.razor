@@ -226,8 +226,8 @@
 
         Task.Run(async () => {
             CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-            genres = cache.Files.Select(f => f.Genre).Distinct().ToList();
-            albums = cache.Files.Select(f => f.Album).Distinct().ToList();
+            genres = cache.Files.Select(f => f.Genre).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
+            albums = cache.Files.Select(f => f.Album).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
 
             while(player == null) { // FIXME: Why? I'm sure there must be a better way to do this
                 await Task.Delay(10);
