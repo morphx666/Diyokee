@@ -94,6 +94,7 @@
                     <InputNumber id="downbeatMs" @bind-value="DownbeatAtMilliSeconds" @oninput="(e) => DownbeatAtMilliSeconds = int.Parse(e.Value.ToString())" />
                 </div>
                 <div class="recalculate" @onclick="ReCalcDownbeat"><i class="fa-solid fa-arrow-rotate-right"></i></div>
+                <div class="recalculate" @onclick="ReSetDownbeat"><i class="fa-solid fa-arrow-turn-down"></i></div>
             </div>
 
             <div class="field bpm-container">
@@ -310,6 +311,11 @@
     private async void ReCalcDownbeat() {
         file.DownbeatAt = Files.CalcDownbeat(file);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void ReSetDownbeat() {
+        file.DownbeatAt = player!.PlaybackHead / 100.0;
+        player!.SetParameters();
     }
 
     private async void BpmMultiply(double factor) {

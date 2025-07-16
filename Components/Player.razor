@@ -215,6 +215,10 @@
     [Parameter]
     public bool MinimalMode { get; set; } = false;
 
+    public long PlaybackHead {
+        get => waveform!.PlaybackHead;
+    }
+
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
