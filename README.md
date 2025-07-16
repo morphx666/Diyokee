@@ -1,7 +1,8 @@
 # Diyokee
 A work in progress, DJ mixing webapp with streaming support
 
-[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s3.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
+[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s4.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
+<sup>*the video was created using an older version than the one shown in the screenshot above</sup>
 
 ## App settings
 
