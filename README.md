@@ -1,5 +1,5 @@
 # Diyokee
-A work in progress, DJ mixing webapp with streaming support
+A work in progress, DJ mixing webapp with streaming support, that runs on your browser... and before you ask, the answer is: why not?
 
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s4.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v1.mp4)
 <sup>*the video was created using an older version than the one shown in the screenshot above</sup>
