@@ -76,7 +76,7 @@
     </div>
 
     <div class="transport">
-        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, mouseState!.ShiftDown ? false : Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
             @onmousedown="(e) => HandlePlayClick(e, false)"
@@ -276,6 +276,7 @@
     }
 
     private void HandlePlayClick(MouseEventArgs e, bool autoSync) {
+        Console.WriteLine(autoSync);
         if(e.Button == 0) Play(autoSync);
     }
 
@@ -309,7 +310,7 @@
                 Task.Run(async () => {
                     while(true) {
                         await Task.Delay(1);
-                        if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == InBeatIndex) {
+                        if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == this.InBeatIndex) {
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
 

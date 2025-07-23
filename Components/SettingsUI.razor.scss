@@ -14,9 +14,17 @@ h5 {
     color: var(--secondary-light);
 }
 
-.field label {
-    text-align: left !important;
-    max-width: unset !important;
+.field {
+    label {
+        text-align: left !important;
+        max-width: unset !important;
+    }
+
+    .info {
+        margin-left: 1rem;
+        font-size: 0.8rem;
+        color: var(--help);
+    }
 }
 
 .sub-header {
