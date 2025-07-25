@@ -90,8 +90,8 @@
             <div class="sync-adjust">
                 <span>SYNC</span>
                 <div class="sync-buttons">
-                    <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetSpeed"><i class="fa-solid fa-left-long"></i></div>
-                    <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetSpeed"><i class="fa-solid fa-right-long"></i></div>
+                    <div class="button-3d" @onmousedown="SlowDown" @onmouseup="ResetTempo"><i class="fa-solid fa-left-long"></i></div>
+                    <div class="button-3d" @onmousedown="SpeedUp" @onmouseup="ResetTempo"><i class="fa-solid fa-right-long"></i></div>
                 </div>
             </div>
         }
@@ -166,8 +166,8 @@
     private double secondsToPosX;
     private double currentTempoValue;
     private double tempoRange;
-    private double tempoMax = -0.50;
-    private double tempoMin = +0.50;
+    private double tempoMin = +0.10;
+    private double tempoMax = -0.10;
 
     private Loop loop = new();
     private (string, double)[] loopSizes = {
@@ -355,12 +355,14 @@
         }
     }
 
-    public async void SyncBPMToOtherPlayer() { // FIXME: This breaks if the tempo scale is other then -0.5 to +0.5 (tempoRange < 1)
+    public async void SyncBPMToOtherPlayer() {
         if(OtherPlayer?.File == null || fileBPM == 0) return;
 
         double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
-        double tempo = (tempoRange < 0 ? 1 : 0) + (otherPlayerBPM / fileBPM - 0.5) * tempoRange;
-        await faderTempo!.SetValue(tempo);
+        double factor = (1.0 - otherPlayerBPM / fileBPM) * 1.0 / Math.Abs(tempoRange);
+        double faderValue = factor + 0.5;
+        Console.WriteLine(factor);
+        await faderTempo!.SetValue(faderValue);
     }
 
     private double ReScaleTempoFader() {
@@ -383,6 +385,28 @@
     private string GetBpmAdjustment() {
         double adjustment = ReScaleTempoFader() * 100;
         return $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
+    }
+
+    private double AdjustedBPM {
+        get => fileBPM * (1.0 + ReScaleTempoFader());
+    }
+
+    private void SlowDown(MouseEventArgs e) {
+        if(e.Button == 0) {
+            currentTempoValue = faderTempo!.Value;
+            faderTempo?.SetValue(faderTempo.Value - tempoRange / 10.0);
+        }
+    }
+
+    private void SpeedUp(MouseEventArgs e) {
+        if(e.Button == 0) {
+            currentTempoValue = faderTempo!.Value;
+            faderTempo?.SetValue(faderTempo.Value + tempoRange / 10.0);
+        }
+    }
+
+    private void ResetTempo(MouseEventArgs e) {
+        if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
@@ -418,27 +442,6 @@
         return 0;
     }
 
-    private double AdjustedBPM {
-        get => fileBPM * (1.0 + ReScaleTempoFader());
-    }
-
-    private void SlowDown(MouseEventArgs e) {
-        if(e.Button == 0) {
-            currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value - 0.1);
-        }
-    }
-
-    private void SpeedUp(MouseEventArgs e) {
-        if(e.Button == 0) {
-            currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value + 0.1);
-        }
-    }
-
-    private void ResetSpeed(MouseEventArgs e) {
-        if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
-    }
 
     private void LoadFile() {
         IsPlaying = false;
