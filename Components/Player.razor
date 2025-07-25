@@ -394,14 +394,14 @@
     private void SlowDown(MouseEventArgs e) {
         if(e.Button == 0) {
             currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value - tempoRange / 10.0);
+            faderTempo?.SetValue(faderTempo.Value + 0.1);
         }
     }
 
     private void SpeedUp(MouseEventArgs e) {
         if(e.Button == 0) {
             currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value + tempoRange / 10.0);
+            faderTempo?.SetValue(faderTempo.Value - 0.1);
         }
     }
 
