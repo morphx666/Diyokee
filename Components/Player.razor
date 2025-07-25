@@ -41,29 +41,29 @@
 
     <div class="waveform-full">
         <Waveform CssColor="@Settings.Color"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@fileDownbeatAt"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
-            Player="this"
-            @ref="waveformFull" />
+                  Mode="Waveform.Modes.Full"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@fileDownbeatAt"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Player="this"
+                  @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
         <Waveform CssColor="@Settings.Color"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@fileDownbeatAt"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
-            Player="this"
-            @ref="waveform" />
+                  Mode="Waveform.Modes.AudioSynced"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@fileDownbeatAt"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Loop="loop"
+                  Player="this"
+                  @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -79,8 +79,8 @@
         <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, mouseState!.ShiftDown ? false : Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
         <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
         <div class="button-3d icon"
-            @onmousedown="(e) => HandlePlayClick(e, false)"
-            @onmouseup="HandleStopAndSnapClick">
+             @onmousedown="(e) => HandlePlayClick(e, false)"
+             @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
         <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
@@ -103,7 +103,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetLoopSize(size.Item2, false)">
+                         @onclick="() => SetLoopSize(size.Item2, false)">
                         @size.Item1
                     </div>
                 }
@@ -112,7 +112,7 @@
             <div class="loop-size-container">
                 @foreach(var size in loopSizes) {
                     <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                        @onclick="() => SetJumpSize(size.Item2)">
+                         @onclick="() => SetJumpSize(size.Item2)">
                         @size.Item1
                     </div>
                 }
@@ -165,6 +165,9 @@
     private double secondsPerBeat;
     private double secondsToPosX;
     private double currentTempoValue;
+    private double tempoRange;
+    private double tempoMax = -0.50;
+    private double tempoMin = +0.50;
 
     private Loop loop = new();
     private (string, double)[] loopSizes = {
@@ -248,6 +251,8 @@
     public Player() {
         loopSyncProc = new SYNCPROC(DoLoop);
 
+        tempoRange = tempoMax - tempoMin;
+
         Task.Run(MonitorPlayback);
         Task.Run(MonitorBeats);
     }
@@ -268,15 +273,7 @@
         ApplyVolume(faderVolume?.Value ?? 0);
     }
 
-    public async void SyncBPMToOtherPlayer() {
-        if(OtherPlayer?.File == null || fileBPM == 0) return;
-
-        double tempo = (OtherPlayer?.AdjustedBPM ?? 0) / fileBPM * 1.5 - 1.0;
-        await faderTempo!.SetValue(tempo);
-    }
-
     private void HandlePlayClick(MouseEventArgs e, bool autoSync) {
-        Console.WriteLine(autoSync);
         if(e.Button == 0) Play(autoSync);
     }
 
@@ -349,15 +346,43 @@
 
     private void ApplyTempo() {
         if(masterSplitterHandle == 0) return;
-        // tempo = ((1 + X) / 1.5 - 1) * 100
-        // X = (tempo / 100 * 1.5) - 1
-        double tempo = ((1.0 + (faderTempo?.Value ?? 0.5)) / 1.5 - 1.0) * 100.0;
+        double tempo = ReScaleTempoFader() * 100.0;
 
-        Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
+        bool r = Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
         if(Program.Settings.Playback.SyncPlayersBpm) {
             // FIXME: Implement necessary checks to avoid infinite recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
         }
+    }
+
+    public async void SyncBPMToOtherPlayer() { // FIXME: This breaks if the tempo scale is other then -0.5 to +0.5 (tempoRange < 1)
+        if(OtherPlayer?.File == null || fileBPM == 0) return;
+
+        double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
+        double tempo = (tempoRange < 0 ? 1 : 0) + (otherPlayerBPM / fileBPM - 0.5) * tempoRange;
+        await faderTempo!.SetValue(tempo);
+    }
+
+    private double ReScaleTempoFader() {
+        return ReScaleTempoValue((faderTempo?.Value ?? 0.5) - 0.5);
+    }
+
+    private double ReScaleTempoValue(double value, double oldMin = double.MinValue, double oldMax = double.MaxValue, double newMin = double.MinValue, double newMax = double.MaxValue) {
+        if(oldMin == double.MinValue) oldMin = -0.5;
+        if(oldMax == double.MaxValue) oldMax = +0.5;
+        if(newMin == double.MinValue) newMin = tempoMin;
+        if(newMax == double.MaxValue) newMax = tempoMax;
+        return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
+    }
+
+    private string CalcBpm() {
+        double bpm = fileBPM * (1.0 + ReScaleTempoFader());
+        return bpm.ToString("N2");
+    }
+
+    private string GetBpmAdjustment() {
+        double adjustment = ReScaleTempoFader() * 100;
+        return $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
@@ -388,24 +413,13 @@
     private void ApplyFilterValues(Filters.FilterKeyValues filtersValues) {
     }
 
-    private string CalcBpm() {
-        double bpm = (file?.BPM ?? 0) * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
-        return bpm.ToString("N2");
-    }
-
-    private string GetBpmAdjustment() {
-        double bpm = fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
-        double adjustment = bpm > 0 ? 100.0 - fileBPM / bpm * 100.0 : 0;
-        return $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
-    }
-
     private double GetRemainingTime() {
         if(file?.Duration > 0) return (file?.Duration - playbackPosition) ?? 0;
         return 0;
     }
 
     private double AdjustedBPM {
-        get => fileBPM * (1.0 + (faderTempo?.Value ?? 0)) / 1.5;
+        get => fileBPM * (1.0 + ReScaleTempoFader());
     }
 
     private void SlowDown(MouseEventArgs e) {
@@ -536,111 +550,111 @@
         switch(Bass.BASS_GetInfo().speakers) {
             case 2:
                 matrix = new float[,] {
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
-                        }
-    };
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
+                            }
+        };
                 break;
 
             case 4:
                 matrix = new float[,] {
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
-                        }
-    };
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
+                            }
+        };
                 break;
 
             case 6:
                 matrix = new float[,] {
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.Center) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.LFE) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
-                        }
-    };
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.Center) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.LFE) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
+                            }
+        };
                 break;
 
             case 8:
                 matrix = new float[,] {
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.Center) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.LFE) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
-                        },
-                        {
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearLeft) != 0) ? 1 : 0,
-                            0
-                        },
-                        {
-                            0,
-                            speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
-                        }
-    };
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.Center) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.LFE) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
+                            },
+                            {
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearLeft) != 0) ? 1 : 0,
+                                0
+                            },
+                            {
+                                0,
+                                speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
+                            }
+        };
                 break;
 
             default:
                 matrix = new float[,] {
-                        {
-                            0,
-                            0
-                        }
-    };
+                            {
+                                0,
+                                0
+                            }
+        };
                 break;
         }
 
@@ -963,7 +977,7 @@
             faderVolume!.SetInitialValue(0.8);
             WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
             if(!MinimalMode) {
-                faderTempo.SetInitialValue(0.5);
+                faderTempo?.SetInitialValue(0.5);
                 EqControls.EqProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
 
                 loopJumpLock = Settings.LoopJumpLock;
