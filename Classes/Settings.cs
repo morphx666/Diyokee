@@ -35,6 +35,7 @@ namespace Diyokee {
             [JsonProperty("eq-profile")] public string EqProfile { get; set; } = "";
             [JsonProperty("sync-players-bpm")] public bool SyncPlayersBpm { get; set; } = false;
             [JsonProperty("sync-playback")] public bool SyncPlayback { get; set; } = true;
+            [JsonProperty("tempo-range")] public double TempoRange { get; set; } = 10;
             [JsonProperty("players")] public PlayerSettings[] Players { get; set; } = [
                 new() { Name = "A", Color = "#977696" },
                 new() { Name = "B", Color = "#279597", ReverseControls = true },

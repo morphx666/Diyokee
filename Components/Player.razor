@@ -251,10 +251,18 @@
     public Player() {
         loopSyncProc = new SYNCPROC(DoLoop);
 
-        tempoRange = tempoMax - tempoMin;
+        SetTempoRange(Program.Settings.Playback.TempoRange);
 
         Task.Run(MonitorPlayback);
         Task.Run(MonitorBeats);
+    }
+
+    public void SetTempoRange(double range) {
+        tempoMin = range / 100.0;
+        tempoMax = -range / 100.0;
+        tempoRange = tempoMax - tempoMin;
+        // faderTempo?.SetValue(0.5);
+        // ApplyTempo();        
     }
 
     public void SetFile(DFile file, bool fullReset = true) {

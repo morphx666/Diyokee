@@ -262,7 +262,11 @@
     private async void UpdateApp() {
         EqualizerProfile equalizerProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
         player1!.EqControls.EqProfile = equalizerProfile;
+        player1!.SetTempoRange(Program.Settings.Playback.TempoRange);
+
         player2!.EqControls.EqProfile = equalizerProfile;
+        player2!.SetTempoRange(Program.Settings.Playback.TempoRange);
+
         SetMediaProvider();
 
         await JS.InvokeVoidAsync("forceRefresh");

@@ -1,10 +1,9 @@
 ﻿@using Un4seen.Bass
 
-<ModalDialog
-    Title="Settings"
-    OnSave="Save"
-    OnClose="Close"
-    @ref="dialog">
+<ModalDialog Title="Settings"
+             OnSave="Save"
+             OnClose="Close"
+             @ref="dialog">
 
     @if(settings == null) return;
 
@@ -41,6 +40,15 @@
             <span class="info">(hold SHIFT to override)</span>
         </div>
 
+        <div class="field">
+            <label for="tempo-range">Tempo Range -/+</label>
+            <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
+                @foreach(var tempoRange in TempoRanges) {
+                    <option value="@tempoRange">@tempoRange</option>
+                }
+            </InputSelect>
+        </div>
+
         @*
             FIXME: This could be removed. It's already available as a dropdown menu for each player.
             Or perhaps we should remove the dropdown menus from the main UI?
@@ -64,10 +72,9 @@
                 </div>
                 <div class="field">
                     <label for="@($"player{withIndex.index}-color")">Color</label>
-                    <InputText
-                    class="as-number"
-                    id="@($"player{withIndex.index}-color")"
-                    @bind-value="withIndex.player.Color" />
+                    <InputText class="as-number"
+                               id="@($"player{withIndex.index}-color")"
+                               @bind-value="withIndex.player.Color" />
                     <div class="color" style="background-color: @(withIndex.player.Color)"></div>
                 </div>
                 <div class="field">
@@ -89,6 +96,8 @@
     public EventCallback OnClose { get; set; } = default!;
 
     private Settings settings = default!;
+
+    private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
     public void Open() {
         settings = (Settings)Program.Settings.Clone();
