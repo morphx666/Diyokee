@@ -63,7 +63,7 @@ This project wouldn't have been possible without the following:
 [^1]: File attributes may be lost when unzipping the app under Linux-like systems, including macOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
 
-[^2]: Before running the program, open a Terminal and change to the directory where you downloaded the zip file (usually `~/Downloads/diyokee-osx-x64`).  
+[^2]: Before running the program, open a Terminal and change to the directory where you unzipped the file (usually `~/Downloads/diyokee-osx-x64`).  
 Next, set the executable attribute on the `pre-run.sh` file: `chmod +x pre-run.sh`.  
 Then, run the script: `./pre-run.sh`.  
 Now, you can launch the app by double-clicking the `Diyokee-server` file in the Finder or by running `./Diyokee-server` in the Terminal.
