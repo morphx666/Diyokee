@@ -46,7 +46,7 @@ Platform|Architecture|Status|Download|Release Date
 Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-07-25
 Linux|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-07-25
 Linux|Arm|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2025-07-25
-MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-07-25
+MacOS|x64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-07-26
 MacOS|Arm|Not Tested[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2025-04-03
 
 ## Acknowledgments
@@ -62,3 +62,8 @@ This project wouldn't have been possible without the following:
 
 [^1]: File attributes may be lost when unzipping the app under Linux-like systems, including macOS.  
 Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
+
+[^2]: Before running the program, open a Terminal and change to the directory where you downloaded the zip file (usually `~/Downloads/diyokee-osx-x64`).  
+Next, set the executable attribute on the `pre-run.sh` file: `chmod +x pre-run.sh`.  
+Then, run the script: `./pre-run.sh`.  
+Now, you can launch the app by double-clicking the `Diyokee-server` file in the Finder or by running `./Diyokee-server` in the Terminal.
