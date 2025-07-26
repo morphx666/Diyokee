@@ -44,3 +44,21 @@ h5 {
     margin-left: 0.5rem;
     border: 1px solid var(--panel-background-color-light);
 }
+
+.eq-profile-info {
+    display: grid;
+    grid-template-columns: auto auto;
+    font-size: 0.8rem;
+    margin: -0.5rem 0 0 calc(8rem + 6px + 1px);
+    padding: 0.4rem calc(0.4rem + 6px) 0.4rem 0.4rem;
+    gap: 0.5rem;
+    cursor: pointer;
+    border-left: 6px solid var(--panel-background-color-dark);
+    width: fit-content;
+
+    span:nth-child(2n) {
+        color: var(--ctrl-highlight);
+        text-align: right;
+        font-family: var(--mono-font-family);
+    }
+}

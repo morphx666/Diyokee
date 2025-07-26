@@ -12,18 +12,18 @@
     <Knob Name="LO" @ref="eqLo" ValueChanged="ApplyEqLo" />
 
     <div class="eq-options" style="display: @(eqOptionsVisible ? "block" : "none")">
-        @foreach(var eq in Program.Settings.EqualizerProfiles) {
-            <div class="eq-option @(eq.Name == EqProfile.Name ? "selected" : "")"
+        @foreach(var profile in Program.Settings.EqualizerProfiles) {
+            <div class="eq-option @(profile.Name == EqProfile.Name ? "selected" : "")"
                  @onclick="@(() => {
-                    EqProfile = eq;
+                    EqProfile = profile;
                     eqOptionsVisible = false;
                     EqProfileChanged.InvokeAsync(EqProfile);
                 })">
-                <div>@eq.Name</div>
+                <div>@profile.Name</div>
                 <div class="frequencies">
-                    <span>Low</span><span>@eq.Low.ToString("N2") Hz</span>
-                    <span>Mid</span><span>@eq.Mid.ToString("N2") Hz</span>
-                    <span>Hi</span><span>@eq.Hi.ToString("N2") Hz</span>
+                    <span>Low</span><span>@profile.Low.ToString("N2") Hz</span>
+                    <span>Mid</span><span>@profile.Mid.ToString("N2") Hz</span>
+                    <span>Hi</span><span>@profile.Hi.ToString("N2") Hz</span>
                 </div>
             </div>
         }

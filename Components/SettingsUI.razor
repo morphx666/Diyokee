@@ -62,6 +62,12 @@
             </InputSelect>
         </div>
 
+        <div class="eq-profile-info">
+            <span>Low:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Low.ToString("N2")) Hz</span>
+            <span>Mid:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Mid.ToString("N2")) Hz</span>
+            <span>Hi:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Hi.ToString("N2")) Hz</span>
+        </div>
+
         @foreach((Settings.PlayerSettings player, int index) withIndex in settings.Playback.Players.WithIndex()) {
             <div class="sub-header">
                 <h5>Player @(withIndex.index + 1)</h5>
