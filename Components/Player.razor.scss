@@ -29,9 +29,17 @@
         .time, .bpm-key {
             display: flex;
             flex-direction: column;
-            padding: 0 1rem;
             text-align: right;
             font-family: var(--mono-font-family);
+        }
+
+        .time {
+            padding-left: 1rem;
+        }
+
+        .bpm-key {
+            min-width: 10ch;
+            padding-right: 1rem;
         }
 
         .player-name {
