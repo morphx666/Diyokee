@@ -192,7 +192,7 @@
 
     private KeyTools keyTools = new();
 
-    [JsonProperty] public bool IsPlaying { get; set; }
+    public bool IsPlaying { get; set; }
 
     [Parameter]
     public DFile? File { // TODO: Apply the same logic as in FilesUI
@@ -1003,8 +1003,8 @@
 
                 eqParams = p.eqParams;
                 gain = p.gain;
-
                 trackGain = p.trackGain;
+
                 if(p.file != null) SetFile(p.file, false);
                 
                 crossFaderVolume = p.crossFaderVolume;
