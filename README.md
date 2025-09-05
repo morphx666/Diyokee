@@ -33,10 +33,10 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 ## Notable missing features
 
 - A fancy screen for remote connections to the stream
-- No drag & drop support to load files into a player.
-  Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button to load a track or press A or B on your keyboard.
-- Searching is quite limited and a bit buggy.
-- Audio routing for main output, monitor, and stream (with volume adjustment)
+- Searching is quite limited and a bit buggy
+- Audio routing is partially implemented but not fully usable
+- Key recognition/matching/adustments are not yet supported
+- State is not preserved, so if you refresh the page, the backend state is not reflected into the UI
 - ...and many more
 
 ## Releases
