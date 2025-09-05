@@ -362,7 +362,7 @@
         return sb.ToString().TrimEnd('|');
     }
 
-    private async void ChangeSelectedFile(DFile? file) {
+    public async void ChangeSelectedFile(DFile? file) {
         string newFilename = file?.Filename ?? "";
         if(selectedFile == newFilename) return;
 

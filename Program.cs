@@ -1,15 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using Diyokee.Components;
 using Diyokee;
+using Diyokee.Components;
 using Diyokee.Data;
+using Microsoft.EntityFrameworkCore;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
 using Un4seen.Bass.AddOn.EncMp3;
 using Un4seen.Bass.AddOn.Mix;
-using Newtonsoft.Json;
-using Microsoft.Data.Sqlite;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
-using System.Diagnostics;
 
 internal class Program {
     public const int SAMPLING_FREQUENCY = 44100;
@@ -46,8 +42,16 @@ internal class Program {
             builder.WebHost.UseUrls(Settings.WebHostUrl);
         }
 
-        builder.Services.AddRazorComponents()
-            .AddInteractiveServerComponents();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddDistributedMemoryCache();
+        builder.Services.AddSession(options => {
+            //options.IdleTimeout = TimeSpan.FromMinutes(10);
+            options.Cookie.HttpOnly = true;
+            options.Cookie.IsEssential = true;
+        });
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        builder.Services.AddServerSideBlazor();
+        builder.Services.AddSingleton<SessionState>();
 
 #if DEBUG
         builder.Services.AddSassCompiler();
@@ -123,7 +127,7 @@ internal class Program {
             Bass.BASS_SetDevice(bassDeviceIndex);
 
             int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 8, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
-            Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);           
+            Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
             Bass.BASS_ChannelPlay(handle, true);
             BassMixHandles.Add((handle, index++));
         }
@@ -211,6 +215,6 @@ internal class Program {
         if(!deviceIsSet && createIfNotSet) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(defaultDeviceIndex);
             devices.Add(new(deviceInfo.name, AudioDevice.DeviceSpeakers.FrontStereo));
-        }        
+        }
     }
 }

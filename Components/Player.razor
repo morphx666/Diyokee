@@ -5,11 +5,13 @@
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
 @using System.Runtime.InteropServices
+@using Newtonsoft.Json
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
 @using Un4seen.Bass.AddOn.Mix
 @using static Diyokee.Settings
 @inject IJSRuntime JS
+@inject SessionState session
 
 <div class="player-container"
      ondragover="event.preventDefault();"
@@ -130,46 +132,47 @@
 @code {
     private string lastFilename = "";
 
-    private int streamHandle = 0;
-    private int fxHandle = 0;
-    private int eqHandle = 0;
-    private BASS_BFX_PEAKEQ eqParams = new();
-    private BASS_BFX_VOLUME gain = new();
-    private List<int> splitterStreams = [];
-    private int masterSplitterHandle = 0;
-    private int gainHandle = 0;
+    [JsonProperty] private int streamHandle = 0;
+    [JsonProperty] private int fxHandle = 0;
+    [JsonProperty] private int eqHandle = 0;
+    [JsonProperty] private List<int> splitterStreams = [];
+    [JsonProperty] private int masterSplitterHandle = 0;
+    [JsonProperty] private int gainHandle = 0;
+    
+    [JsonProperty] private BASS_BFX_PEAKEQ eqParams = new();
+    [JsonProperty] private BASS_BFX_VOLUME gain = new();
     private SYNCPROC loopSyncProc = null!;
 
-    private double trackGain = 1;
-    private double crossFaderVolume = 1;
+    [JsonProperty] private double trackGain = 1;
+    [JsonProperty] private double crossFaderVolume = 1;
 
-    private DFile? file = null;
+    [JsonProperty] private DFile? file = null;
     private Fader? faderVolume;
     private Fader? faderTempo;
     private Waveform? waveform;
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
-    public Eq EqControls = null!;
-    public Filters FilterControls = null!;
+    [JsonIgnore] public Eq EqControls = null!;
+    [JsonIgnore] public Filters FilterControls = null!;
 
-    private double fileBPM = 0;
-    private double fileDownbeatAt = 0;
-    private int waveformWidth = 0;
-    private long trackLengthBytes = 0;
+    [JsonProperty] private double fileBPM = 0;
+    [JsonProperty] private double fileDownbeatAt = 0;
+    [JsonProperty] private int waveformWidth = 0;
+    [JsonProperty] private long waveformStepLength = 0;
+    [JsonProperty] private long trackLengthBytes = 0;
     private double playbackPosition = 0;
-    private long waveformStepLength = 0;
     private bool queueAutoSnap = false;
-    private double[] peaks = [];
-    private double maxPeak = 1.0;
-    private double beatsPerSecond;
-    private double secondsPerBeat;
-    private double secondsToPosX;
-    private double currentTempoValue;
+    [JsonProperty] private double[] peaks = [];
+    [JsonProperty] private double maxPeak = 1.0;
+    [JsonProperty] private double beatsPerSecond;
+    [JsonProperty] private double secondsPerBeat;
+    [JsonProperty] private double secondsToPosX;
+    [JsonProperty] private double currentTempoValue;
     private double tempoRange;
     private double tempoMin = +0.10;
     private double tempoMax = -0.10;
 
-    private Loop loop = new();
+    [JsonProperty] private Loop loop = new();
     private (string, double)[] loopSizes = {
         ("¼", 0.25),
         ("½", 0.50),
@@ -184,12 +187,12 @@
     private double jumpSize = 8.0;
     private bool loopJumpLock = true;
 
-    private List<(double X, double Seconds)> beatMarkers = new();
-    private double cuePoint = 0;
+    [JsonProperty] private List<(double X, double Seconds)> beatMarkers = new();
+    [JsonProperty] private double cuePoint = 0;
 
     private KeyTools keyTools = new();
 
-    public bool IsPlaying { get; set; }
+    [JsonProperty] public bool IsPlaying { get; set; }
 
     [Parameter]
     public DFile? File { // TODO: Apply the same logic as in FilesUI
@@ -202,6 +205,8 @@
                 file = value;
                 Stop(false);
                 LoadFile();
+
+                SavePlayerState();
             }
         }
     }
@@ -212,7 +217,7 @@
     [Parameter]
     public PlayerSettings Settings { get; set; } = null!;
 
-    [Parameter]
+    [Parameter, JsonIgnore]
     public Player? OtherPlayer { get; set; } = null;
 
     [Parameter]
@@ -235,6 +240,7 @@
     public bool EnableMouseEvents {
         get => enableMouseEvents;
         set {
+            if(EqControls == null) return; // Session restore - ignore
             enableMouseEvents = value;
             if(!MinimalMode) {
                 EqControls.EnableMouseEvents = value;
@@ -248,21 +254,12 @@
         }
     }
 
-    public Player() {
-        loopSyncProc = new SYNCPROC(DoLoop);
-
-        SetTempoRange(Program.Settings.Playback.TempoRange);
-
-        Task.Run(MonitorPlayback);
-        Task.Run(MonitorBeats);
-    }
-
     public void SetTempoRange(double range) {
         tempoMin = range / 100.0;
         tempoMax = -range / 100.0;
         tempoRange = tempoMax - tempoMin;
         // faderTempo?.SetValue(0.5);
-        // ApplyTempo();        
+        // ApplyTempo();
     }
 
     public void SetFile(DFile file, bool fullReset = true) {
@@ -336,6 +333,8 @@
                 IsPlaying = true;
             }
         }
+
+        SavePlayerState();
     }
 
     public void Stop(bool resetToCuePoint) {
@@ -345,6 +344,8 @@
             BassMix.BASS_Mixer_ChannelSetPosition(h, Bass.BASS_ChannelSeconds2Bytes(h, resetToCuePoint ? cuePoint : 0));
         });
         IsPlaying = false;
+
+        SavePlayerState();
     }
 
     private void ApplyVolume(double value) {
@@ -449,7 +450,6 @@
         if(file?.Duration > 0) return (file?.Duration - playbackPosition) ?? 0;
         return 0;
     }
-
 
     private void LoadFile() {
         IsPlaying = false;
@@ -569,7 +569,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             case 4:
@@ -590,7 +590,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
                             }
-        };
+    };
                 break;
 
             case 6:
@@ -619,7 +619,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             case 8:
@@ -656,7 +656,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             default:
@@ -665,7 +665,7 @@
                                 0,
                                 0
                             }
-        };
+    };
                 break;
         }
 
@@ -776,37 +776,39 @@
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
 
-        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
-        if(resetStart) loop.Start = position;
-        loop.End = loop.Start + loopSize / beatsPerSecond;
+        if(file != null) {
+            double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
+            if(resetStart) loop.Start = position;
+            loop.End = loop.Start + loopSize / beatsPerSecond;
 
-        if(loop.BASSHandle != 0 && resetStart) {
-            Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
-            loop.BASSHandle = 0;
-        }
-
-        if(loop.Enabled) {
-            bool resetLoop = position <= loop.End && loopSize > 1;
-            loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.Start);
-            loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.End);
-
-            if(loop.EndBytes > trackLengthBytes) {
-                loop.Enabled = false;
-                return;
+            if(loop.BASSHandle != 0 && resetStart) {
+                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
+                loop.BASSHandle = 0;
             }
 
-            if(resetStart || resetLoop) {
-                loop.Reset = false;
+            if(loop.Enabled) {
+                bool resetLoop = position <= loop.End && loopSize > 1;
+                loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.Start);
+                loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.End);
 
-                Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                if(loop.BASSHandle != 0) {
-                    Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
-                    loop.BASSHandle = 0;
+                if(loop.EndBytes > trackLengthBytes) {
+                    loop.Enabled = false;
+                    return;
                 }
-                loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                Bass.BASS_ChannelLock(masterSplitterHandle, false);
-            } else {
-                loop.Reset = true;
+
+                if(resetStart || resetLoop) {
+                    loop.Reset = false;
+
+                    Bass.BASS_ChannelLock(masterSplitterHandle, true);
+                    if(loop.BASSHandle != 0) {
+                        Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
+                        loop.BASSHandle = 0;
+                    }
+                    loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                    Bass.BASS_ChannelLock(masterSplitterHandle, false);
+                } else {
+                    loop.Reset = true;
+                }
             }
         }
 
@@ -983,6 +985,58 @@
         await RequestedFileCue.InvokeAsync();
     }
 
+    private void SavePlayerState() {
+        session.Set($"Player-{Settings.Name}", JsonConvert.SerializeObject(this));
+    }
+
+    private void RestorePlayerState() {
+        string? playerJson = session.Get<string>($"Player-{Settings.Name}");
+        if(playerJson != null) {
+            Player? p = JsonConvert.DeserializeObject<Player>(playerJson);
+            if(p != null) {
+                streamHandle = p.streamHandle;
+                fxHandle = p.fxHandle;
+                eqHandle = p.eqHandle;
+                splitterStreams = p.splitterStreams;
+                masterSplitterHandle = p.masterSplitterHandle;
+                gainHandle = p.gainHandle;
+
+                eqParams = p.eqParams;
+                gain = p.gain;
+
+                trackGain = p.trackGain;
+                if(p.file != null) SetFile(p.file, false);
+                
+                crossFaderVolume = p.crossFaderVolume;
+                loop = p.loop;
+                fileBPM = p.fileBPM;
+                fileDownbeatAt = p.fileDownbeatAt;
+                waveformWidth = p.waveformWidth;
+                trackLengthBytes = p.trackLengthBytes;
+                waveformStepLength = p.waveformStepLength;
+                peaks = p.peaks;
+                maxPeak = p.maxPeak;
+                beatsPerSecond = p.beatsPerSecond;
+                secondsPerBeat = p.secondsPerBeat;
+                secondsToPosX = p.secondsToPosX;
+                beatMarkers = p.beatMarkers;
+                cuePoint = p.cuePoint;
+                IsPlaying = p.IsPlaying;
+            }
+        }
+    }
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+
+        loopSyncProc = new SYNCPROC(DoLoop);
+
+        SetTempoRange(Program.Settings.Playback.TempoRange);
+
+        Task.Run(MonitorPlayback);
+        Task.Run(MonitorBeats);
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender && faderVolume != null && (faderTempo != null || MinimalMode)) {
             faderVolume!.SetInitialValue(0.8);
@@ -995,6 +1049,9 @@
                 loopSize = Settings.LoopSize;
                 jumpSize = Settings.JumpSize;
             }
+
+            RestorePlayerState();
+
             await InvokeAsync(StateHasChanged);
         }
 
