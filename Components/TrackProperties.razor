@@ -145,18 +145,14 @@
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
                     @onblur="@(async () => {
-                            await Task.Delay(100); // Process item onclick first (if any)
+                            await Task.Delay(150); // Process item onclick first (if any)
                             notationsAcVisible = false;
                             player.EnableMouseEvents = true;
                         })" />
                 <div class="autocomplete scroller @(notationsAcVisible ? "show" : "")">
                     @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
                         <div class="item @(notation == NotationAsString ? "selected" : "")"
-                             @onclick="@(async () => {
-                                NotationAsString = notation;
-                                notationsAcVisible = false;
-                                player.EnableMouseEvents = true;
-                            })">
+                             @onclick="@(() => NotationAsString = notation)">
                             @notation
                         </div>
                     }

@@ -110,7 +110,7 @@
             await OnResize();
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
-            if(faderBounds.Width == 0 || faderBounds.Height == 0) return;
+            if(faderBounds?.Width == 0 || faderBounds?.Height == 0) return;
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);

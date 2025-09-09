@@ -138,7 +138,7 @@
     [JsonProperty] private List<int> splitterStreams = [];
     [JsonProperty] private int masterSplitterHandle = 0;
     [JsonProperty] private int gainHandle = 0;
-    
+
     [JsonProperty] private BASS_BFX_PEAKEQ eqParams = new();
     [JsonProperty] private BASS_BFX_VOLUME gain = new();
     private SYNCPROC loopSyncProc = null!;
@@ -152,8 +152,8 @@
     private Waveform? waveform;
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
-    [JsonIgnore] public Eq EqControls = null!;
-    [JsonIgnore] public Filters FilterControls = null!;
+    [JsonProperty] public Eq EqControls = null!;
+    [JsonProperty] public Filters FilterControls = null!;
 
     [JsonProperty] private double fileBPM = 0;
     [JsonProperty] private double fileDownbeatAt = 0;
@@ -1006,6 +1006,9 @@
                 trackGain = p.trackGain;
 
                 if(p.file != null) SetFile(p.file, false);
+
+                EqControls = p.EqControls;
+                FilterControls = p.FilterControls;
                 
                 crossFaderVolume = p.crossFaderVolume;
                 loop = p.loop;
