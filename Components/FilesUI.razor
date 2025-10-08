@@ -25,26 +25,28 @@
             <div class="column cell" @onclick="() => SetSortingIndex(7)">Duration<i class="fa-solid @(sortIndex == 7 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
 
             @foreach(DFile file in files) {
-                @if(file.Artist == "...") {
-                    <div class="cell @(file.Filename == selectedFile ? "selected" : "")" @onclick="() => ChangeSelectedFile(file)">
-                        <img src="@Assets["/images/waiting.gif"]" />
-                    </div>
-                } else {
-                    <div class="cell ellipsis @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")"
-                        @ondblclick="OpenTrackProperties"
-                        @onmousedown="() => ChangeSelectedFile(file)"
-                        draggable="true"
-                        ondragstart="event.dataTransfer.setData('', event.target.id);">
-                        @file.Artist
-                    </div>
-                }
-                <div class="cell ellipsis            @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Title</div>
-                <div class="cell ellipsis            @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Genre</div>
-                <div class="cell ellipsis            @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.Album</div>
-                <div class="cell ellipsis right mono @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@file.BPM.ToString("N2")</div>
-                <div class="cell ellipsis right mono @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
-                <div class="cell ellipsis right mono @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
-                <div class="cell ellipsis right mono @(file.IsValid ? "" : "invalid") @(file.Filename == selectedFile ? "selected" : "")" @ondblclick="OpenTrackProperties" @onclick="() => ChangeSelectedFile(file)">@DFile.FormatTime(file.Duration)</div>
+                <div class="row" style="display: contents"
+                            @ondblclick="OpenTrackProperties"
+                            @onmousedown="() => ChangeSelectedFile(file)"
+                            draggable="true"
+                            ondragstart="event.dataTransfer.setData('', event.target.id);">
+                    @if(file.Artist == "...") {
+                        <div class="cell @(file.Filename == selectedFile ? "selected" : "")">
+                            <img src="@Assets["/images/waiting.gif"]" />
+                        </div>
+                    } else {
+                        <div class="@(GetFileClasses(file))">
+                            @file.Artist
+                        </div>
+                    }
+                    <div class="@(GetFileClasses(file))">@file.Title</div>
+                    <div class="@(GetFileClasses(file))">@file.Genre</div>
+                    <div class="@(GetFileClasses(file))">@file.Album</div>
+                    <div class="@(GetFileClasses(file)) right mono">@file.BPM.ToString("N2")</div>
+                    <div class="@(GetFileClasses(file)) right mono">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
+                    <div class="@(GetFileClasses(file)) right mono">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
+                    <div class="@(GetFileClasses(file)) right mono">@DFile.FormatTime(file.Duration)</div>
+                </div>
             }
         </div>
     </div>
@@ -108,6 +110,10 @@
         selectedFile = "";
 
         await AnalyzeFiles(false);
+    }
+
+    private string GetFileClasses(DFile file) {
+        return "cell ellipsis " + (file.IsValid ? "" : "invalid") + " " + (file.Filename == selectedFile ? "selected" : "");
     }
 
     private string GetProgressCss() {

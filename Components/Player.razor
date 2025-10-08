@@ -370,7 +370,6 @@
         double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
         double factor = (1.0 - otherPlayerBPM / fileBPM) * 1.0 / Math.Abs(tempoRange);
         double faderValue = factor + 0.5;
-        Console.WriteLine(factor);
         await faderTempo!.SetValue(faderValue);
     }
 

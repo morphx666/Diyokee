@@ -118,7 +118,7 @@
                                     await JS.InvokeVoidAsync("scrollToSelectedItem");
                                 })"
                     @onblur="@(async () => {
-                                    await Task.Delay(100); // Process item onclick first (if any)
+                                    await Task.Delay(100); // Process item's onclick first (if any)
                                     keysAcVisible = false;
                                     player.EnableMouseEvents = true;
                                 })" />
@@ -145,7 +145,7 @@
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })"
                     @onblur="@(async () => {
-                            await Task.Delay(150); // Process item onclick first (if any)
+                            await Task.Delay(150); // Process item's onclick first (if any)
                             notationsAcVisible = false;
                             player.EnableMouseEvents = true;
                         })" />
