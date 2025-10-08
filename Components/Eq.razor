@@ -59,9 +59,9 @@
     public bool EnableMouseEvents { 
         get => enableMouseEvents;
         set {
-            eqHi.EnableMouseEvents = value;
-            eqMid.EnableMouseEvents = value;
-            eqLo.EnableMouseEvents = value;
+            if(eqHi != null) eqHi.EnableMouseEvents = value;
+            if(eqMid != null) eqMid.EnableMouseEvents = value;
+            if(eqLo != null) eqLo.EnableMouseEvents = value;
         }
     }
 

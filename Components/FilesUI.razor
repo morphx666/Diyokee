@@ -25,28 +25,22 @@
             <div class="column cell" @onclick="() => SetSortingIndex(7)">Duration<i class="fa-solid @(sortIndex == 7 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
 
             @foreach(DFile file in files) {
-                <div class="row" style="display: contents"
-                            @ondblclick="OpenTrackProperties"
-                            @onmousedown="() => ChangeSelectedFile(file)"
-                            draggable="true"
-                            ondragstart="event.dataTransfer.setData('', event.target.id);">
-                    @if(file.Artist == "...") {
-                        <div class="cell @(file.Filename == selectedFile ? "selected" : "")">
-                            <img src="@Assets["/images/waiting.gif"]" />
-                        </div>
-                    } else {
-                        <div class="@(GetFileClasses(file))">
-                            @file.Artist
-                        </div>
-                    }
-                    <div class="@(GetFileClasses(file))">@file.Title</div>
-                    <div class="@(GetFileClasses(file))">@file.Genre</div>
-                    <div class="@(GetFileClasses(file))">@file.Album</div>
-                    <div class="@(GetFileClasses(file)) right mono">@file.BPM.ToString("N2")</div>
-                    <div class="@(GetFileClasses(file)) right mono">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
-                    <div class="@(GetFileClasses(file)) right mono">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
-                    <div class="@(GetFileClasses(file)) right mono">@DFile.FormatTime(file.Duration)</div>
-                </div>
+                @if(file.Artist == "...") {
+                    <div class="cell @(file.Filename == selectedFile ? "selected" : "")">
+                        <img src="@Assets["/images/waiting.gif"]" />
+                    </div>
+                } else {
+                    <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">
+                        @file.Artist
+                    </div>
+                }
+                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
+                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
+                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Album</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.BPM.ToString("N2")</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@DFile.FormatTime(file.Duration)</div>
             }
         </div>
     </div>
