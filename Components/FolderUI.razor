@@ -65,12 +65,18 @@
     [Parameter]
     public FolderUI? Parent { get; set; }
 
+    private IMediaProvider? lastProvider = null;
+
     [Parameter]
     public string RelativePath {
         get => relativePath;
         set {
-            // Commenting this out allows for tab switching between media providers
-            //if(relativePath == value || Provider == null) return;
+            if(lastProvider != Provider) {
+                lastProvider = Provider;
+            } else {
+                if(relativePath == value || Provider == null) return;
+            }
+
 
             if(Provider == null) return;
             relativePath = value;
