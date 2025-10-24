@@ -69,7 +69,10 @@
     public string RelativePath {
         get => relativePath;
         set {
-            if(relativePath == value || Provider == null) return;
+            // Commenting this out allows for tab switching between media providers
+            //if(relativePath == value || Provider == null) return;
+
+            if(Provider == null) return;
             relativePath = value;
             directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, relativePath));
 

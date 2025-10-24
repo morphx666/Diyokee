@@ -97,9 +97,35 @@
         flex: 1;
         overflow: hidden;
 
-        .sources {
-            width: 400px;
-            background-color: var(--panel-background-color-light);
+        .media-providers {
+            display: flex;
+            flex-direction: column;
+
+            .tabs {
+                display: flex;
+                flex-direction: row;
+                justify-content: space-between;
+                background-color: var(--panel-background-color-dark-dark);
+                gap: 1px;
+
+                .tab {
+                    text-align: center;
+                    cursor: pointer;
+                    background-color: var(--panel-background-color-dark);
+                    padding: calc(0.2rem + 1px) 0.5rem;
+                    width: 100%;
+
+                    &.selected {
+                        background-color: var(--pale-blue);
+                    }
+                }
+            }
+            
+            .sources {
+                width: 400px;
+                height: 100%;
+                background-color: var(--panel-background-color-light);
+            }
         }
     }
 }

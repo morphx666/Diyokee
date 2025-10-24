@@ -167,7 +167,7 @@ h1:focus {
     color: white;
 }
 
-.blazor-error-boundary:::after {
+.blazor-error-boundary::after {
     content: "An error has occurred."
 }
 
