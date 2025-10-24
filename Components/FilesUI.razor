@@ -30,9 +30,7 @@
                         <img src="@Assets["/images/waiting.gif"]" />
                     </div>
                 } else {
-                    <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">
-                        @file.Artist
-                    </div>
+                    <div class="@(GetFileClasses(file))"        @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
                 }
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>

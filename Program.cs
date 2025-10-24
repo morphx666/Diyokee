@@ -45,7 +45,6 @@ internal class Program {
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddDistributedMemoryCache();
         builder.Services.AddSession(options => {
-            //options.IdleTimeout = TimeSpan.FromMinutes(10);
             options.Cookie.HttpOnly = true;
             options.Cookie.IsEssential = true;
         });
@@ -111,7 +110,7 @@ internal class Program {
         app.Run();
     }
 
-    private static void AutoSave() {
+    private static void AutoSave() { // FIXME: This is just... wrong... 
         Task.Run(async () => {
             while(true) {
                 await Task.Delay(5000);
@@ -135,7 +134,7 @@ internal class Program {
         // Attach to the first device, for now...
         if(Settings.Encoder.Enabled) {
             int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandles.First().Handle, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
-            BassEnc.BASS_Encode_ServerInit(encodeHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
+            _ = BassEnc.BASS_Encode_ServerInit(encodeHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
         }
     }
 
