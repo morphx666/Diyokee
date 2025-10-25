@@ -240,11 +240,12 @@
     public bool EnableMouseEvents {
         get => enableMouseEvents;
         set {
-            if(EqControls == null) return; // Session restore - ignore
+            if(faderVolume == null) return; // Session restore - ignore
+
             enableMouseEvents = value;
             if(!MinimalMode) {
                 EqControls.EnableMouseEvents = value;
-                faderTempo!.EnableMouseEvents = value;
+                if(faderTempo !=null)faderTempo.EnableMouseEvents = value;
             }
             faderVolume!.EnableMouseEvents = value;
             waveform!.EnableMouseEvents = value;

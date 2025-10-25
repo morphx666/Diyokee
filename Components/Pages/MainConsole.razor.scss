@@ -106,24 +106,25 @@
                 flex-direction: row;
                 align-items: center;
                 justify-content: space-between;
-                background-color: var(--panel-background-color-dark-dark);
                 gap: 2px;
+                background-color: var(--panel-background-color-dark-dark);
+                border-bottom: 1px solid var(--panel-background-color-dark);
 
                 .tab {
                     text-align: center;
-                    cursor: pointer;
+                    color: var(--text-gray);
                     background-color: var(--panel-background-color-dark);
-                    padding: calc(0.2rem + 1px) 0.5rem;
                     width: 100%;
                     height: calc(2rem - 1px);
+                    padding: calc(0.2rem + 1px) 0.5rem;
+                    cursor: pointer;
 
                     &.selected {
-                        background-color: var(--header-background-color);
+                        color: var(--text-white);
+                        background-color: var(--panel-background-color-light);
                     }
                 }
 
-                // margin-bottom: 2px;
-                border-bottom: 1px solid var(--panel-background-color-dark);
             }
             
             .sources {

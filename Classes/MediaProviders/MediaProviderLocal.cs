@@ -4,7 +4,6 @@ using static Diyokee.MediaProviders.IMediaProvider;
 namespace Diyokee.MediaProviders;
 
 public class MediaProviderLocal(string name, string rootPath) : MediaProviderBase(name, rootPath) {
-
     public override List<MediaFolder> Directories(string relativePath) {
         string path = Path.Combine(RootPath, relativePath);
         return [.. Directory
