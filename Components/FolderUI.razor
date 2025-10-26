@@ -1,4 +1,5 @@
 ﻿@using Diyokee.MediaProviders
+@using System.Diagnostics
 @using static Diyokee.MediaProviders.IMediaProvider
 
 <div class="error" hidden="@directoryExists">Directory not found</div>
@@ -10,43 +11,41 @@
                     <img src="@Assets["/images/waiting.gif"]" />
                 </div>
             } else {
-                <div
-                    class="icons"
-                    @onclick="() => {
-                        if(folder.HasSubfolders) {
-                            folder.IsExpanded = !folder.IsExpanded;
-                        } else {
-                            selectedFolder = folder.RelativePath;
-                            SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                        }
-                    }">
-                    <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
-                    @if(folder.HasSubfolders) {
-                        <i class="fa-solid fa-xmark plus-hack"></i>
-                    }
-                </div>
-            }
-
-            <span
-                class="ellipsis"
-                @onclick="() => {
-                                    selectedFolder = folder.RelativePath;
-                                    SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                                }"
-                @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
-                @folder.Name
-            </span>
-        </div>
-    </div>
-    <div class="subfolders">
-        @if(folder.IsExpanded) {
-            <FolderUI Provider="@Provider"
-                RelativePath="@folder.RelativePath"
-                Parent="@this"
-                ParentMediaFolder="@folder"
-                SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)" />
+                <div class="icons"
+                     @onclick="() => {
+                     if(folder.HasSubfolders) {
+                         folder.IsExpanded = !folder.IsExpanded;
+                     } else {
+                         selectedFolder = folder.RelativePath;
+                         SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                     }
+                 }">
+                  <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
+                @if(folder.HasSubfolders) {
+                    <i class="fa-solid fa-xmark plus-hack"></i>
+                }
+            </div>
         }
+
+        <span class="ellipsis"
+              @onclick="() => {
+              selectedFolder = folder.RelativePath;
+              SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                                              }"
+              @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
+            @folder.Name
+        </span>
     </div>
+</div>
+<div class="subfolders">
+    @if(folder.IsExpanded) {
+        <FolderUI Provider="@Provider"
+                  RelativePath="@folder.RelativePath"
+                  Parent="@this"
+                  ParentMediaFolder="@folder"
+                  SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)" />
+    }
+</div>
 }
 
 @code {
@@ -78,6 +77,7 @@
             }
 
             if(Provider == null) return;
+
             relativePath = value;
             directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, relativePath));
 
@@ -85,6 +85,26 @@
                 folders = Provider.Directories(relativePath);
                 if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
                 if(Parent != null) await InvokeAsync(Parent.StateHasChanged);
+
+                if(Provider.InitialPath != "") {
+                    List<MediaFolder> fList = folders;
+
+                    string selectedFolder = "";
+                    string[] dirsToExpand = Provider.InitialPath.Split(Path.DirectorySeparatorChar);
+                    foreach(string dir in dirsToExpand) {
+                        MediaFolder? f = fList.FirstOrDefault(f => f.Name == dir);
+                        if(f != null) {
+                            f.IsExpanded = true;
+                            fList = Provider.Directories(f.RelativePath);
+                            selectedFolder = f.RelativePath;
+
+                            // FIXME: This is stupid; this should only be executed on the last step... not every time...
+                            await InvokeAsync(() => {
+                                ChangeSelectedFolder(selectedFolder);
+                            });
+                        }
+                    }
+                }
 
                 await InvokeAsync(StateHasChanged);
             });

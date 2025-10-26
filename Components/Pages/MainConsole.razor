@@ -82,7 +82,10 @@
                 </div>
 
                 <div class="sources panel" @ref="mediaProviderPanel">
-                    <MediaProvider Provider="@selectedMediaProvider" SelectedFolderChanged="SelectedFolderChanged" />
+                    <MediaProvider 
+                        Provider="@selectedMediaProvider"
+                        SelectedFolderChanged="SelectedFolderChanged"
+                    />
                 </div>
             </div>
 
@@ -148,6 +151,13 @@
     }
 
     private void SelectedFolderChanged(string folder) {
+        if(selectedMediaProvider == null) return;
+
+        Program.Settings.MediaProviders.ForEach(mp => {
+            if(mp.Name == selectedMediaProvider.Name) {
+                mp.InitialPath = selectedMediaProvider.RootPath == folder ? "" : folder;
+            }
+        });
         selectedFolder = folder;
         shouldRender = true;
 
@@ -266,8 +276,9 @@
             if(mp.Type == "local") { // We only support local/netshare for now
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
-                                            ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
-                                            : mp.RootDirectory);
+                                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+                                                : mp.RootDirectory,
+                                            mp.InitialPath);
                 this.mediaProviders.Add(nmp);
             }
         }
