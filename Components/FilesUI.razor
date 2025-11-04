@@ -175,7 +175,11 @@
             } catch(TaskCanceledException) {
                 // Ignore cancellation exception
             } catch(Exception ex) {
-                Program.Logger.LogError($"Error analyzing files: {ex.Message}");
+                if(ex is InvalidOperationException) {
+                    // Ignore collection was modified
+                } else {
+                    Program.Logger.LogError($"Error analyzing files: {ex.Message}");
+                }
             }
         }, cancellationTokenSource.Token).ContinueWith(async _ => {
             isSearching = false;

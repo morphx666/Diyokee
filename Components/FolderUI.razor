@@ -3,6 +3,7 @@
 @using static Diyokee.MediaProviders.IMediaProvider
 
 <div class="error" hidden="@directoryExists">Directory not found</div>
+
 @foreach(MediaFolder folder in folders) {
     <div class="folder @(folder.RelativePath == selectedFolder ? "selected" : "")">
         <div class="name" style="padding-left: calc(0.3rem + @(deep)rem)">
@@ -73,7 +74,7 @@
             if(lastProvider != Provider) {
                 lastProvider = Provider;
             } else {
-                if(relativePath == value || Provider == null) return;
+                if(relativePath == value) return;
             }
 
             if(Provider == null) return;
@@ -89,19 +90,18 @@
                 if(Provider.InitialPath != "") {
                     List<MediaFolder> fList = folders;
 
-                    string selectedFolder = "";
                     string[] dirsToExpand = Provider.InitialPath.Split(Path.DirectorySeparatorChar);
-                    foreach(string dir in dirsToExpand) {
-                        MediaFolder? f = fList.FirstOrDefault(f => f.Name == dir);
+                    for(int i = 0; i < dirsToExpand.Length; i++) {
+                        MediaFolder? f = fList.FirstOrDefault(f => f.Name == dirsToExpand[i]);
                         if(f != null) {
                             f.IsExpanded = true;
-                            fList = Provider.Directories(f.RelativePath);
-                            selectedFolder = f.RelativePath;
+                            if(i == dirsToExpand.Length - 1) {
+                                fList = Provider.Directories(f.RelativePath);
 
-                            // FIXME: This is stupid; this should only be executed on the last step... not every time...
-                            await InvokeAsync(() => {
-                                ChangeSelectedFolder(selectedFolder);
-                            });
+                                await InvokeAsync(() => {
+                                    ChangeSelectedFolder(f.RelativePath);
+                                });
+                            }
                         }
                     }
                 }

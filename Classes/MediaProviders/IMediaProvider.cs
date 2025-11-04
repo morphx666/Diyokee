@@ -22,7 +22,7 @@
 
         public string Name { get; }
         public string RootPath { get; }
-        public string InitialPath { get; }
+        public string InitialPath { get; set; }
         public List<MediaFolder> Directories(string relativePath);
         public List<string> Files(string relativePath);
         public List<string> Search(string relativePath, string query, bool recursive);

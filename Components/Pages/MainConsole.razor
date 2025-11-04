@@ -71,11 +71,13 @@
                 <div class="tabs">
                     @foreach(IMediaProvider provider in mediaProviders) {
                         <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
-                             @onclick="() => {
-                                 selectedMediaProvider = provider;
-                                 SelectedFolderChanged(provider.RootPath);
-                                 shouldRender = true;
-                             }">
+                            @onclick="() => {
+                                selectedMediaProvider = provider;
+                                // FIXME: Hopefully we can find an easier way to do this...
+                                selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
+                                SelectedFolderChanged(provider.RootPath);
+                                shouldRender = true;
+                            }">
                             @provider.Name
                         </div>
                     }

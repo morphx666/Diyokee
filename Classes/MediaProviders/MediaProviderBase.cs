@@ -8,7 +8,7 @@ public abstract class MediaProviderBase(string name, string rootPath) : IMediaPr
 
     public string Name { get; init; } = name;
     public string RootPath { get; init; } = rootPath;
-    public string InitialPath { get; init; } = "";
+    public string InitialPath { get; set; } = "";
 
     public abstract List<MediaFolder> Directories(string relativePath);
     public abstract List<string> Files(string relativePath);
