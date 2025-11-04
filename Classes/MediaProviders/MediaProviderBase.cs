@@ -7,12 +7,10 @@ public abstract class MediaProviderBase(string name, string rootPath) : IMediaPr
     internal bool isBusy = false;
 
     public string Name { get; init; } = name;
-
     public string RootPath { get; init; } = rootPath;
+    public string InitialPath { get; set; } = "";
 
-    public abstract List<MediaFolder>  Directories(string relativePath);
-
+    public abstract List<MediaFolder> Directories(string relativePath);
     public abstract List<string> Files(string relativePath);
-
     public abstract List<string> Search(string relativePath, string query, bool recursive);
 }

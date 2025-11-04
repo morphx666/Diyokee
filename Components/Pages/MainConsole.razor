@@ -67,8 +67,28 @@
                      Constrains="playersConstrains" />
 
         <div class="media">
-            <div class="sources panel" @ref="mediaProviderPanel">
-                <MediaProvider Provider="@mediaProvider" SelectedFolderChanged="SelectedFolderChanged" />
+            <div class="media-providers">
+                <div class="tabs">
+                    @foreach(IMediaProvider provider in mediaProviders) {
+                        <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
+                            @onclick="() => {
+                                selectedMediaProvider = provider;
+                                // FIXME: Hopefully we can find an easier way to do this...
+                                selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
+                                SelectedFolderChanged(provider.RootPath);
+                                shouldRender = true;
+                            }">
+                            @provider.Name
+                        </div>
+                    }
+                </div>
+
+                <div class="sources panel" @ref="mediaProviderPanel">
+                    <MediaProvider 
+                        Provider="@selectedMediaProvider"
+                        SelectedFolderChanged="SelectedFolderChanged"
+                    />
+                </div>
             </div>
 
             <PanelResize Orientation="PanelResize.Orientations.Horizontal"
@@ -77,7 +97,7 @@
                          OnResizeEnd="HandleDividerResize"
                          Constrains="mediaProviderConstrains" />
 
-            <FilesUI Provider="@mediaProvider"
+            <FilesUI Provider="@selectedMediaProvider"
                      RelativePath="@selectedFolder"
                      SelectedFileChanged="SelectedFileChanged"
                      TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
@@ -90,7 +110,8 @@
 </div>
 
 @code {
-    private IMediaProvider? mediaProvider;
+    private List<IMediaProvider> mediaProviders = new();
+    private IMediaProvider? selectedMediaProvider;
     private string selectedFolder = "";
 
     private DFile? selectedFile = null;
@@ -119,7 +140,7 @@
     private bool shouldRender = true;
 
     public MainConsole() {
-        SetMediaProvider();
+        SetMediaProviders();
     }
 
     private void LoadSelectedFile(Player? player) {
@@ -132,6 +153,13 @@
     }
 
     private void SelectedFolderChanged(string folder) {
+        if(selectedMediaProvider == null) return;
+
+        Program.Settings.MediaProviders.ForEach(mp => {
+            if(mp.Name == selectedMediaProvider.Name) {
+                mp.InitialPath = selectedMediaProvider.RootPath == folder ? "" : folder;
+            }
+        });
         selectedFolder = folder;
         shouldRender = true;
 
@@ -245,20 +273,22 @@
         player2?.SetCrossFaderVolume(value <= 0.5 ? 1 : 2 * (1 - value));
     }
 
-    private void SetMediaProvider() {
+    private void SetMediaProviders() {
         foreach(Settings.MediaProvider mp in Program.Settings.MediaProviders) {
-            if(mp.Type == "local") {
-                // Use the first local media provider found (for now)
-                this.mediaProvider = new MediaProviderLocal(mp.Name,
-                                                            string.IsNullOrEmpty(mp.RootDirectory)
-                                                            ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
-                                                            : mp.RootDirectory);
-                break;
+            if(mp.Type == "local") { // We only support local/netshare for now
+                MediaProviderLocal nmp = new(mp.Name,
+                                            string.IsNullOrEmpty(mp.RootDirectory)
+                                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+                                                : mp.RootDirectory,
+                                            mp.InitialPath);
+                this.mediaProviders.Add(nmp);
             }
         }
 
-        if(this.mediaProvider == null) {
+        if(this.mediaProviders.Count == 0) {
             throw new Exception("No valid media provider found");
+        } else {
+            selectedMediaProvider = this.mediaProviders[0];
         }
     }
 
@@ -270,7 +300,7 @@
         player2!.EqControls.EqProfile = equalizerProfile;
         player2!.SetTempoRange(Program.Settings.Playback.TempoRange);
 
-        SetMediaProvider();
+        SetMediaProviders();
 
         await JS.InvokeVoidAsync("forceRefresh");
 

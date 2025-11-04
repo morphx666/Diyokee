@@ -1,9 +1,14 @@
-using System;
+using System.Diagnostics;
 using static Diyokee.MediaProviders.IMediaProvider;
 
 namespace Diyokee.MediaProviders;
 
-public class MediaProviderLocal(string name, string rootPath) : MediaProviderBase(name, rootPath) {
+public class MediaProviderLocal : MediaProviderBase {
+    public MediaProviderLocal(string name, string rootPath) : base(name, rootPath) {}
+
+    public MediaProviderLocal(string name, string rootPath, string initialPath) : base(name, rootPath) {
+        InitialPath = initialPath;
+    }
 
     public override List<MediaFolder> Directories(string relativePath) {
         string path = Path.Combine(RootPath, relativePath);
@@ -14,7 +19,7 @@ public class MediaProviderLocal(string name, string rootPath) : MediaProviderBas
     }
 
     public override List<string> Files(string relativePath) {
-        string path = Path.Combine(RootPath, relativePath);
+         string path = Path.Combine(RootPath, relativePath);
         return [.. new DirectoryInfo(path)
                         .EnumerateFiles()
                         .Where(f => supportedExtensions.Contains(f.Extension))

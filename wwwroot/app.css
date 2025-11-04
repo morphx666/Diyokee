@@ -17,6 +17,7 @@
     --app-background-color: #111;
 
     --text-white: #ccc;
+    --text-gray: #999;
 
     --panel-background-color-light: #444;
     --panel-background-color-light-light: #666;
@@ -167,7 +168,7 @@ h1:focus {
     color: white;
 }
 
-.blazor-error-boundary:::after {
+.blazor-error-boundary::after {
     content: "An error has occurred."
 }
 

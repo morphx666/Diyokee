@@ -97,9 +97,41 @@
         flex: 1;
         overflow: hidden;
 
-        .sources {
-            width: 400px;
-            background-color: var(--panel-background-color-light);
+        .media-providers {
+            display: flex;
+            flex-direction: column;
+
+            .tabs {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+                gap: 2px;
+                background-color: var(--panel-background-color-dark-dark);
+                border-bottom: 1px solid var(--panel-background-color-dark);
+
+                .tab {
+                    text-align: center;
+                    color: var(--text-gray);
+                    background-color: var(--panel-background-color-dark);
+                    width: 100%;
+                    height: calc(2rem - 1px);
+                    padding: calc(0.2rem + 1px) 0.5rem;
+                    cursor: pointer;
+
+                    &.selected {
+                        color: var(--text-white);
+                        background-color: var(--panel-background-color-light);
+                    }
+                }
+
+            }
+            
+            .sources {
+                width: 400px;
+                height: 100%;
+                background-color: var(--panel-background-color-light);
+            }
         }
     }
 }

@@ -6,7 +6,7 @@
             items = [];
         }
 
-        public T? Get<T>(string key) => (items.ContainsKey(key) && items[key] is T value) ? value : default;
+        public T? Get<T>(string key) => items.TryGetValue(key, out var obj) && obj is T value ? value : default;
         public void Set<T>(string key, T value) => items[key] = value;
     }
 }
