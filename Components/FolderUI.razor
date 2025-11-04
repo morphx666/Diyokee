@@ -14,13 +14,13 @@
             } else {
                 <div class="icons"
                      @onclick="() => {
-                     if(folder.HasSubfolders) {
-                         folder.IsExpanded = !folder.IsExpanded;
-                     } else {
-                         selectedFolder = folder.RelativePath;
-                         SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                     }
-                 }">
+                         if(folder.HasSubfolders) {
+                             folder.IsExpanded = !folder.IsExpanded;
+                         } else {
+                             selectedFolder = folder.RelativePath;
+                             SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                         }
+                     }">
                   <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
                 @if(folder.HasSubfolders) {
                     <i class="fa-solid fa-xmark plus-hack"></i>
@@ -29,11 +29,11 @@
         }
 
         <span class="ellipsis"
-              @onclick="() => {
-              selectedFolder = folder.RelativePath;
-              SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                                              }"
-              @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
+            @onclick="() => {
+                selectedFolder = folder.RelativePath;
+                SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+            }"
+            @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
             @folder.Name
         </span>
     </div>
