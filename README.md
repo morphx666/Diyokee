@@ -36,7 +36,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Searching is quite limited and a bit buggy
 - Audio routing is partially implemented but not fully usable
 - Key recognition/matching/adustments are not yet supported
-- State is not preserved, so if you refresh the page, the backend state is not reflected into the UI
+- State preservation is only partially implemented 
 - ...and many more
 
 ## Releases
