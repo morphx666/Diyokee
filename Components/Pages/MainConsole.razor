@@ -274,6 +274,8 @@
     }
 
     private void SetMediaProviders() {
+        this.mediaProviders.Clear();
+
         foreach(Settings.MediaProvider mp in Program.Settings.MediaProviders) {
             if(mp.Type == "local") { // We only support local/netshare for now
                 MediaProviderLocal nmp = new(mp.Name,
@@ -286,7 +288,7 @@
         }
 
         if(this.mediaProviders.Count == 0) {
-            throw new Exception("No valid media provider found");
+            throw new Exception("No valid media providers found");
         } else {
             selectedMediaProvider = this.mediaProviders[0];
         }

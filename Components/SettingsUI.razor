@@ -13,16 +13,23 @@
     </div>
 
     <div class="header">
-        <h3>Local Media</h3>
+        <h3>Media Providers</h3>
+        <div class="media-providers scroller">
+            @* <h3>Local Media</h3>
 
-        <div class="field">
-            <label for="local-media-name">Name</label>
-            <InputText id="local-media-name" @bind-value="settings.MediaProviders[0].Name" />
-        </div>
+            <div class="field">
+                <label for="local-media-name">Name</label>
+                <InputText id="local-media-name" @bind-value="settings.MediaProviders[0].Name" />
+            </div>
 
-        <div class="field">
-            <label for="local-media-location">Location</label>
-            <InputText id="local-media-location" @bind-value="settings.MediaProviders[0].RootDirectory" />
+            <div class="field">
+                <label for="local-media-location">Location</label>
+                <InputText id="local-media-location" @bind-value="settings.MediaProviders[0].RootDirectory" />
+            </div> *@
+
+            @foreach(var provider in settings.MediaProviders) {
+                <CPMedisProvider Provider="provider" />
+            }
         </div>
     </div>
 

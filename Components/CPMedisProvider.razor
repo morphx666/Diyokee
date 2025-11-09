@@ -1,0 +1,23 @@
+﻿@using Diyokee.MediaProviders
+
+<div class="container">
+    <div class="field">
+        <label for="local-media-type">Type</label>
+        <InputText id="local-media-type" @bind-Value="@Provider.Type" readonly />
+    </div>
+
+    <div class="field">
+        <label for="local-media-name">Name</label>
+        <InputText id="local-media-name" @bind-value="@Provider.Name" />
+    </div>
+
+    <div class="field">
+        <label for="local-media-location">Location</label>
+        <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public Settings.MediaProvider Provider { get; set; }
+}

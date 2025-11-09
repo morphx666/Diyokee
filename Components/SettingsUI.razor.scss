@@ -62,3 +62,9 @@ h5 {
         font-family: var(--mono-font-family);
     }
 }
+
+.media-providers {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+}
