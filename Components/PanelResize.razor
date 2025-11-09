@@ -31,11 +31,11 @@
     public EventCallback<(string, double)> OnResizeEnd { get; set; }
 
     [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
+    private MouseState? mouseState { get; set; } = default!;
 
     private ElementReference dividerElement;
     private Bounds? dividerBounds;
-    private Bounds? resizeElementBounds;
+    private Bounds? resizeElementBounds = default!;
 
     private bool retry = false;
 
@@ -103,7 +103,7 @@
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
             if(Program.Settings.UIElements.ContainsKey(Name)) {
-                if(double.TryParse(Program.Settings.UIElements[Name], out double value)) {
+                if(double.TryParse(Program.Settings.UIElements[Name], out double value) && resizeElementBounds != null) {
                     if(Orientation == Orientations.Vertical) {
                         resizeElementBounds.Height = value;
                         dividerBounds!.Y = value;
@@ -122,14 +122,14 @@
                     await Task.Delay(delay);
                     if(!isValid
                         && dividerBounds != null
-                        && !mouseState.IsCaptured
-                        && mouseState.ButtonsDown == 1
+                        && (!mouseState?.IsCaptured ?? false)
+                        && mouseState?.ButtonsDown == 1
                         && dividerBounds.Contains(mouseState.X, mouseState.Y)) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }
 
-                    if(isValid) {
+                    if(isValid && resizeElementBounds != null) {
                         if(mouseState?.ButtonsDown == 1) {
                             double offset = Orientation == Orientations.Vertical ? mouseState.Y - resizeElementBounds!.Bottom : mouseState.X - resizeElementBounds.Right;
 

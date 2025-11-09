@@ -48,6 +48,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Include="publish.bat" />
+	</ItemGroup>
+
+	 <ItemGroup>
+    	<Compile Remove="publish.bat" />
+  	</ItemGroup>
+
+	<ItemGroup>
 		<Content Include="Components\Waveform.razor.scss" />
 	</ItemGroup>
 

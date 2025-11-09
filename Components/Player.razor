@@ -21,9 +21,9 @@
     @if(!MinimalMode) {
         <div class="header">
             <div class="file-info ellipsis">
-                <span class="ellipsis">@file?.Title</span>
-                <span class="ellipsis">@file?.Artist</span>
-                <span class="ellipsis">@file?.Album</span>
+                <span class="ellipsis">@File?.Title</span>
+                <span class="ellipsis">@File?.Artist</span>
+                <span class="ellipsis">@File?.Album</span>
             </div>
             <div class="time">
                 <span>@DFile.FormatTime(playbackPosition)</span>
@@ -33,7 +33,7 @@
             <div class="bpm-key">
                 <span>@CalcBpm()</span>
                 <span>@GetBpmAdjustment()</span>
-                <span>&nbsp;@keyTools.ConvertTo(file?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
+                <span>&nbsp;@keyTools.ConvertTo(File?.Key ?? "", KeyTools.Notations.CamelotKey)</span>
             </div>
             <div class="player-name" style="background-color: @Settings.Color">
                 @Settings.Name
@@ -146,7 +146,6 @@
     [JsonProperty] private double trackGain = 1;
     [JsonProperty] private double crossFaderVolume = 1;
 
-    [JsonProperty] private DFile? file = null;
     private Fader? faderVolume;
     private Fader? faderTempo;
     private Waveform? waveform;
@@ -195,21 +194,7 @@
     public bool IsPlaying { get; set; }
 
     [Parameter]
-    public DFile? File { // TODO: Apply the same logic as in FilesUI
-        get => file;
-        set {
-            if(value != null && lastFilename != value.Filename) {
-                if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
-
-                lastFilename = value.Filename;
-                file = value;
-                Stop(false);
-                LoadFile();
-
-                SavePlayerState();
-            }
-        }
-    }
+    public DFile? File { get; set; }
 
     [Parameter]
     public EventCallback RequestedFileCue { get; set; }
@@ -268,7 +253,7 @@
             lastFilename = "";
             File = file;
         } else {
-            this.file = file;
+            File = file;
             SetParameters();
             SetLoopSize(loopSize, false);
         }
@@ -447,7 +432,7 @@
     }
 
     private double GetRemainingTime() {
-        if(file?.Duration > 0) return (file?.Duration - playbackPosition) ?? 0;
+        if(File?.Duration > 0) return (File?.Duration - playbackPosition) ?? 0;
         return 0;
     }
 
@@ -461,7 +446,7 @@
             streamHandle = 0;
         }
 
-        if(file == null || faderVolume == null) return;
+        if(File == null || faderVolume == null) return;
 
         var r = CreateStreams();
         if(r.Error != BASSError.BASS_OK) {
@@ -469,7 +454,7 @@
             Program.Logger.LogError($"Error creating stream ({r.Message}): {r.Error}");
         }
 
-        trackGain = Math.Pow(10, (file.HasReplayGain ? file.ReplayGain : -2) / 20.0);
+        trackGain = Math.Pow(10, (File.HasReplayGain ? File.ReplayGain : -2) / 20.0);
         ApplyVolume(faderVolume!.Value);
         SetGain(gain.fVolume);
         SetupEQ();
@@ -490,7 +475,7 @@
     private (BASSError Error, string Message) CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
 
-        streamHandle = Bass.BASS_StreamCreateFile(file?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
+        streamHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT);
@@ -702,19 +687,19 @@
         beatMarkers.Clear();
         waveformFull?.UpdateFullWaveform();
 
-        if(file == null || !file.WaveformUnZipped.Contains('|')) return false;
+        if(File == null || !File.WaveformUnZipped.Contains('|')) return false;
 
-        peaks = file.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
+        peaks = File.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
         maxPeak = peaks.Max();
 
         waveformWidth = peaks.Length * WaveformBarWidth;
-        beatsPerSecond = file!.BPM / 60.0;
+        beatsPerSecond = File!.BPM / 60.0;
         secondsPerBeat = 1.0 / beatsPerSecond;
-        secondsToPosX = 1.0 / (file.Duration == 0 ? 1 : file.Duration) * waveformWidth;
+        secondsToPosX = 1.0 / (File.Duration == 0 ? 1 : File.Duration) * waveformWidth;
 
         // Cache values to avoid having to check for nullability every time
-        fileBPM = file.BPM;
-        fileDownbeatAt = file.DownbeatAt;
+        fileBPM = File.BPM;
+        fileDownbeatAt = File.DownbeatAt;
 
         // x = s / file.Duration * waveformWidth
         // s = x / waveformWidth * file.Duration
@@ -730,8 +715,8 @@
 
         double t1 = fileDownbeatAt;
         double t2 = t1 - secondsPerBeat;
-        while(t1 < file!.Duration || t2 >= 0) {
-            if(t1 < file.Duration) {
+        while(t1 < File!.Duration || t2 >= 0) {
+            if(t1 < File.Duration) {
                 beatMarkers.Add((t1 * secondsToPosX, t1));
                 t1 += secondsPerBeat;
             }
@@ -767,7 +752,7 @@
     }
 
     private void ToggleLoop() {
-        if(file == null) return;
+        if(File == null) return;
         loop.Enabled = !loop.Enabled;
         SetLoopSize(loopSize, true);
     }
@@ -776,7 +761,7 @@
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
 
-        if(file != null) {
+        if(File != null) {
             double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
             if(resetStart) loop.Start = position;
             loop.End = loop.Start + loopSize / beatsPerSecond;
@@ -1005,7 +990,7 @@
                 gain = p.gain;
                 trackGain = p.trackGain;
 
-                if(p.file != null) SetFile(p.file, false);
+                if(p.File != null) SetFile(p.File, false);
 
                 EqControls = p.EqControls;
                 FilterControls = p.FilterControls;
@@ -1038,6 +1023,20 @@
 
         Task.Run(MonitorPlayback);
         Task.Run(MonitorBeats);
+    }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+
+        if(File != null && lastFilename != File.Filename) {
+            if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
+
+            lastFilename = File.Filename;
+            Stop(false);
+            LoadFile();
+
+            SavePlayerState();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

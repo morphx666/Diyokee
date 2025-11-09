@@ -52,7 +52,7 @@
 @code {
     private static string selectedFolder = "";
     private List<MediaFolder> folders = [];
-    private string relativePath = "-";
+    private string previousRelativePath = "-";
     private int deep = 0;
     private bool directoryExists = true;
 
@@ -68,52 +68,53 @@
     private IMediaProvider? lastProvider = null;
 
     [Parameter]
-    public string RelativePath {
-        get => relativePath;
-        set {
-            if(lastProvider != Provider) {
-                lastProvider = Provider;
-            } else {
-                if(relativePath == value) return;
-            }
-
-            if(Provider == null) return;
-
-            relativePath = value;
-            directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, relativePath));
-
-            Task.Run(async () => {
-                folders = Provider.Directories(relativePath);
-                if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
-                if(Parent != null) await InvokeAsync(Parent.StateHasChanged);
-
-                if(Provider.InitialPath != "") {
-                    List<MediaFolder> fList = folders;
-
-                    string[] dirsToExpand = Provider.InitialPath.Split(Path.DirectorySeparatorChar);
-                    for(int i = 0; i < dirsToExpand.Length; i++) {
-                        MediaFolder? f = fList.FirstOrDefault(f => f.Name == dirsToExpand[i]);
-                        if(f != null) {
-                            f.IsExpanded = true;
-                            if(i == dirsToExpand.Length - 1) {
-                                fList = Provider.Directories(f.RelativePath);
-
-                                await InvokeAsync(() => {
-                                    ChangeSelectedFolder(f.RelativePath);
-                                });
-                            }
-                        }
-                    }
-                }
-
-                await InvokeAsync(StateHasChanged);
-            });
-            deep = relativePath == "" ? 0 : 1 + relativePath.Count(c => c == '\\');
-        }
-    }
+    public string RelativePath { get; set; } = "";
 
     [Parameter]
     public EventCallback<string> SelectedFolderChanged { get; set; }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+
+        if(lastProvider != Provider) {
+            lastProvider = Provider;
+        } else {
+            if(previousRelativePath == RelativePath) return;
+        }
+
+        if(Provider == null) return;
+
+        previousRelativePath = RelativePath;
+        directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
+
+        Task.Run(async () => {
+            folders = Provider.Directories(RelativePath);
+            if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
+            if(Parent != null) await InvokeAsync(Parent.StateHasChanged);
+
+            if(Provider.InitialPath != "") {
+                List<MediaFolder> fList = folders;
+
+                string[] dirsToExpand = Provider.InitialPath.Split(Path.DirectorySeparatorChar);
+                for(int i = 0; i < dirsToExpand.Length; i++) {
+                    MediaFolder? f = fList.FirstOrDefault(f => f.Name == dirsToExpand[i]);
+                    if(f != null) {
+                        f.IsExpanded = true;
+                        if(i == dirsToExpand.Length - 1) {
+                            fList = Provider.Directories(f.RelativePath);
+
+                            await InvokeAsync(() => {
+                                ChangeSelectedFolder(f.RelativePath);
+                            });
+                        }
+                    }
+                }
+            }
+
+            await InvokeAsync(StateHasChanged);
+        });
+        deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == '\\');
+    }
 
     private async void ChangeSelectedFolder(string folder) {
         selectedFolder = folder;

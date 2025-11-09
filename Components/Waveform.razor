@@ -162,7 +162,7 @@
                         }
                         break;
                 }
-            } catch(Exception e) {
+            } catch {
                 // Just ignore it - this is usually caused by the beatMarkers collection being modified while rendering
                 if(Mode == Modes.Full) forceRenderWaveformFull = true;
             }
@@ -281,7 +281,7 @@
         await ctx.EndBatchAsync();
     }
 
-    private async void Zoom(int factor) {
+    private void Zoom(int factor) {
         Player.WaveformBarWidth += factor;
         if(Player.WaveformBarWidth < 2) Player.WaveformBarWidth = 2;
         if(Player.WaveformBarWidth > 10) Player.WaveformBarWidth = 10;
@@ -289,6 +289,6 @@
 
         if(!Player.MinimalMode) {
             Program.Settings.Playback.WaveformZoom = Player.WaveformBarWidth;
-        }        
+        }
     }
 }

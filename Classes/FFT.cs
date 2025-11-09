@@ -161,7 +161,7 @@ namespace FFTLib {
         }
 
         private const double PI2 = 2.0 * Math.PI;
-        private static int[] rBits;
+        private static int[] rBits = [];
         private static int lastFFTSize;
         private static ComplexDouble initialFFTAngle = new ComplexDouble(1);
 

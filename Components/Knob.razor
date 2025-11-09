@@ -86,8 +86,8 @@
 
                     if(!isValid
                         && knobBounds != null
-                        && !mouseState.IsCaptured
-                        && mouseState.ButtonsDown == 1
+                        && (!mouseState?.IsCaptured ?? false)
+                        && mouseState?.ButtonsDown == 1
                         && knobBounds.Contains(mouseState.X, mouseState.Y)) {
                         mouseState.IsCaptured = true;
                         isValid = true;
