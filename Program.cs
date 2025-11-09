@@ -60,6 +60,13 @@ internal class Program {
 
         var app = builder.Build();
 
+        // === Setup BASS as soon as possible so that when the browser opens, all DLLs have been copied
+        Logger = app.Logger;
+        Logger.LogInformation("Setting up BASS...");
+        InitBASS(workingDirectory);
+        SetupBASS();
+        // === ---------------------------------------
+
         app.Logger.LogInformation("Validating Cache Database...");
         using(IServiceScope? scope = app.Services.CreateScope()) {
             using(CacheDbContext? context = scope.ServiceProvider.GetService<CacheDbContext>()) {
@@ -101,11 +108,6 @@ internal class Program {
 
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
-
-        Logger = app.Logger;
-        Logger.LogInformation("Setting up BASS...");
-        InitBASS(workingDirectory);
-        SetupBASS();
 
         app.Run();
     }

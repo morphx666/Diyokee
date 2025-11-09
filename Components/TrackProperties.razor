@@ -309,7 +309,7 @@
         await InvokeAsync(StateHasChanged);
     }
 
-    private async void ReSetDownbeat() {
+    private void ReSetDownbeat() {
         file.DownbeatAt = player!.PlaybackHead / 100.0;
         player!.SetParameters();
     }
