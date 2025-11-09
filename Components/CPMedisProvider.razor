@@ -16,12 +16,12 @@
         <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
     </div>
 
-    <button class="button-delete" onclick="@OnDeleteProvider"><i class="fa-solid fa-circle-xmark"></i></button>
+    <button class="button-delete-provider" onclick="@OnDeleteProvider"><i class="fa-solid fa-circle-xmark"></i></button>
 </div>
 
 @code {
     [Parameter]
-    public Settings.MediaProvider Provider { get; set; }
+    public Settings.MediaProvider Provider { get; set; } = default!;
 
     [Parameter]
     public EventCallback OnDeleteProvider { get; set; } = default!;

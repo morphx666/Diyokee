@@ -66,5 +66,18 @@ h5 {
 .media-providers {
     display: flex;
     flex-direction: row;
+    align-items: center;
     gap: 1rem;
+
+    .button-add-provider {
+        font-family: "FontAwesome Solid";
+        font-size: 1rem;
+
+        color: var(--primary-light);
+        background: none;
+        border: none;
+        padding: 0;
+        margin-top: -0.5rem;
+        cursor: pointer;
+    }
 }
