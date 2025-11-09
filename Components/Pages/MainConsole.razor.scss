@@ -103,7 +103,6 @@
 
             .tabs {
                 display: grid;
-                /*grid-template-columns: repeat(auto-fill, 1fr);*/
                 grid-auto-flow: column;
                 
                 background-color: var(--panel-background-color-dark-dark);
