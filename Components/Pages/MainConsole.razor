@@ -67,7 +67,7 @@
                      Constrains="playersConstrains" />
 
         <div class="media">
-            <div class="media-providers">
+            <div class="media-providers" @ref="mediaProviderPanel">
                 <div class="tabs">
                     @foreach(IMediaProvider provider in mediaProviders) {
                         <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
@@ -83,7 +83,7 @@
                     }
                 </div>
 
-                <div class="sources panel" @ref="mediaProviderPanel">
+                <div class="sources panel">
                     <MediaProvider 
                         Provider="@selectedMediaProvider"
                         SelectedFolderChanged="SelectedFolderChanged"
