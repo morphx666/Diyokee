@@ -1,4 +1,6 @@
 ﻿.container {
+    position: relative;
+
     padding-right: 1rem;
     margin: 0 -0.25rem 0.5rem 0;
 
@@ -24,5 +26,26 @@
             font-size: 0.8rem;
             color: var(--help);
         }
+    }
+
+    .button-delete {
+        position: absolute;
+        display: none;
+
+        font-family: "FontAwesome Solid";
+        font-size: 1rem;
+
+        color: var(--secondary-light);
+        background: none;
+        border: none;
+        padding: 0;
+        cursor: pointer;
+
+        right: 0.5rem;
+        bottom: 0;
+    }
+
+    &:hover .button-delete {
+        display: block;
     }
 }
