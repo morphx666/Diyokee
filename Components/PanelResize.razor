@@ -25,6 +25,9 @@
     public string Name { get; set; } = string.Empty;
 
     [Parameter]
+    public int Offset { get; set; } = 0;
+
+    [Parameter]
     public Dictionary<ConstrainKeys, string> Constrains { get; set; } = new();
 
     [Parameter]
@@ -85,6 +88,7 @@
 
     [JSInvokable]
     public async Task OnResize() {
+        await Task.Delay(750);
         dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
         resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
     }
@@ -111,6 +115,7 @@
                         resizeElementBounds.Width = value;
                         dividerBounds!.X = value;
                     }
+
                     await ApplyNewSize();
                 }
             }
@@ -120,24 +125,26 @@
                 int delay = 60;
                 while(true) {
                     await Task.Delay(delay);
+
                     if(!isValid
                         && dividerBounds != null
                         && (!mouseState?.IsCaptured ?? false)
                         && mouseState?.ButtonsDown == 1
-                        && dividerBounds.Contains(mouseState.X, mouseState.Y)) {
+                        && dividerBounds.Contains(mouseState.X + (Orientation == Orientations.Horizontal ? Offset : 0), mouseState.Y + (Orientation == Orientations.Vertical ? Offset : 0))) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }
 
                     if(isValid && resizeElementBounds != null) {
                         if(mouseState?.ButtonsDown == 1) {
-                            double offset = Orientation == Orientations.Vertical ? mouseState.Y - resizeElementBounds!.Bottom : mouseState.X - resizeElementBounds.Right;
+                            double mouseOffset = Orientation == Orientations.Vertical ? mouseState.Y - resizeElementBounds!.Bottom : mouseState.X - resizeElementBounds.Right;
+                            mouseOffset += Offset;
 
                             if(Orientation == Orientations.Vertical) {
-                                resizeElementBounds.Height += offset;
+                                resizeElementBounds.Height += mouseOffset;
                                 dividerBounds!.Y = resizeElementBounds.Height + dividerBounds.Height / 2;
                             } else {
-                                resizeElementBounds.Width += offset;
+                                resizeElementBounds.Width += mouseOffset;
                                 dividerBounds!.X = resizeElementBounds.Width + dividerBounds.Width / 2;
                             }
                             await ApplyNewSize();
