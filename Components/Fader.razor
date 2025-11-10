@@ -37,7 +37,7 @@
     public EventCallback<double> ValueChanged { get; set; }
 
     [CascadingParameter]
-    private MouseState mouseState { get; set; } = null!;
+    private MouseState mouseState { get; set; } = default!;
 
     public bool EnableMouseEvents { get; set; } = true;
 

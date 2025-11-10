@@ -80,6 +80,10 @@
         var Diyokee = Diyokee || {};
         var dotNetListeners = [];
         Diyokee.monitorResize = (dotNetObjReference) => {
+            if(dotNetListeners.some(l => l._dotNetCallDispatcher == dotNetObjReference._dotNetCallDispatcher)) {
+                console.log("Already registered");
+                return;
+            }
             dotNetListeners.push(dotNetObjReference);
         }
 

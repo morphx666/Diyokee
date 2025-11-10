@@ -60,12 +60,11 @@ internal class Program {
 
         var app = builder.Build();
 
-        // === Setup BASS as soon as possible so that when the browser opens, all DLLs have been copied
+        // Setup BASS as soon as possible so that when the browser opens, all DLLs have been copied
         Logger = app.Logger;
         Logger.LogInformation("Setting up BASS...");
         InitBASS(workingDirectory);
         SetupBASS();
-        // === ---------------------------------------
 
         app.Logger.LogInformation("Validating Cache Database...");
         using(IServiceScope? scope = app.Services.CreateScope()) {
@@ -182,7 +181,6 @@ internal class Program {
         }
 
         if(Settings.BassNetRegEmail != "" && Settings.BassNetRegKey != "") {
-            // http://www.bass.radio42.com/index.html
             BassNet.Registration(Settings.BassNetRegEmail, Settings.BassNetRegKey);
         }
 
