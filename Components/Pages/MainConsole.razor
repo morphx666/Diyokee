@@ -26,11 +26,12 @@
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
-                <Player Settings="Program.Settings.Playback.Players[0]"
-                        File="@player1File"
-                        RequestedFileCue="() => LoadSelectedFile(player1)"
-                        OtherPlayer="@player2"
-                        @ref="player1" />
+                <Player
+                    Settings="Program.Settings.Playback.Players[0]"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
             </div>
 
             <div class="global-controls">
@@ -39,11 +40,12 @@
             </div>
 
             <div class="player">
-                <Player Settings="Program.Settings.Playback.Players[1]"
-                        File="@player2File"
-                        RequestedFileCue="() => LoadSelectedFile(player2)"
-                        OtherPlayer="@player1"
-                        @ref="player2" />
+                <Player
+                    Settings="Program.Settings.Playback.Players[1]"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
             </div>
         </div>
 
@@ -144,6 +146,8 @@
     }
 
     private void LoadSelectedFile(Player? player) {
+        if(player!.IsPlaying && Program.Settings.Playback.LockOnPlay) return;
+
         if(player == player1) {
             player1File = selectedFile;
         } else if(player == player2) {
@@ -170,8 +174,8 @@
         selectedFile = file;
         shouldRender = true;
 
-        if(player1!.File?.Filename == file.Filename) player1.SetFile(file, false);
-        if(player2!.File?.Filename == file.Filename) player2.SetFile(file, false);
+        if(player1!.File?.Filename == file.Filename) player1File = selectedFile;
+        if(player2!.File?.Filename == file.Filename) player2File = selectedFile;
 
         session.Set(nameof(selectedFile), file);
     }

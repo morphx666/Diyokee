@@ -162,6 +162,7 @@
 
         @if(playerVisible) {
             <Player
+                File="@playerFile"
                 Settings="@(new() {
                             Name="Preview",
                             Color="#82871f"
@@ -181,6 +182,7 @@
 @code {
     private ModalDialog dialog = default!;
     private DFile file = new();
+    private DFile playerFile = default!;
     private Player? player = default!;
     private bool playerVisible = false;
 
@@ -231,13 +233,13 @@
             }
 
             player.WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
-            player!.SetFile(this.file);
+            playerFile = this.file;
             dialog.Open();
         });
     }
 
-    private void Save() {
-        Files.UpdateFile(file);
+    private async Task Save() {
+        await Files.UpdateFile(file);
         Close();
     }
 

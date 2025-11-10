@@ -326,23 +326,22 @@
         return downbeatAt;
     }
 
-    public async void UpdateFile(DFile file) {
+    public async Task UpdateFile(DFile file) {
         CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
         DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(fileFromCache == null) throw new Exception($"File {file.Filename} not found in cache");
 
         cache.Files.Remove(fileFromCache);
-        cache.Files.Add(file);
+        await cache.Files.AddAsync(file);
 
         int index = files.FindIndex(f => f.Filename == file.Filename);
         files.RemoveAt(index);
-
         files.Insert(index, file);
 
-        await cache!.SaveChangesAsync();
-        await InvokeAsync(StateHasChanged);
+        await cache.SaveChangesAsync();
         await cache.DisposeAsync();
 
+        await InvokeAsync(StateHasChanged);
         await SelectedFileChanged.InvokeAsync(file);
     }
 
@@ -383,13 +382,12 @@
         }
     }
 
-    private void OpenTrackProperties() {
-        Task.Run(async () => {
+    private async Task OpenTrackProperties() {
+        await Task.Run(async () => {
             while(trackProperties == null) {
                 await Task.Delay(250);
             }
             trackProperties!.Open(files.FirstOrDefault(f => f.Filename == selectedFile));
-
             await TrackSettingsDialogOpen.InvokeAsync(null);
         });
     }

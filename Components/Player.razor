@@ -42,30 +42,32 @@
     }
 
     <div class="waveform-full">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.Full"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@fileDownbeatAt"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Player="this"
-                  @ref="waveformFull" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.AudioSynced"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@fileDownbeatAt"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Loop="loop"
-                  Player="this"
-                  @ref="waveform" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@fileDownbeatAt"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Loop="loop"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -194,7 +196,7 @@
     public bool IsPlaying { get; set; }
 
     [Parameter]
-    public DFile? File { get; set; }
+    public DFile File { get; set; } = null!;
 
     [Parameter]
     public EventCallback RequestedFileCue { get; set; }
@@ -246,17 +248,6 @@
         tempoRange = tempoMax - tempoMin;
         // faderTempo?.SetValue(0.5);
         // ApplyTempo();
-    }
-
-    public void SetFile(DFile file, bool fullReset = true) {
-        if(fullReset) {
-            lastFilename = "";
-            File = file;
-        } else {
-            File = file;
-            SetParameters();
-            SetLoopSize(loopSize, false);
-        }
     }
 
     public void SetCrossFaderVolume(double value) {
@@ -990,11 +981,14 @@
                 gain = p.gain;
                 trackGain = p.trackGain;
 
-                if(p.File != null) SetFile(p.File, false);
+                if(p.File != null) {
+                    lastFilename = "";
+                    File = p.File;
+                }
 
                 EqControls = p.EqControls;
                 FilterControls = p.FilterControls;
-                
+
                 crossFaderVolume = p.crossFaderVolume;
                 loop = p.loop;
                 fileBPM = p.fileBPM;
@@ -1026,8 +1020,6 @@
     }
 
     protected override void OnParametersSet() {
-        base.OnParametersSet();
-
         if(File != null && lastFilename != File.Filename) {
             if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
 
@@ -1037,6 +1029,8 @@
 
             SavePlayerState();
         }
+
+        base.OnParametersSet();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
