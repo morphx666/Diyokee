@@ -272,10 +272,10 @@
             double x1 = Loop.Start * SecondsToPosX + cw2 - PlaybackHead;
             double x2 = Loop.End * SecondsToPosX + cw2 - PlaybackHead;
 
-            //if((x1 >= 0 && x1 <= cw) || (x2 >= 0 && x2 <= cw)) {
-            await ctx.SetFillStyleAsync(CssColor + "55");
-            await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
-            //}
+            if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
+                await ctx.SetFillStyleAsync(CssColor + "55");
+                await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
+            }
         }
 
         await ctx.EndBatchAsync();
