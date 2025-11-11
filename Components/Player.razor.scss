@@ -256,7 +256,7 @@
                 }
             }
 
-            .cuepoints-container {                
+            .cuepoints-container {
             }
         }
 
@@ -279,6 +279,7 @@
             button {
                 color: var(--text-white);
                 font-size: 0.89rem;
+                text-transform: uppercase;
                 white-space: nowrap;
                 padding: 3px 8px;
             }

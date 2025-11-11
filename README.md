@@ -29,13 +29,14 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Search for files in the textbox at the bottom of the files list. The search is recursive.
 - Double-click a track in the files list to open the Track Properties dialog.
   ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
+- Use the Jump and Cue tabs to configure loop/jump/cue points.
 
 ## Notable missing features
 
 - A fancy screen for remote connections to the stream
 - Searching is quite limited and a bit buggy
 - Audio routing is partially implemented but not fully usable
-- Key recognition/matching/adustments are not yet supported
+- Key recognition/matching/adjustments are not yet supported
 - State preservation is only partially implemented
 - ...and many more
 
