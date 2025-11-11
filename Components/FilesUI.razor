@@ -233,7 +233,7 @@
         // This is ONLY for debugging the Krumhansl-Schmuckler algorithm implementation
         //reanalyze = file.Filename.Contains("Dero - ") || file.Filename.Contains("Dario Nunez -");
 
-        var cachedFile = reanalyze ? null : await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        var cachedFile = reanalyze ? null : await cache.Files.Include(f => f.CuePoints).FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(cachedFile == null) {
             float bpm = 0;
 
@@ -304,6 +304,7 @@
             file.Key = cachedFile.Key;
             file.ReplayGain = cachedFile.ReplayGain;
             file.HasReplayGain = cachedFile.HasReplayGain;
+            file.CuePoints = cachedFile.CuePoints;
         }
     }
 
@@ -331,7 +332,7 @@
 
     public async Task UpdateFile(DFile file) {
         CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-        DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        DFile? fileFromCache = await cache.Files.Include(f => f.CuePoints).FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(fileFromCache == null) throw new Exception($"File {file.Filename} not found in cache");
 
         cache.Files.Remove(fileFromCache);

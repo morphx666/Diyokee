@@ -62,7 +62,7 @@ namespace Diyokee {
         [JsonProperty("encoder")] public EncoderOptions Encoder { get; set; } = new();
         [JsonProperty("ui")] public Dictionary<string, string> UIElements { get; set; } = new() {
             ["main-resize-horizontal"] = "400",
-            ["main-resize-vertical"] = "396"
+            ["main-resize-vertical"] = "400"
         };
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();

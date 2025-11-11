@@ -33,8 +33,17 @@
             return new Bounds(double.Parse(tokens[0]), double.Parse(tokens[1]), double.Parse(tokens[2]), double.Parse(tokens[3]));
         }
 
-        public bool Contains(double x, double y) {
-            return x >= X && x <= X + Width && y >= Y && y <= Y + Height;
+        public bool Contains(double x, double y, int tolerance = 0) {
+            for(int i = -tolerance; i <= tolerance; i++) {
+                for(int j = -tolerance; j <= tolerance; j++) {
+                    if(x >= X + i
+                        && x <= X + Width + i
+                        && y >= Y + j
+                        && y <= Y + Height + j) return true;
+                }
+            }
+
+            return false;
         }
 
         public override string ToString() {

@@ -139,7 +139,8 @@
                         && (!mouseState?.IsCaptured ?? false)
                         && mouseState?.ButtonsDown == 1
                         && dividerBounds.Contains(mouseState.X - (Orientation == Orientations.Horizontal ? elementsBetweenOffset : 0),
-                                                  mouseState.Y - (Orientation == Orientations.Vertical ? elementsBetweenOffset : 0))) {
+                                                  mouseState.Y - (Orientation == Orientations.Vertical ? elementsBetweenOffset : 0),
+                                                  2)) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }

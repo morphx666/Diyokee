@@ -58,14 +58,6 @@
                     height: 1.5rem;
                     filter: invert(1) brightness(0.7);
                 }
-
-                &.right {
-                    text-align: right;
-                }
-
-                &.mono {
-                    font-family: var(--mono-font-family);
-                }
             }
 
             .column {

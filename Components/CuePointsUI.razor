@@ -1,0 +1,29 @@
+﻿<div class="container">
+    <div class="header">
+        <span class="cell column">Name</span>
+        <span class="cell column">Time</span>
+        <button class="cell column button-add-cuepoint" onclick="@AddCuePoint"><i class="fa-solid fa-circle-plus"></i></button>
+    </div>
+    @foreach(var cuePoint in Player.File == null ? [] : Player.File.CuePoints) {
+        <div class="row">
+            <div class="cell">@cuePoint.Name</div>
+            <div class="cell right mono">@DFile.FormatTime(cuePoint.Position)</div>
+            <button class="cell button-delete-cuepoint" onclick="@DeleteCuePoint"><i class="fa-solid fa-circle-xmark"></i></button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Player Player { get; set; } = null!;
+
+    private void AddCuePoint() {
+    }
+
+    private void DeleteCuePoint() {
+    }
+
+    protected override void OnParametersSet() {
+        base.OnParametersSet();
+    }
+}

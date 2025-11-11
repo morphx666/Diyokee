@@ -16,11 +16,11 @@
         <h3>Media Providers</h3>
         <div class="media-providers scroller">
             @foreach(var provider in settings.MediaProviders) {
-                <CPMedisProvider
+                <CPMediaProvider
                     Provider="provider"
                     OnDeleteProvider="@(() => DeleteProvider(provider))" />
             }
-            <button class="button-add-provider" onclick="@AddNewProvider"><i class="fa-solid fa-circle-plus"></i></button>
+            <button class="button-add-provider" onclick="@AddProvider"><i class="fa-solid fa-circle-plus"></i></button>
         </div>
     </div>
 
@@ -48,9 +48,9 @@
         </div>
 
         @*
-                FIXME: This could be removed. It's already available as a dropdown menu for each player.
-                Or perhaps we should remove the dropdown menus from the main UI?
-            *@
+            FIXME: This could be removed. It's already available as a dropdown menu for each player.
+            Or perhaps we should remove the dropdown menus from the main UI?
+        *@
         <div class="field">
             <label for="eq-profile">Equalizer Profile</label>
             <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
@@ -58,7 +58,7 @@
                     <option value="@profile.Name">@profile.Name</option>
                 }
             </InputSelect>
-        </div>        
+        </div>
 
         <div class="eq-profile-info">
             <span>Low:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Low.ToString("N2")) Hz</span>
@@ -126,7 +126,7 @@
         settings.MediaProviders.Remove(provider);
     }
 
-    private void AddNewProvider() {
+    private void AddProvider() {
         var newProvider = new Settings.MediaProvider();
         newProvider.Type = "local";
         newProvider.Name = "New Local Provider";

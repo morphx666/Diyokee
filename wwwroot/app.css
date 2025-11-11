@@ -146,6 +146,15 @@ body, html {
     flex: 1;
 }
 
+.right {
+    text-align: right;
+    justify-content: flex-end;
+}
+
+.mono {
+    font-family: var(--mono-font-family);
+}
+
 h1:focus {
     outline: none;
 }
