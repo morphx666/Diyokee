@@ -2,7 +2,7 @@
 A work in progress, DJ mixing webapp with streaming support, that runs on your browser... and before you ask, the answer is: why not?
 
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s5.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v2.mkv)
-<sup>*You will notice that while loading some tracks the UI freezes; this is because the drive where the music is stored is connected via a network share on a mechanical drive, connected via USB to an RPi4...</sup>
+<sup>*You will notice that while loading some tracks the UI freezes. This has been greatly improved in version 2025.11.11</sup>
 
 ## App settings
 
@@ -28,7 +28,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - You can click and drag over both waveforms (synced and full) to change the playback position.
 - Search for files in the textbox at the bottom of the files list. The search is recursive.
 - Double-click a track in the files list to open the Track Properties dialog.
-  ![image](https://github.com/user-attachments/assets/fda34783-9973-49c9-8210-37f331cb5c5c)
+  ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
 
 ## Notable missing features
 
@@ -42,11 +42,12 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 ## Common issues
 - If you run the program for the first time you may receive BASS-related errors.  
 Just restart the server and try again. It may take several attempts.  
-This is supposedly fixed in version 2025.11.10.3862
-- The mouse handling is horrendous and sometimes controls may stop responding to mouse events.  
-Resize the browser window to force a full refresh.
+This is supposedly fixed in version 2025.11.10
+- ~~The mouse handling is horrendous and sometimes controls may stop responding to mouse events.~~  
+~~Resize the browser window to force a full refresh.~~  
+It's still pretty bad, but hopefully improved in version 2025.11.11
 
-## Releases
+## Nightly Releases
 
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
