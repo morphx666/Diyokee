@@ -49,14 +49,60 @@
     .row {
         display: contents;
 
+        .cue-actions {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+
+            .buttons {
+                display: flex;
+                flex-direction: row;
+                gap: 0.5rem;
+            }
+
+            .cue-buttons {
+                opacity: 0;
+
+                color: #f92;
+                background: none;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+            }
+        }
+
         &:hover {
-            .cell:not(.button-delete-cuepoint) {
+            .cell:not(.button-delete-cuepoint), ::deep input {
                 background-color: var(--panel-background-color-light-light);
             }
 
             .button-delete-cuepoint {
                 opacity: 1 !important;
             }
+
+            .cue-buttons {
+                opacity: 1;
+            }
         }
+    }
+
+    button {
+        margin-left: 0.5rem;
+        outline: none;
+
+        transition: opacity 250ms;
+    }
+
+    ::deep input {
+        flex: 1;
+
+        appearance: none;
+        font-size: 0.65rem;
+        font-family: Montserrat;
+        outline: none;
+        color: var(--text-white);
+        background-color: var(--panel-background-color-dark);
+        border: none;
+        padding: 0.3rem;
     }
 }

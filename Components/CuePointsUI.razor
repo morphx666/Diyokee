@@ -1,4 +1,11 @@
-﻿<div class="container">
+﻿@using Diyokee.Data
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.EntityFrameworkCore.ChangeTracking
+@using System.Diagnostics
+@using static Diyokee.DFile
+@inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
+
+<div class="container">
     <div class="header">
         <span class="cell column">Name</span>
         <span class="cell column">Time</span>
@@ -6,24 +13,75 @@
     </div>
     @foreach(var cuePoint in Player.File == null ? [] : Player.File.CuePoints) {
         <div class="row">
-            <div class="cell">@cuePoint.Name</div>
-            <div class="cell right mono">@DFile.FormatTime(cuePoint.Position)</div>
-            <button class="cell button-delete-cuepoint" onclick="@DeleteCuePoint"><i class="fa-solid fa-circle-xmark"></i></button>
+            <InputText class="cell" @bind-value="cuePoint.Name" @onblur="@UpdateCuePoints" />
+            <div class="cell right mono cue-actions">
+                <div class="buttons">
+                    <button class="cue-buttons" onclick="@(() => SetPlayerPosition(cuePoint))"><i class="fa-solid fa-arrow-turn-up"></i></button>
+                    <button class="cue-buttons" onclick="@(() => UpdateCuePointPosition(cuePoint))"><i class="fa-solid fa-arrow-turn-down"></i></button>
+                </div>
+                @DFile.FormatTime(cuePoint.Position, true)
+            </div>
+            <button class="cell button-delete-cuepoint" onclick="@(() => DeleteCuePoint(cuePoint))"><i class="fa-solid fa-circle-xmark"></i></button>
         </div>
     }
 </div>
 
 @code {
     [Parameter]
-    public Player Player { get; set; } = null!;
+    public Player Player { get; set; } = default!;
 
-    private void AddCuePoint() {
+    private async Task AddCuePoint() {
+        Player.File!.CuePoints.Add(new CuePoint {
+            Name = "New Cue Point",
+            Position = Player.PlaybackHead / 100.0
+        });
+        await UpdateCuePoints();
     }
 
-    private void DeleteCuePoint() {
+    private async Task DeleteCuePoint(CuePoint cp) {
+        Player.File!.CuePoints.Remove(cp);
+        await UpdateCuePoints();
     }
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
+    private async Task UpdateCuePointPosition(CuePoint cp) {
+        cp.Position = Player.PlaybackHead / 100.0;
+        await UpdateCuePoints();
+    }
+
+    private async Task SetPlayerPosition(CuePoint cp) {
+        Player.SnapToCuePoint(cp);
+    }
+
+    public async Task UpdateCuePoints() {
+        CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
+        DFile? fileFromCache = await cache.Files.Include(f => f.CuePoints).FirstOrDefaultAsync(f => f.Filename == Player.File.Filename);
+        if(fileFromCache == null) throw new Exception($"File {Player.File.Filename} not found in cache");
+
+        // Remove cue points that no longer exist
+        var cuePointsToRemove = fileFromCache.CuePoints
+            .Where(cached => !Player.File.CuePoints.Any(current => current.Id == cached.Id))
+            .ToList();
+        foreach(var cuePoint in cuePointsToRemove) {
+            fileFromCache.CuePoints.Remove(cuePoint);
+        }
+
+        // Update or add cue points
+        foreach(var cuePoint in Player.File.CuePoints) {
+            var existingCuePoint = fileFromCache.CuePoints.FirstOrDefault(cp => cp.Id == cuePoint.Id);
+            if(existingCuePoint != null) {
+                // Update existing cue point
+                existingCuePoint.Name = cuePoint.Name;
+                existingCuePoint.Position = cuePoint.Position;
+            } else {
+                // Add new cue point (Id will be 0 for new items)
+                fileFromCache.CuePoints.Add(new CuePoint {
+                    Name = cuePoint.Name,
+                    Position = cuePoint.Position
+                });
+            }
+        }
+
+        await cache.SaveChangesAsync();
+        await cache.DisposeAsync();
     }
 }
