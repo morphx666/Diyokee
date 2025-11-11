@@ -25,7 +25,7 @@
     public string Name { get; set; } = string.Empty;
 
     [Parameter]
-    public int Offset { get; set; } = 0;
+    public List<ElementReference> ElementsBetween { get; set; } = new();
 
     [Parameter]
     public Dictionary<ConstrainKeys, string> Constrains { get; set; } = new();
@@ -39,6 +39,7 @@
     private ElementReference dividerElement;
     private Bounds? dividerBounds;
     private Bounds? resizeElementBounds = default!;
+    private double elementsBetweenOffset = 0;
 
     private bool retry = false;
 
@@ -91,6 +92,11 @@
         await Task.Delay(750);
         dividerBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dividerElement));
         resizeElementBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", ResizeElement));
+        elementsBetweenOffset = 0;
+        foreach(var element in ElementsBetween) {
+            var b = await JS.InvokeAsync<double[]>("getElementBounds", element);
+            elementsBetweenOffset += (double)(await JS.InvokeAsync<double[]>("getElementBounds", element))[Orientation == Orientations.Horizontal ? 2 : 3];
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -130,15 +136,18 @@
                         && dividerBounds != null
                         && (!mouseState?.IsCaptured ?? false)
                         && mouseState?.ButtonsDown == 1
-                        && dividerBounds.Contains(mouseState.X + (Orientation == Orientations.Horizontal ? Offset : 0), mouseState.Y + (Orientation == Orientations.Vertical ? Offset : 0))) {
+                        && dividerBounds.Contains(mouseState.X - (Orientation == Orientations.Horizontal ? elementsBetweenOffset : 0),
+                                                  mouseState.Y - (Orientation == Orientations.Vertical ? elementsBetweenOffset : 0))) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }
 
                     if(isValid && resizeElementBounds != null) {
                         if(mouseState?.ButtonsDown == 1) {
-                            double mouseOffset = Orientation == Orientations.Vertical ? mouseState.Y - resizeElementBounds!.Bottom : mouseState.X - resizeElementBounds.Right;
-                            mouseOffset += Offset;
+                            double mouseOffset = Orientation == Orientations.Vertical
+                                                    ? mouseState.Y - resizeElementBounds!.Bottom
+                                                    : mouseState.X - resizeElementBounds.Right;
+                            mouseOffset -= elementsBetweenOffset;
 
                             if(Orientation == Orientations.Vertical) {
                                 resizeElementBounds.Height += mouseOffset;

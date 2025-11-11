@@ -49,7 +49,7 @@
             </div>
         </div>
 
-        <div class="mixer">
+        <div class="mixer" @ref="mixerPanel">
             <div class="crossfade-controls">
                 <div class="button-3d" @onclick="() => HandleAutoCrossFade(-1)"><i class="fa-solid fa-caret-left"></i></div>
                 <Fader Orientation="Fader.Orientations.Horizontal" ValueChanged="ApplyCrossfaderVolume" DefaultValue="0.5" @ref="crossFader" />
@@ -64,7 +64,7 @@
 
         <PanelResize Orientation="PanelResize.Orientations.Vertical"
                      ResizeElement="playersPanel"
-                     Offset="-50"
+                     ElementsBetween="new() { mixerPanel }"
                      Name="main-resize-vertical"
                      OnResizeEnd="HandleDividerResize"
                      Constrains="playersConstrains" />
@@ -133,6 +133,7 @@
     private MouseState mouseState = new();
 
     private ElementReference playersPanel;
+    private ElementReference mixerPanel;
     private Dictionary<PanelResize.ConstrainKeys, string> playersConstrains = new() { { PanelResize.ConstrainKeys.Min, "396" } };
     private ElementReference mediaProviderPanel;
     private Dictionary<PanelResize.ConstrainKeys, string> mediaProviderConstrains = new() { { PanelResize.ConstrainKeys.Min, "250" } };
