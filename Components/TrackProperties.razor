@@ -6,10 +6,11 @@
 @inject IJSRuntime JS
 
 <ModalDialog
-    Title="Track Properties"
     @ref="dialog"
+    Title="Track Properties"
     OnClose="Close"
-    OnSave="Save">
+    OnSave="Save"
+    Movable=true>
     <div class="field">
         <label for="artist">Artist</label>
         <InputText id="artist" @bind-value="file.Artist" />
@@ -250,7 +251,7 @@
         albumsAcVisible = false;
         playerVisible = true;
 
-        OnClose.InvokeAsync(null);
+        OnClose.InvokeAsync();
     }
 
     private int DownbeatAtHours {

@@ -25,6 +25,7 @@
         public double Bottom => Y + Height;
 
         public Bounds(double[] values) : this(values[0], values[1], values[2], values[3]) { }
+        public Bounds(Bounds b): this(b.X, b.Y, b.Width, b.Height) { }
 
         public static Bounds FromString(string bounds) {
             string[] tokens = bounds.Split(',');

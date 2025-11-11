@@ -107,9 +107,9 @@
                      TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
                      @ref="filesUI" />
         </div>
-    </CascadingValue>
 
-    <SettingsUI OnSave="UpdateApp" OnClose="() => SetPlayersMouseCapturing(true)" @ref="settingsUi" />
+        <SettingsUI OnSave="UpdateApp" OnClose="() => SetPlayersMouseCapturing(true)" @ref="settingsUi" />
+    </CascadingValue>
 </div>
 
 @code {

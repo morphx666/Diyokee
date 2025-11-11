@@ -109,6 +109,8 @@
             }
 
             await OnResize();
+            if(resizeElementBounds?.Width == 0 || resizeElementBounds?.Height == 0) return;
+            
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 

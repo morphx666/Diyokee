@@ -1,6 +1,8 @@
-﻿<div class="dialog-background @(IsOpen ? "show" : "")">
-    <div class="dialog-container @(IsOpen ? "show" : "")">
-        <div class="title">
+﻿@inject IJSRuntime JS
+
+<div class="dialog-background @(IsOpen ? "show" : "")">
+    <div class="dialog-container @(IsOpen ? "show" : "")" @ref="dialogElement">
+        <div class="title" @ref="topBarElement">
             <span>@Title</span>
             <div class="close" @onclick="Close"><i class="fa-solid fa-close"></i></div>
         </div>
@@ -23,6 +25,9 @@
     public string Title { get; set; } = "";
 
     [Parameter]
+    public bool Movable { get; set; } = false;
+
+    [Parameter]
     public RenderFragment ChildContent { get; set; } = null!;
 
     [Parameter]
@@ -36,10 +41,25 @@
 
     public bool IsOpen { get; set; } = false;
 
+    private Bounds? dialogBounds = default!;
+    private ElementReference dialogElement;
+
+    private Bounds? topBarBounds = default!;
+    private ElementReference topBarElement;
+    private double lastMousePosX = -1;
+    private double lastMousePosY = -1;
+    private double dx = 0;
+    private double dy = 0;
+
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+
     public void Open() {
         if(!IsOpen) {
+            if(dialogBounds != null) dialogBounds.Width = 0; // Force recalculation of bounds
+
             IsOpen = true;
-            OnOpen.InvokeAsync(null);
+            OnOpen.InvokeAsync();
 
             InvokeAsync(StateHasChanged);
         }
@@ -48,14 +68,79 @@
     public void Close() {
         if(IsOpen) {
             IsOpen = false;
-            OnClose.InvokeAsync(null);
+            OnClose.InvokeAsync();
 
             InvokeAsync(StateHasChanged);
         }
     }
 
     private void Save() {
-        OnSave.InvokeAsync(null);
+        OnSave.InvokeAsync();
         Close();
+    }
+
+    [JSInvokable]
+    public async Task OnResize() {
+        dialogBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", dialogElement));
+        topBarBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", topBarElement));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(!Movable) return;
+
+        if(firstRender) {
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+
+            await Task.Run(async () => {
+                bool isValid = false;
+                int delay = 60;
+                while(true) {
+                    await Task.Delay(delay);
+                    if(!IsOpen) continue;
+
+                    if(dialogBounds == null || dialogBounds?.Width == 0 || dialogBounds?.Height == 0) {
+                        await OnResize();
+                    }
+
+                    if(!isValid
+                        && dialogBounds != null
+                        && topBarBounds != null
+                        && (!mouseState?.IsCaptured ?? false)
+                        && mouseState?.ButtonsDown == 1
+                        && topBarBounds.Contains(mouseState.X, mouseState.Y)) {
+
+                        mouseState.IsCaptured = true;
+                        isValid = true;
+                    }
+
+                    if(isValid) {
+                        if(mouseState!.ButtonsDown == 1) {
+                            if(lastMousePosX == -1) {
+                                lastMousePosX = mouseState.X;
+                                lastMousePosY = mouseState.Y;
+                                continue;
+                            }
+
+                            dx += mouseState.X - lastMousePosX;
+                            dy += mouseState.Y - lastMousePosY;
+
+                            await JS.InvokeVoidAsync("setElementBounds", dialogElement, new string[] {
+                                $"calc(50% + {dx}px)", $"calc(50% + {dy}px)", "-1", "-1", ""
+                            });
+
+                            lastMousePosX = mouseState.X;
+                            lastMousePosY = mouseState.Y;
+                        } else {
+                            mouseState!.IsCaptured = false;
+                            isValid = false;
+
+                            lastMousePosX = -1;
+                            lastMousePosY = -1;
+                        }
+                    }
+                }
+            });
+        }
     }
 }

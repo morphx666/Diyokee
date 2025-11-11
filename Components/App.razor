@@ -31,17 +31,25 @@
         };
 
         setElementBounds = (element, param) => {
-            const [x, y, w, h] = param;
-            if(x != -1) element.style.left = `${x}px`;
-            if(y != -1) element.style.top = `${y}px`;
+            let [x, y, w, h, unit] = param;
+            if(unit === undefined) unit = "px";
 
-            if(w != -1) element.style.width = `${w}px`;
-            if(w != -1) element.style.maxWidth = `${w}px`;
-            if(w != -1) element.style.minWidth = `${w}px`;
+            if(x!=-1)console.log(`${x}${unit}`);
 
-            if(h != -1) element.style.height = `${h}px`;
-            if(h != -1) element.style.maxHeight = `${h}px`;
-            if(h != -1) element.style.minHeight = `${h}px`;
+            if(x != -1) element.style.left = `${x}${unit}`;
+            if(y != -1) element.style.top = `${y}${unit}`;
+
+            if(w != -1) {
+                element.style.width = `${w}${unit}`;
+                element.style.maxWidth = `${w}${unit}`;
+                element.style.minWidth = `${w}${unit}`;
+            }
+
+            if(h != -1) {
+                element.style.height = `${h}${unit}`;
+                element.style.maxHeight = `${h}${unit}`;
+                element.style.minHeight = `${h}${unit}`;
+            }
         };
 
         resizeCanvas = (element, param) => {

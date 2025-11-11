@@ -69,8 +69,10 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
+        if(firstRender || knobBounds?.Width == 0 || knobBounds?.Height == 0) {
             await OnResize();
+            if(knobBounds?.Width == 0 || knobBounds?.Height == 0) return;
+
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
