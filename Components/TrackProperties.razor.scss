@@ -20,9 +20,13 @@
 
     .recalculate {
         margin-left: 0.5rem;
-        cursor: pointer;
         opacity: 0.7;
         white-space: nowrap;
+
+        padding-right: 0.5rem;
+        &:not(:last-child) {
+            border-right: 1px solid var(--panel-background-color-light);
+        }
 
         transition: opacity 250ms;
 

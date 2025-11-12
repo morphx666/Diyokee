@@ -112,7 +112,7 @@
             height: 48px;
             font-weight: 600;
             padding: 6px 0 0 8px;
-            cursor: pointer;
+            /*cursor: pointer;*/
 
             &.active {
                 color: #83fa1b;
@@ -213,7 +213,6 @@
                     position: relative;
                     padding: 4px 8px;
                     margin-right: 0.5rem;
-                    cursor: pointer;
                     z-index: 1;
 
                     &.led::after {
@@ -224,7 +223,6 @@
                     }
 
                     &.no-click {
-                        cursor: default;
                         pointer-events: none;
                     }
                 }
@@ -275,10 +273,14 @@
 
             button {
                 color: var(--text-white);
-                font-size: 0.89rem;
+                font-size: 0.75rem;
                 text-transform: uppercase;
                 white-space: nowrap;
-                padding: 3px 8px;
+                padding: 3px 11px;
+
+                &.selected {
+                    background-color: var(--pale-blue);
+                }
             }
         }
     }

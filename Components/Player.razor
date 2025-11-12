@@ -139,8 +139,8 @@
             </div>
 
             <div class="tabs">
-                <button class="button-thin" @onclick="() => selectedTab = 0">Jump</button>
-                <button class="button-thin" @onclick="() => selectedTab = 1">Cue</button>
+                <button class="button-thin @(selectedTab == 0 ? "selected" : "")" @onclick="() => selectedTab = 0">Loop</button>
+                <button class="button-thin @(selectedTab == 1 ? "selected" : "")" @onclick="() => selectedTab = 1">Cue</button>
             </div>
         </div>
     }
