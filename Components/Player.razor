@@ -133,7 +133,7 @@
                     <div class="lock-button"><i class="fa-solid @(loopJumpLock ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
                 </div>
 
-                <div class="cuepoints-container scroller @(selectedTab == 1 ? "" : "hidden") @(File == null ? "disabled" : "")">
+                <div class="scroller @(selectedTab == 1 ? "" : "hidden") @(File == null ? "disabled" : "")">
                     <CuePointsUI Player="this" />
                 </div>
             </div>
