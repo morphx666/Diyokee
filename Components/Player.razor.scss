@@ -1,6 +1,7 @@
 ﻿.player-container {
     display: flex;
     flex-direction: column;
+    /*flex: 1;*/
     height: 100%;
     width: 100%;
 
@@ -58,10 +59,11 @@
         display: flex;
         flex-direction: row;
         gap: 1px;
-        height: 38px;
+        min-height: 38px;
+        max-height: 38px;
         overflow: hidden;
         margin-bottom: 1px;
-        
+
         background-color: var(--panel-background-color-light);
     }
 
@@ -155,91 +157,128 @@
         }
     }
 
-    .loop-container {
-        position: relative;
-        padding-left: 10px;
+    .ljc-container {
+        display: flex;
+        flex-direction: row;
+        padding-right: 10px;
+        flex: 1;
+        height: calc(100vh - 900px); /* FIXME: This is a hack */
 
-        display: grid;
-        grid-template-columns: auto 1fr;
-        align-items: center;
-        row-gap: 3px;
-        padding: 10px 10px 10px 20px;
-        margin-top: -10px;
-
-        &::after {
-            content: '';
-            position: absolute;
-            top: calc(10px + 1rem);
-            left: 10px;
-            width: 20px;
-            height: calc(1.5rem + 10px - 2px);
-            
-            border: 2px solid var(--panel-background-color-dark-dark);
-            clip: rect(0, 10px, calc(1.5rem + 10px + 2px), 0);
-        }
-
-        .lock-button {
-            position: absolute;
-            top: 50%;
-            left: 7px;
-            transform: translateY(-50%);
-            font-size: 0.6rem;
-            color: var(--panel-background-color-dark-dark);
-            background-color: var(--panel-background-color-light);
-            padding: 2px 0 3px;
-            z-index: 1;
-            cursor: pointer;
-
-            transition: color 250ms;
-
-            &:hover {
-                color: var(--text-white);
-            }
-        }
-
-        .button-thin {
-            position: relative;
-            padding: 4px 8px;
-            margin-right: 0.5rem;
-            cursor: pointer;
-            z-index: 1;
-
-            &.led::after {
-                width: 6px;
-                height: 6px;
-                right: 1px;
-                bottom: 1px;
-            }
-
-            &.no-click {
-                cursor: default;
-                pointer-events: none;
-            }
-        }
-
-        .loop-size-container {
+        .loop-jump-cuepoints {
             display: flex;
-            flex-direction: row;            
+            flex-direction: column;
+            padding: 10px 0 10px 20px;
+            flex: 1;
 
-            .button {
-                cursor: pointer;
-                padding: 4px 8px;
-                background-color: var(--panel-background-color-dark);
-                font-family: var(--mono-font-family);
+            .loop-container {
+                position: relative;
 
-                &.selected {
-                    background-color: rgb(var(--primary));
+                display: grid;
+                grid-template-columns: auto 1fr;
+                align-items: center;
+                row-gap: 3px;
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    top: 1rem;
+                    left: -10px;
+                    width: 20px;
+                    height: calc(1.5rem + 10px - 2px);
+
+                    border: 2px solid var(--panel-background-color-dark-dark);
+                    clip: rect(0, 10px, calc(1.5rem + 10px + 2px), 0);
                 }
 
-                &.enabled {
-                    background-color: rgb(var(--secondary));
+                .lock-button {
+                    position: absolute;
+                    top: 50%;
+                    left: -12px;
+                    transform: translateY(-50%);
+                    font-size: 0.6rem;
+                    color: var(--panel-background-color-dark-dark);
+                    background-color: var(--panel-background-color-light);
+                    padding: 2px 0 3px;
+                    z-index: 1;
+                    cursor: pointer;
+
+                    transition: color 250ms;
+
+                    &:hover {
+                        color: var(--text-white);
+                    }
+                }
+
+                .button-thin {
+                    position: relative;
+                    padding: 4px 8px;
+                    margin-right: 0.5rem;
+                    cursor: pointer;
+                    z-index: 1;
+
+                    &.led::after {
+                        width: 6px;
+                        height: 6px;
+                        right: 1px;
+                        bottom: 1px;
+                    }
+
+                    &.no-click {
+                        cursor: default;
+                        pointer-events: none;
+                    }
+                }
+
+                .loop-size-container {
+                    display: flex;
+                    flex-direction: row;            
+
+                    .button {
+                        cursor: pointer;
+                        padding: 4px 8px;
+                        background-color: var(--panel-background-color-dark);
+                        font-family: var(--mono-font-family);
+
+                        &.selected {
+                            background-color: rgb(var(--primary));
+                        }
+
+                        &.enabled {
+                            background-color: rgb(var(--secondary));
+                        }
+                    }
+
+                    .jump-buttons {
+                        display: flex;
+                        flex-direction: row;
+                        margin-left: 0.5rem;
+                    }
                 }
             }
+        }
 
-            .jump-buttons {
-                display: flex;
-                flex-direction: row;
-                margin-left: 0.5rem;
+        .hidden {
+            display: none !important;
+        }
+
+        .disabled {
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .tabs {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 3px;
+            padding-left: 10px;
+
+            button {
+                color: var(--text-white);
+                font-size: 0.89rem;
+                text-transform: uppercase;
+                white-space: nowrap;
+                padding: 3px 8px;
             }
         }
     }

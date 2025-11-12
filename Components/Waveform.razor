@@ -3,6 +3,7 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
+@using static Diyokee.DFile
 @inject IJSRuntime JS
 
 <div class="waveform-container">
@@ -95,7 +96,7 @@
             canvasBounds.Y,
             25,
             46
-        });
+    });
         if(Mode == Modes.Full) forceRenderWaveformFull = true;
     }
 
@@ -272,10 +273,31 @@
             double x1 = Loop.Start * SecondsToPosX + cw2 - PlaybackHead;
             double x2 = Loop.End * SecondsToPosX + cw2 - PlaybackHead;
 
-            //if((x1 >= 0 && x1 <= cw) || (x2 >= 0 && x2 <= cw)) {
-            await ctx.SetFillStyleAsync(CssColor + "55");
-            await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
-            //}
+            if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
+                await ctx.SetFillStyleAsync(CssColor + "55");
+                await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
+            }
+        }
+
+        const int heightHack = 12;
+        await ctx.SetStrokeStyleAsync("#f92");
+        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
+            double p = 2; // Padding
+            double x = cp.Position * SecondsToPosX + cw2 - PlaybackHead + 0.5; // FIXME: Again with +0.5 ??? Why?
+
+            var textMetrics = await ctx.MeasureTextAsync(cp.Name);
+            if(x >= -textMetrics.Width && x < cw) {
+                await ctx.BeginPathAsync();
+
+                await ctx.SetFillStyleAsync("#f92");
+                await ctx.FillRectAsync(x, p, textMetrics.Width + 4 * p, heightHack + p);
+                await ctx.SetFillStyleAsync("#000");
+                await ctx.FillTextAsync(cp.Name, x + p, 10 + p);
+
+                await ctx.MoveToAsync(x, 0);
+                await ctx.LineToAsync(x, ch);
+                await ctx.StrokeAsync();
+            }
         }
 
         await ctx.EndBatchAsync();

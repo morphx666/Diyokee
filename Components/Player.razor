@@ -6,9 +6,11 @@
 @using Diyokee
 @using System.Runtime.InteropServices
 @using Newtonsoft.Json
+@using System.ComponentModel
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
 @using Un4seen.Bass.AddOn.Mix
+@using static Diyokee.DFile
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 @inject SessionState session
@@ -102,37 +104,51 @@
     </div>
 
     @if(!MinimalMode) {
-        <div class="loop-container">
-            <div class="button-thin led @(loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
-            <div class="loop-size-container">
-                @foreach(var size in loopSizes) {
-                    <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                         @onclick="() => SetLoopSize(size.Item2, false)">
-                        @size.Item1
+        <div class="ljc-container">
+            <div class="loop-jump-cuepoints">
+                <div class="loop-container @(selectedTab == 0 ? "" : "hidden")">
+                    <div class="button-thin led @(loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
+                    <div class="loop-size-container">
+                        @foreach(var size in loopSizes) {
+                            <div class="button @(loopSize == size.Item2 ? "selected" : "")"
+                                @onclick="() => SetLoopSize(size.Item2, false)">
+                                @size.Item1
+                            </div>
+                        }
                     </div>
-                }
-            </div>
-            <div class="button-thin no-click">Jump</div>
-            <div class="loop-size-container">
-                @foreach(var size in loopSizes) {
-                    <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                         @onclick="() => SetJumpSize(size.Item2)">
-                        @size.Item1
-                    </div>
-                }
+                    <div class="button-thin no-click">Jump</div>
+                    <div class="loop-size-container">
+                        @foreach(var size in loopSizes) {
+                            <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
+                                @onclick="() => SetJumpSize(size.Item2)">
+                                @size.Item1
+                            </div>
+                        }
 
-                <div class="jump-buttons">
-                    <div class="button-thin" @onclick="() => DoJump(-1)"><i class="fa-solid fa-caret-left"></i></div>
-                    <div class="button-thin" @onclick="() => DoJump(+1)"><i class="fa-solid fa-caret-right"></i></div>
+                        <div class="jump-buttons">
+                            <div class="button-thin" @onclick="() => DoJump(-1)"><i class="fa-solid fa-caret-left"></i></div>
+                            <div class="button-thin" @onclick="() => DoJump(+1)"><i class="fa-solid fa-caret-right"></i></div>
+                        </div>
+                    </div>
+                    <div class="lock-button"><i class="fa-solid @(loopJumpLock ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
+                </div>
+
+                <div class="scroller @(selectedTab == 1 ? "" : "hidden") @(File == null ? "disabled" : "")">
+                    <CuePointsUI Player="this" />
                 </div>
             </div>
-            <div class="lock-button"><i class="fa-solid @(loopJumpLock ? "fa-lock" : "fa-lock-open")" @onclick="ToggleLoopJumpSync"></i></div>
+
+            <div class="tabs">
+                <button class="button-thin" @onclick="() => selectedTab = 0">Jump</button>
+                <button class="button-thin" @onclick="() => selectedTab = 1">Cue</button>
+            </div>
         </div>
     }
 </div>
 
 @code {
     private string lastFilename = "";
+    private int selectedTab = 0;
 
     [JsonProperty] private int streamHandle = 0;
     [JsonProperty] private int fxHandle = 0;
@@ -716,6 +732,12 @@
                 t2 -= secondsPerBeat;
             }
         }
+    }
+
+    public void SnapToCuePoint(CuePoint cp) {
+        if(File == null) return;
+        long position = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cp.Position);
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
     }
 
     private void SnapToClosestBeatMarker() {

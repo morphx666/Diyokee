@@ -23,6 +23,8 @@ public class MediaProviderLocal : MediaProviderBase {
 
     public override List<string> Files(string relativePath) {
         string path = Path.Combine(RootPath, relativePath);
+        if(!Directory.Exists(path)) return [];
+
         return [.. new DirectoryInfo(path)
                         .EnumerateFiles()
                         .Where(f => supportedExtensions.Contains(f.Extension))
@@ -32,6 +34,8 @@ public class MediaProviderLocal : MediaProviderBase {
 
     public override List<string> Search(string relativePath, string query, bool recursive) {
         string path = Path.Combine(RootPath, relativePath);
+        if(!Directory.Exists(path)) return [];
+
         return [.. new DirectoryInfo(path)
                         .EnumerateFiles("*" + query + "*", recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
                         .Where(f => supportedExtensions.Contains(f.Extension))

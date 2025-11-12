@@ -6,6 +6,12 @@ namespace Diyokee {
     // dotnet ef migrations add "Added ReplayGain"
     // dotnet ef database update
     public class DFile : ICloneable {
+        public class CuePoint {
+            public int Id { get; set; }
+            public double Position { get; set; } = 0;
+            public string Name { get; set; } = "";
+        }
+
         public int Id { get; set; }
         public string Artist { get; set; } = "";
         public string Title { get; set; } = "";
@@ -20,6 +26,7 @@ namespace Diyokee {
         public string Key { get; set; } = "";
         public double ReplayGain { get; set; } = 0;
         public bool HasReplayGain { get; set; } = false;
+        public List<CuePoint> CuePoints { get; set; } = [];
         [NotMapped] public bool IsValid { get; set; } = true;
 
         private string waveformUnZipped = "";
@@ -50,6 +57,10 @@ namespace Diyokee {
 
         public static double ParseTime(double h, double m, double s, double ms) {
             return (h * 3600) + (m * 60) + s + (ms / 1000.0);
+        }
+
+        public override string ToString() {
+            return $"{Artist} - {Title} ({Album}, {Year})";
         }
 
         public object Clone() {

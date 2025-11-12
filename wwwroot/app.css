@@ -66,6 +66,7 @@ body, html {
     border: 1px solid #000;
     background-color: var(--panel-background-color-dark-dark);
     border-radius: 4px;
+    outline: none;
 
     &:active {
         background-color: var(--panel-background-color-dark);
@@ -77,6 +78,7 @@ body, html {
     background-color: var(--panel-background-color-dark-dark);
     border-radius: 4px;
     text-align: center;
+    outline: none;
 
     &:active {
         background-color: var(--panel-background-color-dark);
@@ -144,6 +146,15 @@ body, html {
     text-overflow: ellipsis;
     /*width: 100%;*/
     flex: 1;
+}
+
+.right {
+    text-align: right;
+    justify-content: flex-end;
+}
+
+.mono {
+    font-family: var(--mono-font-family);
 }
 
 h1:focus {
