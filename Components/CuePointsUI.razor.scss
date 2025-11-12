@@ -68,6 +68,10 @@
                 border: none;
                 padding: 0;
                 cursor: pointer;
+
+                &.hidden {
+                    display: none;
+                }
             }
         }
 

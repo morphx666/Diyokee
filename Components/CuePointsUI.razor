@@ -17,7 +17,7 @@
             <div class="cell right mono cue-actions">
                 <div class="buttons">
                     <button class="cue-buttons" onclick="@(() => SetPlayerPosition(cuePoint))"><i class="fa-solid fa-arrow-turn-up"></i></button>
-                    <button class="cue-buttons" onclick="@(() => UpdateCuePointPosition(cuePoint))"><i class="fa-solid fa-arrow-turn-down"></i></button>
+                    <button class="cue-buttons @(Player.IsPlaying ? "hidden" : "")" onclick="@(() => UpdateCuePointPosition(cuePoint))"><i class="fa-solid fa-arrow-turn-down"></i></button>
                 </div>
                 @DFile.FormatTime(cuePoint.Position, true)
             </div>
