@@ -16,7 +16,7 @@
         <h3>Media Providers</h3>
         <div class="media-providers scroller">
             @foreach(var provider in settings.MediaProviders) {
-                <CPMediaProvider
+                <MediaProviderUI
                     Provider="provider"
                     OnDeleteProvider="@(() => DeleteProvider(provider))" />
             }
