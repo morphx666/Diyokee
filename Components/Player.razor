@@ -48,7 +48,7 @@
             CssColor="@Settings.Color"
             Mode="Waveform.Modes.Full"
             BeatMarkers="@beatMarkers"
-            DownbeatAt="@fileDownbeatAt"
+            DownbeatAt="@(File?.DownbeatAt ?? -1)"
             MaxPeak="@maxPeak"
             Peaks="@peaks"
             SecondsToPosX="@secondsToPosX"
@@ -62,7 +62,7 @@
             CssColor="@Settings.Color"
             Mode="Waveform.Modes.AudioSynced"
             BeatMarkers="@beatMarkers"
-            DownbeatAt="@fileDownbeatAt"
+            DownbeatAt="@(File?.DownbeatAt ?? -1)"
             MaxPeak="@maxPeak"
             Peaks="@peaks"
             SecondsToPosX="@secondsToPosX"
@@ -172,8 +172,6 @@
     [JsonProperty] public Eq EqControls = null!;
     [JsonProperty] public Filters FilterControls = null!;
 
-    [JsonProperty] private double fileBPM = 0;
-    [JsonProperty] private double fileDownbeatAt = 0;
     [JsonProperty] private int waveformWidth = 0;
     [JsonProperty] private long waveformStepLength = 0;
     [JsonProperty] private long trackLengthBytes = 0;
@@ -358,10 +356,10 @@
     }
 
     public async void SyncBPMToOtherPlayer() {
-        if(OtherPlayer?.File == null || fileBPM == 0) return;
+        if(OtherPlayer?.File == null || File.BPM == 0) return;
 
         double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
-        double factor = (1.0 - otherPlayerBPM / fileBPM) * 1.0 / Math.Abs(tempoRange);
+        double factor = (1.0 - otherPlayerBPM / File.BPM) * 1.0 / Math.Abs(tempoRange);
         double faderValue = factor + 0.5;
         await faderTempo!.SetValue(faderValue);
     }
@@ -379,7 +377,7 @@
     }
 
     private string CalcBpm() {
-        double bpm = fileBPM * (1.0 + ReScaleTempoFader());
+        double bpm = (File?.BPM ?? 0) * (1.0 + ReScaleTempoFader());
         return bpm.ToString("N2");
     }
 
@@ -389,7 +387,7 @@
     }
 
     private double AdjustedBPM {
-        get => fileBPM * (1.0 + ReScaleTempoFader());
+        get => (File?.BPM ?? 0) * (1.0 + ReScaleTempoFader());
     }
 
     private void SlowDown(MouseEventArgs e) {
@@ -704,10 +702,6 @@
         secondsPerBeat = 1.0 / beatsPerSecond;
         secondsToPosX = 1.0 / (File.Duration == 0 ? 1 : File.Duration) * waveformWidth;
 
-        // Cache values to avoid having to check for nullability every time
-        fileBPM = File.BPM;
-        fileDownbeatAt = File.DownbeatAt;
-
         // x = s / file.Duration * waveformWidth
         // s = x / waveformWidth * file.Duration
 
@@ -718,9 +712,9 @@
     }
 
     private void GenerateBeatMarkers() {
-        if(fileDownbeatAt == -1) return;
+        if(File.DownbeatAt == -1) return;
 
-        double t1 = fileDownbeatAt;
+        double t1 = File.DownbeatAt;
         double t2 = t1 - secondsPerBeat;
         while(t1 < File!.Duration || t2 >= 0) {
             if(t1 < File.Duration) {
@@ -1014,8 +1008,6 @@
 
                 crossFaderVolume = p.crossFaderVolume;
                 loop = p.loop;
-                fileBPM = p.fileBPM;
-                fileDownbeatAt = p.fileDownbeatAt;
                 waveformWidth = p.waveformWidth;
                 trackLengthBytes = p.trackLengthBytes;
                 waveformStepLength = p.waveformStepLength;

@@ -62,10 +62,11 @@ namespace Diyokee {
         [JsonProperty("encoder")] public EncoderOptions Encoder { get; set; } = new();
         [JsonProperty("ui")] public Dictionary<string, string> UIElements { get; set; } = new() {
             ["main-resize-horizontal"] = "400",
-            ["main-resize-vertical"] = "400"
+            ["main-resize-vertical"] = "420"
         };
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();
+        [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = false;
 
         public List<EqualizerProfile> EqualizerProfiles { get; } = [];
 

@@ -267,9 +267,9 @@
         .tabs {
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 3px;
-            padding-left: 10px;
+            padding: 10px 0 0 10px;
 
             button {
                 color: var(--text-white);

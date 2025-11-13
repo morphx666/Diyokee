@@ -2,6 +2,7 @@ using Diyokee;
 using Diyokee.Components;
 using Diyokee.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
 using Un4seen.Bass.AddOn.EncMp3;
@@ -108,6 +109,17 @@ internal class Program {
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
+        if(Settings.AutoStartBrowser && Settings.WebHostUrl != "") {
+            Process.Start(new ProcessStartInfo {
+                FileName = Settings.WebHostUrl,
+                UseShellExecute = true
+            });
+        } else {
+            Logger.LogInformation($"--------------------------------------------------------------------");
+            Logger.LogInformation($"\n\tYou may now open your browser and navigate to: {Settings.WebHostUrl}\n");
+            Logger.LogInformation($"--------------------------------------------------------------------");            
+        }
+
         app.Run();
     }
 
@@ -206,14 +218,15 @@ internal class Program {
 
             Bass.BASS_GetDeviceInfo(i, deviceInfo);
             if(devices.Any(d => d.Name == deviceInfo.name)) {
-                deviceIsSet = true;
-                Bass.BASS_Init(i, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+                deviceIsSet = Bass.BASS_Init(i, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+                if(!deviceIsSet) Logger.LogError($"Failed to initialize BASS device '{deviceInfo.name}': {Bass.BASS_ErrorGetCode()}");
             }
         }
 
         if(!deviceIsSet && createIfNotSet) {
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(defaultDeviceIndex);
             devices.Add(new(deviceInfo.name, AudioDevice.DeviceSpeakers.FrontStereo));
+            SetupDevice(devices, false);
         }
     }
 }
