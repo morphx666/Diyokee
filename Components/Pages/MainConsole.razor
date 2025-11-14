@@ -368,9 +368,21 @@
                                 int keyNumber = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? midiEvent.param & 0xFF : -1;
                                 int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
 
-                                int octave = keyNumber / 12 - 1;
+                                string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
 
-                                Debug.Write($"Key: {keyTools.FromModiNote(keyNumber, KeyTools.Notations.American, true),3} | Velocity: {keyVelocity,3}");
+                                if(keyVelocity > 0) {
+                                    // double noteFreq = keyTools.MidiNoteToFrequency(keyNumber);
+                                    // double trackFreq = keyTools.KeyToFrequency(player1?.File.Key ?? key);
+                                    double trackNote = keyTools.ToMidiNote(player1?.File.Key ?? key);
+
+                                    player1?.SetPitch(keyNumber - trackNote);
+                                    player1?.Play(false);
+                                } else {
+                                    player1?.Stop(true);
+                                }
+
+                                Debug.Write($"Note: {key,3} | Freq: {keyTools.MidiNoteToFrequency(keyNumber),8:N2} | Velocity: {keyVelocity,4}");
+                                Debug.Write($" | Key: {keyTools.ToMidiNote(key),4}");
                             } else {
                                 Debug.Write($"Param: {midiEvent.param,5}");
                             }

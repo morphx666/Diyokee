@@ -156,9 +156,11 @@
     [JsonProperty] private List<int> splitterStreams = [];
     [JsonProperty] private int masterSplitterHandle = 0;
     [JsonProperty] private int gainHandle = 0;
+    [JsonProperty] private int pitchHandle = 0;
 
     [JsonProperty] private BASS_BFX_PEAKEQ eqParams = new();
     [JsonProperty] private BASS_BFX_VOLUME gain = new();
+    [JsonProperty] private BASS_BFX_PITCHSHIFT pitch = new();
     private SYNCPROC loopSyncProc = null!;
 
     [JsonProperty] private double trackGain = 1;
@@ -533,7 +535,20 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC07");
 
+        pitchHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
+        pitch.fPitchShift = 0;
+        pitch.fSemitones = 0;
+        pitch.lOsamp = 64;
+
         return (BASSError.BASS_OK, "");
+    }
+
+    public void SetPitch(double semiTones) {
+        pitch.fSemitones = (float)semiTones;
+        if(pitchHandle == 0) return;
+        Bass.BASS_FXSetParameters(pitchHandle, pitch);
     }
 
     public void SetGain(float value) {

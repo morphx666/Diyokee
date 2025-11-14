@@ -15,8 +15,8 @@ namespace Diyokee {
             European,
             American
         }
+
         public Notations Notation { get; set; } = Notations.CamelotKey;
-        private char fancySharp = '♯';
 
         private static readonly string[] camelot = [
             "1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B",
@@ -80,8 +80,9 @@ namespace Diyokee {
             { Notations.American, american.Select(Normalize).ToArray() }
         };
 
+        private static char fancySharp = '♯';
+        private static readonly string[] notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         private static readonly Dictionary<string, Notations> keyToNotationMap = [];
-
         private const int WHEEL_KEYS_NUM = 12;
 
         public KeyTools() {
@@ -103,14 +104,13 @@ namespace Diyokee {
             }
         }
 
-        public string FromModiNote(int midiKeyNumber, Notations newNotation, bool includeOctave = false) {
+        public string FromMidiNote(int midiKeyNumber, Notations newNotation, bool includeOctave = false) {
             try {
                 int octave = midiKeyNumber / 12 - 1;
 
                 midiKeyNumber %= 128;
                 midiKeyNumber %= 12;
 
-                string[] notes = [ "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" ];
                 string key = notes[midiKeyNumber];
 
                 if(!IsValidKey(key)) return midiKeyNumber.ToString();
@@ -118,6 +118,32 @@ namespace Diyokee {
             } catch {
                 return midiKeyNumber.ToString();
             }
+        }
+
+        public int ToMidiNote(string key, int octave = 4) {
+            try {
+                if(char.IsDigit(key.Last()) && int.TryParse(key.Last().ToString(), out octave)) key = key[..^1];
+
+                if(!IsValidKey(key)) return -1;
+                var keyIndex = GetKeyIndex(key);
+                var notation = GetNotation(key);
+
+                var note = NotationToKeysMap[Notations.American][keyIndex];
+                var noteIndex = Array.IndexOf(notes, note);
+                return (octave + 1) * 12 + noteIndex;
+            } catch {
+                return -1;
+            }
+        }
+
+        public double MidiNoteToFrequency(int midiKeyNumber) {
+            return 440.0 * Math.Pow(2, (midiKeyNumber - 69) / 12.0);
+        }
+
+        public double KeyToFrequency(string key, int octave = 4) {
+            var midiNote = ToMidiNote(key, octave);
+            if(midiNote == -1) return -1;
+            return MidiNoteToFrequency(midiNote);
         }
 
         public string CalculateKey(string key, int step = 0, bool toggleScale = false) {
@@ -129,17 +155,17 @@ namespace Diyokee {
             return NotationToKeysMap[notation][newKeyIndex];
         }
 
-        private bool IsValidKey(string key) {
+        private static bool IsValidKey(string key) {
             if(string.IsNullOrEmpty(key)) return false;
             var keyIndex = GetKeyIndex(key);
             return IsValidKeyIndex(keyIndex);
         }
 
-        private bool IsValidKeyIndex(int keyIndex) {
+        private static bool IsValidKeyIndex(int keyIndex) {
             return keyIndex >= 0 && keyIndex < WHEEL_KEYS_NUM * 2;
         }
 
-        private int CalculateNewKeyIndex(int keyIndex, int step, bool toggleScale) {
+        private static int CalculateNewKeyIndex(int keyIndex, int step, bool toggleScale) {
             var currentKeyIndex = keyIndex;
             if(toggleScale) currentKeyIndex = currentKeyIndex % 2 == 0 ? currentKeyIndex + 1 : currentKeyIndex - 1;
             var stepChange = step > 0 ? step * 2 : WHEEL_KEYS_NUM * 2 + step * 2;
@@ -147,14 +173,14 @@ namespace Diyokee {
             return (stepChange + currentKeyIndex) % (WHEEL_KEYS_NUM * 2);
         }
 
-        private int GetKeyIndex(string key) {
+        private static int GetKeyIndex(string key) {
             string normalizedKey = Normalize(key);
 
             Notations notation = GetNotation(normalizedKey);
             return Array.IndexOf(notationToKeysMapNormalized[notation], normalizedKey);
         }
 
-        private Notations GetNotation(string key) {
+        private static Notations GetNotation(string key) {
             return keyToNotationMap[Normalize(key)];
         }
 
