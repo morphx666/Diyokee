@@ -109,20 +109,22 @@ internal class Program {
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
+        bool autoStart = Settings.AutoStartBrowser;
+
 #if !DEBUG
-        if(Settings.AutoStartBrowser && Settings.WebHostUrl != "") {
+        autoStart = false;
+#endif
+
+        if(autoStart && Settings.WebHostUrl != "") {
             Process.Start(new ProcessStartInfo {
                 FileName = Settings.WebHostUrl,
                 UseShellExecute = true
             });
         } else {
-#endif
             Logger.LogInformation($"--------------------------------------------------------------------");
             Logger.LogInformation($"\n\tYou may now open your browser and navigate to: {Settings.WebHostUrl}\n");
             Logger.LogInformation($"--------------------------------------------------------------------");
-#if !DEBUG
         }
-#endif
 
         app.Run();
     }
