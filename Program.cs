@@ -111,7 +111,7 @@ internal class Program {
 
         bool autoStart = Settings.AutoStartBrowser;
 
-#if !DEBUG
+#if DEBUG
         autoStart = false;
 #endif
 

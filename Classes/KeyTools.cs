@@ -1,9 +1,9 @@
-﻿using System.Diagnostics;
+﻿// https://getsongkey.com/tools/notation-converter
+// https://github.com/iammordaty/key-tools
+// https://www.dcode.fr/music-notes
+// Re Octave in midi keys: https://computermusicresource.com/midikeys.html
 
 namespace Diyokee {
-
-    // https://getsongkey.com/tools/notation-converter
-    // https://github.com/iammordaty/key-tools
     public class KeyTools {
         public enum Notations {
             CamelotKey,
@@ -11,9 +11,12 @@ namespace Diyokee {
             MusicKey,
             MusicKeyAlt,
             MusicKeyBeatport,
-            MusicKeyEssentia
+            MusicKeyEssentia,
+            European,
+            American
         }
         public Notations Notation { get; set; } = Notations.CamelotKey;
+        private char fancySharp = '♯';
 
         private static readonly string[] camelot = [
             "1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B",
@@ -45,13 +48,25 @@ namespace Diyokee {
             "D minor", "F major", "A minor", "C major", "E minor", "G major", "B minor", "D major", "F# minor", "A major", "C# minor", "E major",
         ];
 
+        private static readonly string[] european = [
+            "Sol#", "Si", "Re#", "Fa#", "La#", "Do#", "Fa", "Sol#", "Do", "Re#", "Sol", "La#",
+            "Re", "Fa", "La", "Do", "Mi", "Sol", "Si", "Re", "Fa#", "La", "Do#", "Mi"
+        ];
+
+        private static readonly string[] american = [
+            "G#", "B", "D#", "F#", "A#", "C#", "F", "G#", "C", "D#", "G", "A#",
+            "D", "F", "A", "C", "E", "G", "B", "D", "F#", "A", "C#", "E"
+        ];
+
         public static readonly Dictionary<Notations, string[]> NotationToKeysMap = new() {
             { Notations.CamelotKey, camelot },
             { Notations.OpenKey, openKey },
             { Notations.MusicKey, musicKey },
             { Notations.MusicKeyAlt, musicKeyAlt },
             { Notations.MusicKeyBeatport, musicKeyBeatport },
-            { Notations.MusicKeyEssentia, musicKeyEssentia }
+            { Notations.MusicKeyEssentia, musicKeyEssentia },
+            { Notations.European, european },
+            { Notations.American, american }
         };
 
         private static readonly Dictionary<Notations, string[]> notationToKeysMapNormalized = new() {
@@ -60,7 +75,9 @@ namespace Diyokee {
             { Notations.MusicKey, musicKey.Select(Normalize).ToArray() },
             { Notations.MusicKeyAlt, musicKeyAlt.Select(Normalize).ToArray() },
             { Notations.MusicKeyBeatport, musicKeyBeatport.Select(Normalize).ToArray() },
-            { Notations.MusicKeyEssentia, musicKeyEssentia.Select(Normalize).ToArray() }
+            { Notations.MusicKeyEssentia, musicKeyEssentia.Select(Normalize).ToArray() },
+            { Notations.European, european.Select(Normalize).ToArray() },
+            { Notations.American, american.Select(Normalize).ToArray() }
         };
 
         private static readonly Dictionary<string, Notations> keyToNotationMap = [];
@@ -82,8 +99,24 @@ namespace Diyokee {
                 var keyIndex = GetKeyIndex(key);
                 return NotationToKeysMap[newNotation][keyIndex];
             } catch {
-                //Debugger.Break();
                 return key;
+            }
+        }
+
+        public string FromModiNote(int midiKeyNumber, Notations newNotation, bool includeOctave = false) {
+            try {
+                int octave = midiKeyNumber / 12 - 1;
+
+                midiKeyNumber %= 128;
+                midiKeyNumber %= 12;
+
+                string[] notes = [ "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" ];
+                string key = notes[midiKeyNumber];
+
+                if(!IsValidKey(key)) return midiKeyNumber.ToString();
+                return ConvertTo(key, newNotation) + (includeOctave ? octave.ToString() : "");
+            } catch {
+                return midiKeyNumber.ToString();
             }
         }
 
@@ -91,7 +124,6 @@ namespace Diyokee {
             var keyIndex = GetKeyIndex(key);
 
             var notation = GetNotation(key);
-            //var newKeyIndex = (keyIndex + step) % notationToKeysMap[notation].Length;
             var newKeyIndex = CalculateNewKeyIndex(keyIndex, step, toggleScale);
 
             return NotationToKeysMap[notation][newKeyIndex];
