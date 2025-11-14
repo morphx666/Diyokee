@@ -82,14 +82,20 @@
     </div>
 
     <div class="transport">
-        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="(e) => HandlePlayClick(e, mouseState!.ShiftDown ? false : Program.Settings.Playback.SyncPlayback)"><i class="fa-solid fa-play"></i></div>
-        <div class="button-3d icon" @onmouseup="HandleStopClick"><i class="fa-solid fa-stop"></i></div>
+        <div class="button-3d icon led @(IsPlaying ? "green" : "")" @onmouseup="HandlePlayClick">
+            <i class="fa-solid fa-play"></i>
+        </div>
+        <div class="button-3d icon" @onmouseup="HandleStopClick">
+            <i class="fa-solid fa-stop"></i>
+        </div>
         <div class="button-3d icon"
-             @onmousedown="(e) => HandlePlayClick(e, false)"
+             @onmousedown="HandlePlayClick"
              @onmouseup="HandleStopAndSnapClick">
             <i class="fa-solid fa-forward-step"></i>
         </div>
-        <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker"><i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i></div>
+        <div class="button-3d icon" @onmouseup="HandleSnapToClosestBeatMarker">
+            <i class="fa-solid fa-down-left-and-up-right-to-center fa-rotate-by" style="--fa-rotate-angle: 45deg;"></i>
+        </div>
         @if(!MinimalMode) {
             <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
             <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.Settings.Name ?? "")</div>
@@ -271,8 +277,8 @@
         ApplyVolume(faderVolume?.Value ?? 0);
     }
 
-    private void HandlePlayClick(MouseEventArgs e, bool autoSync) {
-        if(e.Button == 0) Play(autoSync);
+    private void HandlePlayClick(MouseEventArgs e) {
+        if(e.Button == 0) Play(SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
     }
 
     private void HandleStopClick(MouseEventArgs e) {
@@ -574,7 +580,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
                             }
-                };
+        };
                 break;
 
             case 4:
@@ -595,7 +601,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
                             }
-                };
+        };
                 break;
 
             case 6:
@@ -624,7 +630,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
                             }
-                };
+        };
                 break;
 
             case 8:
@@ -661,7 +667,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
                             }
-                };
+        };
                 break;
 
             default:
@@ -670,7 +676,7 @@
                                 0,
                                 0
                             }
-                };
+        };
                 break;
         }
 
@@ -750,27 +756,32 @@
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
     }
 
+    private bool SnapToBeatMarkers => beatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
+
     private void SnapToClosestBeatMarker() {
         if(beatMarkers.Count == 0) return;
         long position = GetClosestBeatMarker();
+
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
     }
 
     private long GetClosestBeatMarker() {
         double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
 
-        int closestIndex = 0;
-        double closestDistance = float.MaxValue;
-        for(int i = 0; i < beatMarkers.Count; i++) {
-            double distance = Math.Abs(beatMarkers[i].Seconds - playbackPositionSeconds);
-            if(distance < closestDistance) {
-                closestDistance = distance;
-                closestIndex = i;
+        if(SnapToBeatMarkers) {
+            int closestIndex = 0;
+            double closestDistance = float.MaxValue;
+            for(int i = 0; i < beatMarkers.Count; i++) {
+                double distance = Math.Abs(beatMarkers[i].Seconds - playbackPositionSeconds);
+                if(distance < closestDistance) {
+                    closestDistance = distance;
+                    closestIndex = i;
+                }
             }
+            playbackPositionSeconds = beatMarkers[closestIndex].Seconds;
         }
-
-        double seconds = beatMarkers[closestIndex].Seconds;
-        cuePoint = seconds;
+        
+        cuePoint = playbackPositionSeconds;
         return Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
     }
 

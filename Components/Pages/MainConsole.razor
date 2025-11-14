@@ -373,9 +373,9 @@
                                 if(keyVelocity > 0) {
                                     // double noteFreq = keyTools.MidiNoteToFrequency(keyNumber);
                                     // double trackFreq = keyTools.KeyToFrequency(player1?.File.Key ?? key);
-                                    double trackNote = keyTools.ToMidiNote(player1?.File.Key ?? key);
+                                    double trackKeyNumber = keyTools.ToMidiNote(player1?.File.Key ?? key);
 
-                                    player1?.SetPitch(keyNumber - trackNote);
+                                    player1?.SetPitch(keyNumber - trackKeyNumber);
                                     player1?.Play(false);
                                 } else {
                                     player1?.Stop(true);
