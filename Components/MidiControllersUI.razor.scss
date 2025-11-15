@@ -1,0 +1,68 @@
+.mappings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 50%;
+
+    .mapping-container {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+
+        .mapping-name {
+            display: flex;
+            flex-direction: row;
+            gap: 0.3rem;
+        }
+
+        .buttons-container {
+            display: flex;
+            flex-direction: row;
+            gap: 1px;
+
+            button {
+                font-family: "FontAwesome Solid";
+                font-size: 1rem;
+                background: none;
+                border: none;
+                margin-left: 0.4rem;                
+                cursor: pointer;
+
+                opacity: 0.7;
+                transition: opacity 250ms;
+
+                &:hover {
+                    opacity: 1;
+                }
+
+                &.button-listen {
+                    color: var(--primary-light);
+                }
+
+                &.button-delete {
+                    color: var(--secondary-light);
+                }
+
+                &.button-listening {
+                    color: var(--primary-light);
+                    opacity: 1;
+                    animation: rotate 2s linear infinite;
+                }
+
+                &.disabled {
+                    opacity: 0.3;
+                    pointer-events: none;
+                }
+            }
+        }
+    }
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

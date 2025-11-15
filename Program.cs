@@ -15,15 +15,17 @@ internal class Program {
     public static ILogger Logger = null!;
 
     public static Settings Settings = new();
+    public static List<MidiControllerProfile> MidiControllersProfiles = [];
 
-    private static void Main(string[] args) {
+    private static async Task Main(string[] args) {
         string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
 #if !DEBUG
         Directory.SetCurrentDirectory(workingDirectory);
 #endif
 
-        Settings = Settings.Load().GetAwaiter().GetResult();
-        AutoSave();
+        Settings = await Settings.Load();
+        MidiControllersProfiles = await MidiControllerProfile.LoadAll();
+        //AutoSave();
 
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
@@ -61,7 +63,6 @@ internal class Program {
 
         var app = builder.Build();
 
-        // Setup BASS as soon as possible so that when the browser opens, all DLLs have been copied
         Logger = app.Logger;
         Logger.LogInformation("Setting up BASS...");
         InitBASS(workingDirectory);
@@ -99,6 +100,9 @@ internal class Program {
         if(!app.Environment.IsDevelopment()) {
             app.UseExceptionHandler("/Error", createScopeForErrors: true);
             app.UseHsts();
+            if(File.Exists(Settings.CertFile)) {
+                app.UseHttpsRedirection();
+            }
         }
 
         if(File.Exists(Settings.CertFile)) app.UseHttpsRedirection();
@@ -109,22 +113,35 @@ internal class Program {
         app.MapRazorComponents<App>()
             .AddInteractiveServerRenderMode();
 
-        bool autoStart = Settings.AutoStartBrowser;
+        app.Lifetime.ApplicationStopping.Register(() => {
+            Logger.LogInformation("Application stopping, saving settings...");
+            Settings.Save().Wait();
+            MidiControllerProfile.SaveAll(MidiControllersProfiles).Wait();
+        });
+
+        app.Lifetime.ApplicationStarted.Register(() => {
+            bool autoStart = Settings.AutoStartBrowser;
 
 #if DEBUG
-        autoStart = false;
+            autoStart = false;
 #endif
 
-        if(autoStart && Settings.WebHostUrl != "") {
-            Process.Start(new ProcessStartInfo {
-                FileName = Settings.WebHostUrl,
-                UseShellExecute = true
-            });
-        } else {
-            Logger.LogInformation($"--------------------------------------------------------------------");
-            Logger.LogInformation($"\n\tYou may now open your browser and navigate to: {Settings.WebHostUrl}\n");
-            Logger.LogInformation($"--------------------------------------------------------------------");
-        }
+            if(autoStart && Settings.WebHostUrl != "") {
+                Process.Start(new ProcessStartInfo {
+                    FileName = Settings.WebHostUrl,
+                    UseShellExecute = true
+                });
+            } else {
+                Logger.LogInformation(
+                    $"""
+
+                    --------------------------------------------------------------------
+                        You may now open your browser and navigate to: {Settings.WebHostUrl}");
+                    --------------------------------------------------------------------
+
+                    """);
+            }
+        });
 
         app.Run();
     }
@@ -134,6 +151,7 @@ internal class Program {
             while(true) {
                 await Task.Delay(5000);
                 await Settings.Save();
+                await MidiControllerProfile.SaveAll(MidiControllersProfiles);
             }
         });
     }
