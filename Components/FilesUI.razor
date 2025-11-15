@@ -375,7 +375,7 @@
         return sb.ToString().TrimEnd('|');
     }
 
-    public async void ChangeSelectedFile(DFile? file) {
+    public async Task ChangeSelectedFile(DFile? file) {
         string newFilename = file?.Filename ?? "";
         if(selectedFile == newFilename) return;
 
@@ -409,8 +409,6 @@
         return base.OnAfterRenderAsync(firstRender);
     }
 
-    // Is this the correct way to handle parameter changes?
-    // https://stackoverflow.com/questions/79302784/why-blazor-component-parameters-should-be-the-auto-properties
     public override Task SetParametersAsync(ParameterView parameters) {
         parameters.SetParameterProperties(this);
 
@@ -418,4 +416,28 @@
 
         return base.OnParametersSetAsync();
     }
+
+    #region MidiSupport
+    public void SelectUp() {
+        if(files.Count == 0) return;
+        if(selectedFile == "") {
+            ChangeSelectedFile(files[0]).Wait();
+        } else {
+            int currentIndex = files.FindIndex(f => f.Filename == selectedFile);
+            if(currentIndex > 0) ChangeSelectedFile(files[currentIndex - 1]).Wait();
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void SelectDown() {
+        if(files.Count == 0) return;
+        if(selectedFile == "") {
+            ChangeSelectedFile(files[0]).Wait();
+        } else {
+            int currentIndex = files.FindIndex(f => f.Filename == selectedFile);
+            if(currentIndex < files.Count - 1) ChangeSelectedFile(files[currentIndex + 1]).Wait();
+        }
+        InvokeAsync(StateHasChanged);
+    }
+    #endregion
 }

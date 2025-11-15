@@ -1,4 +1,5 @@
 ﻿@using System.Diagnostics
+@using System.Threading.Tasks
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Midi
 
@@ -8,7 +9,7 @@
         <div class="select-container">
             <InputSelect id="midi-controller-select" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
                 @foreach(var profile in Program.MidiControllersProfiles) {
-                    <option Value="@profile.Name">@profile.Name</option>
+                    <option Value="@profile">@profile.Name</option>
                 }
             </InputSelect>
         </div>
@@ -18,18 +19,20 @@
 
 @if(selectedProfile != null) {
     <h4>MIDI Device</h4>
-    <InputSelect id="midiDevice" TValue="BASS_MIDI_DEVICEINFO" @bind-Value="selectedDevice">
-        @if(MidiDevices.Length == 0) {
-            <option Value="@noDevice">(@noDevice.name)</option>
-        } else {
-            @foreach(var device in MidiDevices) {
-                <option Value="@device.name">@device.name</option>
+    <div class="select-container">
+        <InputSelect id="midiDevice" TValue="string" @bind-Value="selectedProfile.DeviceName">
+            @if(MidiDevices.Length == 0) {
+                <option Value="">(no devices found)</option>
+            } else {
+                @foreach(var device in MidiDevices) {
+                    <option Value="@device.name">@device.name</option>
+                }
             }
-        }
-    </InputSelect>
+        </InputSelect>
+    </div>
 
     <h4>General</h4>
-    <div class="mappings">
+    <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
         @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
             <div class="mapping-container">
                 <div class="mapping-name">
@@ -54,8 +57,6 @@
 }
 
 @code {
-    private BASS_MIDI_DEVICEINFO selectedDevice = default!;
-    private BASS_MIDI_DEVICEINFO noDevice = new BASS_MIDI_DEVICEINFO { name = "(no devices)" };
     private MIDIINPROC midiProc = default!;
 
     private MidiControllerProfile selectedProfile = default!;
@@ -69,14 +70,24 @@
     [Parameter]
     public Settings Settings { get; set; } = default!;
 
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            if(Program.MidiControllersProfiles.Count > 0) {
+                selectedProfile = Program.MidiControllersProfiles[0];
+
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
     private void AddProfile() {
         var newProfile = new MidiControllerProfile {
             Name = "New Profile"
         };
         Program.MidiControllersProfiles.Add(newProfile);
         selectedProfile = newProfile;
-
-        selectedDevice = MidiDevices.Length > 0 ? MidiDevices[0] : noDevice;
     }
 
     private void ListenForMidiEvent(string propertyName, object section) {
@@ -109,7 +120,7 @@
             BassMidi.BASS_MIDI_StreamEvents(midiStreamHandle, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
         };
 
-        int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedDevice.name);
+        int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedProfile.DeviceName);
         bool r1 = BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
         bool r2 = BassMidi.BASS_MIDI_InStart(deviceIndex);
         midiStreamHandle = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
@@ -119,16 +130,17 @@
 
     private void RecordMapping(object section) {
         if(midiStreamHandle != -1) {
-            if(mapping != null && selectedProfile != null) {
+            if(mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE && selectedProfile != null) {
                 section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
             }
-            int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedDevice.name);
+            int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedProfile!.DeviceName);
 
             BassMidi.BASS_MIDI_InStop(deviceIndex);
             //BassMidi.BASS_MIDI_InFree(deviceIndex);
             var result = Bass.BASS_StreamFree(midiStreamHandle);
 
             midiStreamHandle = -1;
+            mapping = new();
         }
 
         StopListening();

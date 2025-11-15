@@ -2,10 +2,11 @@
 @using static Diyokee.MediaProviders.IMediaProvider
 
 <div class="folders scroller">
-    <FolderUI
+    <FoldersUI
         Provider="@Provider"
         RelativePath=""
-        SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)"/>
+        SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)"
+        @ref="FoldersUI"/>
 </div>
 
 @code {
@@ -14,4 +15,6 @@
 
     [Parameter]
     public EventCallback<string> SelectedFolderChanged { get; set; }
+
+    public FoldersUI? FoldersUI;
 }

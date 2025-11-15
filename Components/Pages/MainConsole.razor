@@ -88,9 +88,10 @@
                 </div>
 
                 <div class="sources panel">
-                    <MediaProvider 
+                    <MediaProviderContainerUI 
                         Provider="@selectedMediaProvider"
                         SelectedFolderChanged="SelectedFolderChanged"
+                        @ref="mediaProviderContainerUI"
                     />
                 </div>
             </div>
@@ -123,6 +124,7 @@
     private DFile? player2File = null;
 
     private FilesUI? filesUI;
+    private MediaProviderContainerUI? mediaProviderContainerUI;
 
     private Player? player1;
     private Player? player2;
@@ -330,7 +332,7 @@
         return false;
     }
 
-    // MIDIINPROC midiProc = default!;
+    MIDIINPROC midiProc = default!;
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             await Task.Delay(500);
@@ -344,9 +346,11 @@
             DFile? file = session.Get<DFile>(nameof(selectedFile));
             if(file != null) filesUI?.ChangeSelectedFile(file);
 
+            MidiMonitor();
+
             // =====================================
 
-            KeyTools keyTools = new();
+            // KeyTools keyTools = new();
 
             // BASS_MIDI_DEVICEINFO[] info = BassMidi.BASS_MIDI_InGetGeviceInfos();
             // var err = Bass.BASS_ErrorGetCode();
@@ -402,5 +406,60 @@
         }
 
         await InvokeAsync(StateHasChanged); // This updates the SYNC->PLAYER buttons
+    }
+
+    private void MidiMonitor() {
+        var profile = Program.MidiControllersProfiles[0];
+        var midiStream = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
+        bool foldersSelected = true;
+
+        midiProc = (device, time, buffer, length, user) => {
+            byte[] bytes = new byte[length];
+            System.Runtime.InteropServices.Marshal.Copy(buffer, bytes, 0, length);
+
+            BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
+            if(midiEvents != null) {
+                foreach(BASS_MIDI_EVENT midiEvent in midiEvents) {
+                    profile.General.GetType().GetProperties().ToList().ForEach(prop => {
+                        MidiControllerProfile.MidiMapping mapping = (prop.GetValue(profile.General) as MidiControllerProfile.MidiMapping)!;
+                        if(mapping.EventType == midiEvent.eventtype &&
+                           mapping.Parameter == midiEvent.param &&
+                           mapping.Channel == midiEvent.chan) {
+                            switch(prop.Name) {
+                                case "BrowseUp":
+                                    if(foldersSelected) {
+                                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
+                                    } else {
+                                        InvokeAsync(filesUI!.SelectUp);
+                                    }
+                                    break;
+                                case "BrowseDown":
+                                    if(foldersSelected) {
+                                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
+                                    } else {
+                                        InvokeAsync(filesUI!.SelectDown);
+                                    }
+                                    break;
+                                case "LoadSelectedFileToPlayer0": 
+                                    player1File = selectedFile;
+                                    shouldRender = true;
+                                    InvokeAsync(StateHasChanged);
+                                    break;
+                                case "LoadSelectedFileToPlayer1":
+                                    player2File = selectedFile;
+                                    shouldRender = true;
+                                    InvokeAsync(StateHasChanged);
+                                    break;
+                            }
+                        }
+                    });
+                }
+            }
+
+            BassMidi.BASS_MIDI_StreamEvents(midiStream, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
+        };
+
+        BassMidi.BASS_MIDI_InInit(profile.DeviceIndex, midiProc, IntPtr.Zero);
+        BassMidi.BASS_MIDI_InStart(profile.DeviceIndex);
     }
 }

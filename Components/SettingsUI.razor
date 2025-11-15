@@ -126,6 +126,7 @@
     public async void Save() {
         Program.Settings = settings;
         await Program.Settings.Save();
+        await MidiControllerProfile.SaveAll(Program.MidiControllersProfiles);
         Close();
 
         await OnSave.InvokeAsync();
