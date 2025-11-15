@@ -2,13 +2,19 @@
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Midi
 
-<label for="midiControllerSelect">Profile</label>
-<InputSelect id="midiControllerSelect" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
-    @foreach(var profile in Program.MidiControllersProfiles) {
-        <option Value="@profile.Name">@profile.Name</option>
-    }
-</InputSelect>
-<button class="button-add-provider" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+<div class="header">
+    <div class="field profiles">
+        <label for="midi-controller-select">Profile</label>
+        <div class="select-container">
+            <InputSelect id="midi-controller-select" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
+                @foreach(var profile in Program.MidiControllersProfiles) {
+                    <option Value="@profile.Name">@profile.Name</option>
+                }
+            </InputSelect>
+        </div>
+        <button class="button-add-provider" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+    </div>
+</div>
 
 @if(selectedProfile != null) {
     <h4>MIDI Device</h4>

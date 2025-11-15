@@ -40,11 +40,13 @@
 
         <div class="field">
             <label for="tempo-range">Tempo Range -/+</label>
-            <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
-                @foreach(var tempoRange in TempoRanges) {
-                    <option value="@tempoRange">@tempoRange</option>
-                }
-            </InputSelect>
+            <div class="select-container">
+                <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
+                    @foreach(var tempoRange in TempoRanges) {
+                        <option value="@tempoRange">@tempoRange</option>
+                    }
+                </InputSelect>
+            </div>
         </div>
 
         @*
@@ -53,11 +55,13 @@
         *@
         <div class="field">
             <label for="eq-profile">Equalizer Profile</label>
-            <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
-                @foreach(var profile in settings.EqualizerProfiles) {
-                    <option value="@profile.Name">@profile.Name</option>
-                }
-            </InputSelect>
+            <div class="select-container">
+                <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
+                    @foreach(var profile in settings.EqualizerProfiles) {
+                        <option value="@profile.Name">@profile.Name</option>
+                    }
+                </InputSelect>
+            </div>
         </div>
 
         <div class="eq-profile-info">

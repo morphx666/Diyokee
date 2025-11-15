@@ -80,7 +80,7 @@ namespace Diyokee {
             { Notations.American, american.Select(Normalize).ToArray() }
         };
 
-        private static char fancySharp = '♯';
+        private static readonly char fancySharp = '♯';
         private static readonly string[] notes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
         private static readonly Dictionary<string, Notations> keyToNotationMap = [];
         private const int WHEEL_KEYS_NUM = 12;

@@ -34,8 +34,6 @@
             let [x, y, w, h, unit] = param;
             if(unit === undefined) unit = "px";
 
-            if(x!=-1)console.log(`${x}${unit}`);
-
             if(x != -1) element.style.left = `${x}${unit}`;
             if(y != -1) element.style.top = `${y}${unit}`;
 
