@@ -27,16 +27,20 @@
         @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
             <div class="mapping-container">
                 <div class="mapping-name">
-                    <input type="checkbox" disabled="@true" />
+                    <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
                     <label>@PrettyName(p.Name)</label>
                 </div>
                 <div class="buttons-container">
                     @if(isListening && listeningProperty == p.Name) {
                         <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
                     } else {
-                        <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))"><i class="fa-solid fa-gear"></i></button>
+                        <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
+                            <i class="fa-solid fa-gear"></i>
+                        </button>
                     }
-                    <button class="button-delete @(isListening ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))"><i class="fa-solid fa-circle-xmark"></i></button>
+                    <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
+                        <i class="fa-solid fa-circle-xmark"></i>
+                    </button>
                 </div>
             </div>
         }
@@ -49,7 +53,6 @@
     private MIDIINPROC midiProc = default!;
 
     private MidiControllerProfile selectedProfile = default!;
-    private object profileSection = default!;
     private bool isListening = false;
     private string listeningProperty = string.Empty;
     private int midiStreamHandle = -1;
@@ -73,7 +76,6 @@
     private void ListenForMidiEvent(string propertyName, object section) {
         isListening = true;
         listeningProperty = propertyName;
-        profileSection = section;
 
         midiProc = (device, time, buffer, length, user) => {
             byte[] bytes = new byte[length];
@@ -95,7 +97,7 @@
                     mapping.Velocity = keyVelocity;
                 }
 
-                StopListening();
+                RecordMapping(section);
             }
 
             BassMidi.BASS_MIDI_StreamEvents(midiStreamHandle, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
@@ -109,25 +111,38 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void StopListening() {
-        isListening = false;
-
+    private void RecordMapping(object section) {
         if(midiStreamHandle != -1) {
             if(mapping != null && selectedProfile != null) {
-                profileSection.GetType().GetProperty(listeningProperty)?.SetValue(profileSection, mapping);
+                section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
             }
             int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedDevice.name);
 
             BassMidi.BASS_MIDI_InStop(deviceIndex);
-            BassMidi.BASS_MIDI_InFree(deviceIndex);
+            //BassMidi.BASS_MIDI_InFree(deviceIndex);
             var result = Bass.BASS_StreamFree(midiStreamHandle);
 
             midiStreamHandle = -1;
         }
+
+        StopListening();
+    }
+
+    private void StopListening() {
+        isListening = false;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private bool HasMapping(string propertyName, object section) {
+        var mapping = section.GetType().GetProperty(propertyName)?.GetValue(section) as MidiControllerProfile.MidiMapping;
+        return mapping != null && mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE;
     }
 
     private void DeleteMapping(string propertyName, object section) {
-        
+        section.GetType().GetProperty(propertyName)?.SetValue(section, new MidiControllerProfile.MidiMapping());
+
+        InvokeAsync(StateHasChanged);
     }
 
     private string PrettyName(string name) {
