@@ -45,11 +45,11 @@
                             @if(isListening && listeningProperty == p.Name) {
                                 <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
                             } else {
-                                <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
+                                <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
                                     <i class="fa-solid fa-gear"></i>
                                 </button>
                             }
-                            <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
+                            <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
                                 <i class="fa-solid fa-circle-xmark"></i>
                             </button>
                         </div>
@@ -74,11 +74,11 @@
                                 @if(isListening && listeningProperty == p.Name) {
                                     <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
                                 } else {
-                                    <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value))">
+                                    <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value))">
                                         <i class="fa-solid fa-gear"></i>
                                     </button>
                                 }
-                                <button class="button-delete @(isListening || !HasMapping(p.Name, player.value) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, player.value))">
+                                <button class="button-delete @(isListening || !HasMapping(p.Name, player.value) ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, player.value))">
                                     <i class="fa-solid fa-circle-xmark"></i>
                                 </button>
                             </div>

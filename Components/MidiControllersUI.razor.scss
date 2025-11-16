@@ -72,6 +72,10 @@
                     opacity: 1;
                     animation: rotate 2s linear infinite;
                 }
+
+                &.not-configured {
+                    opacity: 0.3;
+                }
             }
         }
     }
