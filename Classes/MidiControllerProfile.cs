@@ -10,6 +10,7 @@ namespace Diyokee {
             public int Channel { get; set; } = -1;
             public int Velocity { get; set; } = -1;
             public int Parameter { get; set; } = -1;
+            public int Controller { get; set; } = -1;
         }
 
         public class GeneralMapping {
@@ -46,8 +47,6 @@ namespace Diyokee {
             public MidiMapping JumpBackward { get; set; } = new();
         }
 
-        public int DeviceIndex { get; set; } = -1;
-        public string DeviceName { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
         public GeneralMapping General { get; set; } = new();

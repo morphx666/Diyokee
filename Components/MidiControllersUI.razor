@@ -3,24 +3,10 @@
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Midi
 
-<div class="header">
-    <div class="field profiles">
-        <label for="midi-controller-select">Profile</label>
-        <div class="select-container">
-            <InputSelect id="midi-controller-select" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
-                @foreach(var profile in Program.MidiControllersProfiles) {
-                    <option Value="@profile">@profile.Name</option>
-                }
-            </InputSelect>
-        </div>
-        <button class="button-add-provider" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
-    </div>
-</div>
-
-@if(selectedProfile != null) {
-    <h4>MIDI Device</h4>
+<div class="field">
+    <label for="midi-device-name">Controller</label>
     <div class="select-container">
-        <InputSelect id="midiDevice" TValue="string" @bind-Value="selectedProfile.DeviceName">
+        <InputSelect id="midi-device-name" TValue="string" @bind-Value="Settings.MidiDeviceName">
             @if(MidiDevices.Length == 0) {
                 <option Value="">(no devices found)</option>
             } else {
@@ -30,26 +16,74 @@
             }
         </InputSelect>
     </div>
+</div>
 
-    <h4>General</h4>
-    <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
-        @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
-            <div class="mapping-container">
-                <div class="mapping-name">
-                    <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
-                    <label>@PrettyName(p.Name)</label>
-                </div>
-                <div class="buttons-container">
-                    @if(isListening && listeningProperty == p.Name) {
-                        <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
-                    } else {
-                        <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
-                            <i class="fa-solid fa-gear"></i>
-                        </button>
+<div class="field profiles">
+    <label for="midi-profile">Profile</label>
+    <div class="select-container">
+        <InputSelect id="midi-profile" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
+            @foreach(var profile in Program.MidiControllersProfiles) {
+                <option Value="@profile">@profile.Name</option>
+            }
+        </InputSelect>
+    </div>
+    <button class="button-add-provider" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+</div>
+
+@if(selectedProfile != null) {
+    <div class="sections-container">
+        <div class="general">
+            <h4>General</h4>
+            <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
+                @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
+                    <div class="mapping-container">
+                        <div class="mapping-name">
+                            <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
+                            <label>@PrettyName(p.Name)</label>
+                        </div>
+                        <div class="buttons-container">
+                            @if(isListening && listeningProperty == p.Name) {
+                                <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
+                            } else {
+                                <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            }
+                            <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @foreach(var player in selectedProfile.Players.Select((value, index) => new { value, index })) {
+            <div class="player">
+                <h4>Player @Settings.Playback.Players[player.index].Name</h4>
+                <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
+                    @foreach(var p in typeof(MidiControllerProfile.PlayerMapping).GetProperties()) {
+                        if(p.PropertyType != typeof(MidiControllerProfile.MidiMapping)) continue;
+
+                        <div class="mapping-container">
+                            <div class="mapping-name">
+                                <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, player.value)" />
+                                <label>@PrettyName(p.Name)</label>
+                            </div>
+                            <div class="buttons-container">
+                                @if(isListening && listeningProperty == p.Name) {
+                                    <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
+                                } else {
+                                    <button class="button-listen @(isListening ? "disabled" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value))">
+                                        <i class="fa-solid fa-gear"></i>
+                                    </button>
+                                }
+                                <button class="button-delete @(isListening || !HasMapping(p.Name, player.value) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, player.value))">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
                     }
-                    <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
-                        <i class="fa-solid fa-circle-xmark"></i>
-                    </button>
                 </div>
             </div>
         }
@@ -106,13 +140,9 @@
                     Channel = midiEvents[0].chan
                 };
 
-                if(midiEvents[0].eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
-                    int keyNumber = (midiEvents[0].eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? midiEvents[0].param & 0xFF : -1;
-                    int keyVelocity = (midiEvents[0].eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvents[0].param >> 8) & 0xFF : -1;
-
-                    mapping.Note = keyNumber;
-                    mapping.Velocity = keyVelocity;
-                }
+                mapping.Note = midiEvents[0].param & 0xFF;
+                mapping.Velocity = (midiEvents[0].param >> 8) & 0xFF;
+                mapping.Controller = midiEvents[0].param & 0xFF;
 
                 RecordMapping(section);
             }
@@ -120,9 +150,14 @@
             BassMidi.BASS_MIDI_StreamEvents(midiStreamHandle, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
         };
 
-        int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedProfile.DeviceName);
-        bool r1 = BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
-        bool r2 = BassMidi.BASS_MIDI_InStart(deviceIndex);
+        int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == Settings.MidiDeviceName);
+        BASS_MIDI_DEVICEINFO deviceInfo = BassMidi.BASS_MIDI_InGetDeviceInfo(deviceIndex);
+        if(deviceInfo.IsInitialized) {
+            BassMidi.BASS_MIDI_InStop(deviceIndex);
+            BassMidi.BASS_MIDI_InFree(deviceIndex);
+        }
+        BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
+        BassMidi.BASS_MIDI_InStart(deviceIndex);
         midiStreamHandle = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
 
         InvokeAsync(StateHasChanged);
@@ -133,7 +168,7 @@
             if(mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE && selectedProfile != null) {
                 section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
             }
-            int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == selectedProfile!.DeviceName);
+            int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == Settings.MidiDeviceName);
 
             BassMidi.BASS_MIDI_InStop(deviceIndex);
             //BassMidi.BASS_MIDI_InFree(deviceIndex);

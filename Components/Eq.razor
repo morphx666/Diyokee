@@ -121,6 +121,17 @@
         await ValueChanged.InvokeAsync(eqValues);
     }
 
+    public async void SetEqValues(EqValues values) {
+        eqValues = values;
+        eqHi?.SetValue(values.Hi);
+        eqMid?.SetValue(values.Mid);
+        eqLo?.SetValue(values.Lo);
+    }
+
+    public Eq.EqValues GetEqValues() {
+        return eqValues;
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             eqHi?.SetInitialValue(eqValues.Hi);

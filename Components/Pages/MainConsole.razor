@@ -110,7 +110,13 @@
                      @ref="filesUI" />
         </div>
 
-        <SettingsUI OnSave="UpdateApp" OnClose="() => SetPlayersMouseCapturing(true)" @ref="settingsUi" />
+        <SettingsUI
+            OnSave="UpdateApp"
+            OnClose="() => {
+                        SetPlayersMouseCapturing(true);
+                        MidiMonitor();
+                    }"
+            @ref="settingsUi" />
     </CascadingValue>
 </div>
 
@@ -411,7 +417,7 @@
     private void MidiMonitor() {
         var profile = Program.MidiControllersProfiles[0];
         var midiStream = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
-        bool foldersSelected = true;
+        bool navigateFolders = true;
 
         midiProc = (device, time, buffer, length, user) => {
             byte[] bytes = new byte[length];
@@ -420,46 +426,179 @@
             BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
             if(midiEvents != null) {
                 foreach(BASS_MIDI_EVENT midiEvent in midiEvents) {
+                    Console.WriteLine($"MIDI Event {midiEvent.eventtype}: Param={midiEvent.param} Chan={midiEvent.chan} Pos={midiEvent.pos} Tick={midiEvent.tick}");
+
                     profile.General.GetType().GetProperties().ToList().ForEach(prop => {
                         MidiControllerProfile.MidiMapping mapping = (prop.GetValue(profile.General) as MidiControllerProfile.MidiMapping)!;
-                        if(mapping.EventType == midiEvent.eventtype &&
-                           mapping.Parameter == midiEvent.param &&
-                           mapping.Channel == midiEvent.chan) {
-                            switch(prop.Name) {
-                                case "BrowseUp":
-                                    if(foldersSelected) {
-                                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
-                                    } else {
-                                        InvokeAsync(filesUI!.SelectUp);
+
+                        switch(midiEvent.eventtype) {
+                            case BASSMIDIEvent.MIDI_EVENT_NOTE:
+                                if(mapping.EventType == midiEvent.eventtype &&
+                                    mapping.Parameter == midiEvent.param &&
+                                    mapping.Channel == midiEvent.chan) {
+                                    switch(prop.Name) {
+                                        case "FoldersFilesSwitch":
+                                            navigateFolders = !navigateFolders;
+                                            break;
+                                        case "LoadSelectedFileToPlayer0":
+                                            player1File = selectedFile;
+                                            shouldRender = true;
+                                            InvokeAsync(StateHasChanged);
+                                            break;
+                                        case "LoadSelectedFileToPlayer1":
+                                            player2File = selectedFile;
+                                            shouldRender = true;
+                                            InvokeAsync(StateHasChanged);
+                                            break;
+                                    }
+                                }
+                                break;
+                            case BASSMIDIEvent.MIDI_EVENT_EXPRESSION:
+                                if(mapping.EventType == midiEvent.eventtype &&
+                                    mapping.Channel == midiEvent.chan) {
+                                    switch(prop.Name) {
+                                        case "Crossfader":
+                                            double crossfaderValue = 1.0 - midiEvent.param / 127.0;
+                                            InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
+                                            break;
+                                    }
+                                }
+                                break;
+                            case BASSMIDIEvent.MIDI_EVENT_CONTROL:
+                                if(mapping.EventType == midiEvent.eventtype &&
+                                    mapping.Controller == (midiEvent.param & 0xFF) &&
+                                    mapping.Channel == midiEvent.chan) {
+                                    switch(prop.Name) {
+                                        case "BrowseUp":
+                                            if(mapping.Parameter != midiEvent.param) break;
+                                            if(navigateFolders) {
+                                                InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
+                                            } else {
+                                                InvokeAsync(filesUI!.SelectUp);
+                                            }
+                                            break;
+                                        case "BrowseDown":
+                                            if(mapping.Parameter != midiEvent.param) break;
+                                            if(navigateFolders) {
+                                                InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
+                                            } else {
+                                                InvokeAsync(filesUI!.SelectDown);
+                                            }
+                                            break;
+                                        case "Gain":
+                                            double gainValue = ((midiEvent.param >> 8) & 0xFF) / 127.0;
+                                            InvokeAsync(() => mainGain!.SetValue(gainValue, true));
+                                            break;
+                                    }
+                                }
+                                break;
+                        }                        
+                    });
+
+                    foreach(var player in profile.Players) {
+                        Player? targetPlayer = null;
+                        if(player.Index == 0) targetPlayer = player1;
+                        else if(player.Index == 1) targetPlayer = player2;
+                        if(targetPlayer == null) continue;
+
+                        player.GetType().GetProperties().ToList().ForEach(prop => {
+                            if(prop.PropertyType != typeof(MidiControllerProfile.MidiMapping)) return;
+                            MidiControllerProfile.MidiMapping mapping = (prop.GetValue(player) as MidiControllerProfile.MidiMapping)!;
+
+                            switch(midiEvent.eventtype) {
+                                case BASSMIDIEvent.MIDI_EVENT_NOTE:
+                                    if(mapping.EventType == midiEvent.eventtype &&
+                                        mapping.Note == (midiEvent.param & 0xFF) &&
+                                        mapping.Channel == midiEvent.chan) {
+
+                                        int velocity = (midiEvent.param >> 8) & 0xFF;
+                                        switch(prop.Name) {
+                                            case "PlayPause":
+                                                if(velocity > 0) targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                                                break;
+                                            case "Stop":
+                                                if(velocity > 0) targetPlayer.Stop(false);
+                                                break;
+                                            case "Cue":
+                                                if(velocity > 0) {
+                                                    targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                                                } else {
+                                                    targetPlayer.Stop(true);
+                                                }
+                                                break;
+                                        }
                                     }
                                     break;
-                                case "BrowseDown":
-                                    if(foldersSelected) {
-                                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
-                                    } else {
-                                        InvokeAsync(filesUI!.SelectDown);
+                                default:
+                                    bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
+                                    double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
+
+                                    if(mapping.EventType == midiEvent.eventtype &&
+                                        (isControlEvent ? mapping.Controller == (midiEvent.param & 0xFF) : true) &&
+                                        mapping.Channel == midiEvent.chan) {
+                                        switch(prop.Name) {
+                                            case "Volume":
+                                                double volume = value;
+                                                InvokeAsync(() => targetPlayer.SetVolume(volume));
+                                                break;
+                                            case "EqHi":
+                                                var eq = targetPlayer.EqControls.GetEqValues();
+                                                eq.Hi = value;
+                                                InvokeAsync(() => {
+                                                    targetPlayer.EqControls.SetEqValues(eq);
+                                                    shouldRender = true;
+                                                    InvokeAsync(StateHasChanged);
+                                                });
+                                                break;
+                                            case "EqMid":
+                                                var eqMid = targetPlayer.EqControls.GetEqValues();
+                                                eqMid.Mid = value;
+                                                InvokeAsync(() => {
+                                                    targetPlayer.EqControls.SetEqValues(eqMid);
+                                                    shouldRender = true;
+                                                    InvokeAsync(StateHasChanged);
+                                                });
+                                                break;
+                                            case "EqLow":
+                                                var eqLo = targetPlayer.EqControls.GetEqValues();
+                                                eqLo.Lo = value;
+                                                InvokeAsync(() => {
+                                                    targetPlayer.EqControls.SetEqValues(eqLo);
+                                                    shouldRender = true;
+                                                    InvokeAsync(StateHasChanged);
+                                                });
+                                                break;
+                                        }
                                     }
-                                    break;
-                                case "LoadSelectedFileToPlayer0": 
-                                    player1File = selectedFile;
-                                    shouldRender = true;
-                                    InvokeAsync(StateHasChanged);
-                                    break;
-                                case "LoadSelectedFileToPlayer1":
-                                    player2File = selectedFile;
-                                    shouldRender = true;
-                                    InvokeAsync(StateHasChanged);
+                                    
+                                    if(mapping.EventType == midiEvent.eventtype &&
+                                        mapping.Channel == midiEvent.chan) {
+                                        switch(prop.Name) {
+                                            case "Tempo":
+                                                double tempo = 1.0 - value;
+                                                InvokeAsync(() => targetPlayer.SetTempo(tempo));
+                                                break;
+                                        }
+                                    }
                                     break;
                             }
-                        }
-                    });
+                        });
+                    }
                 }
             }
 
             BassMidi.BASS_MIDI_StreamEvents(midiStream, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
         };
 
-        BassMidi.BASS_MIDI_InInit(profile.DeviceIndex, midiProc, IntPtr.Zero);
-        BassMidi.BASS_MIDI_InStart(profile.DeviceIndex);
+        BASS_MIDI_DEVICEINFO[] midiDevices = BassMidi.BASS_MIDI_InGetGeviceInfos();
+        int deviceIndex = midiDevices.ToList().FindIndex(d => d.name == Program.Settings.MidiDeviceName);
+        if(deviceIndex != -1) {
+            if(midiDevices[deviceIndex].IsInitialized) {
+                BassMidi.BASS_MIDI_InStop(deviceIndex);
+                BassMidi.BASS_MIDI_InFree(deviceIndex);
+            }
+            BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
+            BassMidi.BASS_MIDI_InStart(deviceIndex);
+        }
     }
 }

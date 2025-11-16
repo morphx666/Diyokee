@@ -39,11 +39,13 @@
         UpdateRange();
     }
 
-    public async Task SetValue(double newValue) {
+    public async Task SetValue(double newValue, bool updateState = false) {
         if(Value == newValue) return;
         Value = newValue;
         UpdateRange();
         await ValueChanged.InvokeAsync(newValue);
+
+        if(updateState) await InvokeAsync(StateHasChanged);
     }
 
     private void UpdateRange() {

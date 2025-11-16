@@ -25,7 +25,7 @@ internal class Program {
 
         Settings = await Settings.Load();
         MidiControllersProfiles = await MidiControllerProfile.LoadAll();
-        //AutoSave();
+        AutoSave();
 
         var builder = WebApplication.CreateBuilder(args);
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");

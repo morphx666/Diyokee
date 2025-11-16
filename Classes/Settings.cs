@@ -67,6 +67,7 @@ namespace Diyokee {
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();
         [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = true;
+        [JsonProperty("midi-device-name")] public string MidiDeviceName { get; set; } = "";
 
         public List<EqualizerProfile> EqualizerProfiles { get; } = [];
 
