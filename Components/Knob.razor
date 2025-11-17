@@ -3,8 +3,21 @@
 
 <div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
     <div class="knob-container @(Enabled ? "" : "disabled")">
-        <div class="knob" style="@GetKnobCss()">
-            <div class="pointer"></div>
+        <div class="knob">
+            <div class="highlight-container">
+                <div class="arc" style="@GetArcCss()">
+                    <div id="segment1" class="segment" style="@GetSegmentCss(1)"></div>
+                    <div id="segment2" class="segment" style="@GetSegmentCss(2)"></div>
+                    <div id="segment3" class="segment" style="@GetSegmentCss(3)"></div>
+                    <div id="segment4" class="segment" style="@GetSegmentCss(4)"></div>
+
+                    <div class="cap-start" style="@GetCapStartCss()"></div>
+                    <div class="cap-end" style="@GetCapEndCss()"></div>
+                </div>
+                <div class="inner-circle"></div>
+            </div>
+
+            <div class="pointer" style="@GetPointerCss()"></div>
         </div>
     </div>
     <div class="name">@Name</div>
@@ -32,6 +45,7 @@
     private Bounds? knobBounds;
     private double knobSize = 0;
     private double initialValue = 0.5;
+    private double fromAngle = 0; // We should allow this to be configurable in the future
 
     public void SetInitialValue(double value) {
         Value = value;
@@ -58,10 +72,45 @@
         // }
     }
 
-    public string GetKnobCss() {
+    public string GetArcCss() {
         // target_value = (source_value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
         double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        return $"rotate: {angle}deg";
+        int scale = angle < 0 ? -1 : 1;
+        return $"transform: rotate({fromAngle}deg) scaleX({scale})";
+    }
+
+    public string GetSegmentCss(int index) {
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        angle = Math.Abs(angle);
+
+        switch(index) {
+            case 1:
+                return angle >= 0 ? $"transform: rotate(-90deg) skew({90 - Math.Min(angle, 90)}deg" : "display: none";
+            case 2:
+                return angle >= 90 ? $"transform: rotate(0deg) skew({180 - Math.Min(angle, 180)}deg" : "display: none";
+            case 3:
+                return angle >= 180 ? $"transform: rotate(90deg) skew({270 - Math.Min(angle, 270)}deg" : "display: none";
+            case 4:
+                return angle >= 270 ? $"transform: rotate(180deg) skew({360 - Math.Min(angle, 360)}deg" : "display: none";
+            default:
+                return "";
+        }
+    }
+
+    public string GetPointerCss() {
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        return $"transform: rotate({angle + fromAngle}deg)";
+    }
+
+    private string GetCapStartCss() {
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        return angle == 0 ? "display: none" : "";
+    }
+
+    private string GetCapEndCss() {
+        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
+        angle = Math.Abs(angle);
+        return angle == 0 ? "display: none" : $"transform: rotate({angle}deg)";
     }
 
     [JSInvokable]

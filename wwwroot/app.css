@@ -37,7 +37,7 @@
     --mono-font-family: "JetBrains Mono";
 
     --ctrl-highlight: #81bcb7;
-    --ctrl-highlight-soft: #81bcb7cc;
+    --ctrl-highlight-soft: #4be7fabb; /* #81bcb7; */
 
     --primary: 00, 123, 255; /* --pale-blue */
     --primary-light: #00ceff;
