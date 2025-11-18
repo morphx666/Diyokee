@@ -38,6 +38,7 @@
 
     --ctrl-highlight: #81bcb7;
     --ctrl-highlight-soft: #4be7fabb; /* #81bcb7; */
+    --ctrl-focus-rect: #ff450088;
 
     --primary: 00, 123, 255; /* --pale-blue */
     --primary-light: #00ceff;

@@ -13,8 +13,8 @@
     <div class="spinner" style="@(providerIsBusy ? "" : "display: none")">
         <img src="@Assets["/images/spinner.png"]" />
     </div>
-    <div class="files-scrollable scroller">
-        <div class="files-list-container" tabindex="0">
+    <div class="files-scrollable scroller" tabindex="1">
+        <div class="files-list-container">
             <div class="column cell" @onclick="() => SetSortingIndex(0)">Artist<i class="fa-solid @(sortIndex == 0 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
             <div class="column cell" @onclick="() => SetSortingIndex(1)">Title<i class="fa-solid @(sortIndex == 1 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
             <div class="column cell" @onclick="() => SetSortingIndex(2)">Genre<i class="fa-solid @(sortIndex == 2 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>

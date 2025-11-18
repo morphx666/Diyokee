@@ -27,6 +27,37 @@
     .files-scrollable {
         height: 100%;
 
+        position: relative;
+        &:focus { // FIXME: This should only be shown when the focus is triggered by a MIDI controller
+            &::after {
+                //content: "";
+                position: absolute;
+                top: 29px;
+                left: 1px;
+                width: calc(100% - 2px);
+                height: calc(100% - 30px);
+                outline: 1px solid var(--ctrl-focus-rect);
+                pointer-events: none;
+
+                animation: fade-in-out 2s forwards;
+            }
+        }
+
+        @keyframes fade-in-out {
+            0% {
+                opacity: 0;
+            }
+            25% {
+                opacity: 1;
+            }
+            60% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
         .files-list-container {
             display: grid;
             grid-template-columns: min-content minmax(min-content, auto) repeat(6, min-content);
