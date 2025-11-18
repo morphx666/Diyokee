@@ -1108,14 +1108,18 @@
     }
 
     protected override void OnParametersSet() {
-        if(File != null && lastFilename != File.Filename) {
-            if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
+        if(File != null) {
+            if(lastFilename == File.Filename) {
+                SetParameters();
+            } else {
+                if(IsPlaying && Program.Settings.Playback.LockOnPlay) return;
 
-            lastFilename = File.Filename;
-            Stop(false);
-            LoadFile();
+                lastFilename = File.Filename;
+                Stop(false);
+                LoadFile();
 
-            SavePlayerState();
+                SavePlayerState();
+            }
         }
 
         base.OnParametersSet();
