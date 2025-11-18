@@ -59,7 +59,6 @@
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
-    scrollSelectedItemIntoView = () => document.querySelector(".files-list-container .selected")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 </script>
 
 @code {
@@ -434,7 +433,7 @@
         }
         InvokeAsync(StateHasChanged);
 
-        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView");
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".files-list-container .selected");
     }
 
     public void SelectDown() {
@@ -447,7 +446,7 @@
         }
         InvokeAsync(StateHasChanged);
 
-        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView");
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".files-list-container .selected");
     }
     #endregion
 }

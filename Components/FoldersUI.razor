@@ -52,10 +52,6 @@
     </div>
 }
 
-<script>
-    scrollSelectedItemIntoView = (block = "nearest") => document.querySelector(".folder.selected")?.scrollIntoView({ block: block, behavior: "smooth" });
-</script>
-
 @code {
     private static string selectedFolder = "";
     private List<MediaFolder> folders = [];
@@ -116,7 +112,7 @@
                     }
                 }
 
-                await JS.InvokeVoidAsync("scrollSelectedItemIntoView", "end");
+                await JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected", "end");
             }
         });
         deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == '\\');
@@ -151,7 +147,7 @@
         SelectedFolderChanged.InvokeAsync(selectedFolder);
         InvokeAsync(StateHasChanged);
 
-        JS.InvokeVoidAsync("scrollSelectedItemIntoView");
+        JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected");
     }
 
     public void SelectDown() {
@@ -175,7 +171,7 @@
         SelectedFolderChanged.InvokeAsync(selectedFolder);
         InvokeAsync(StateHasChanged);
 
-        JS.InvokeVoidAsync("scrollSelectedItemIntoView");
+        JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected");
     }
 
     public void ExpandSelectedFolder() {

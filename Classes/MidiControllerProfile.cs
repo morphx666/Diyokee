@@ -48,6 +48,8 @@ namespace Diyokee {
             public MidiMapping JumpSizeDecrease { get; set; } = new();
             public MidiMapping JumpForward { get; set; } = new();
             public MidiMapping JumpBackward { get; set; } = new();
+            public MidiMapping JogWheelForward { get; set; } = new();
+            public MidiMapping JogWheelBackward { get; set; } = new();
         }
 
         public string Name { get; set; } = string.Empty;

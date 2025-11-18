@@ -589,7 +589,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.FrontRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             case 4:
@@ -610,7 +610,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0,
                             }
-        };
+    };
                 break;
 
             case 6:
@@ -639,7 +639,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.SideRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             case 8:
@@ -676,7 +676,7 @@
                                 0,
                                 speakers.Any(c => (c & AudioDevice.DeviceSpeakers.RearRight) != 0) ? 1 : 0
                             }
-        };
+    };
                 break;
 
             default:
@@ -685,7 +685,7 @@
                                 0,
                                 0
                             }
-        };
+    };
                 break;
         }
 
@@ -767,7 +767,7 @@
 
     public bool SnapToBeatMarkers => beatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
 
-    private void SnapToClosestBeatMarker() {
+    public void SnapToClosestBeatMarker() {
         if(beatMarkers.Count == 0) return;
         long position = GetClosestBeatMarker();
 
@@ -789,15 +789,53 @@
             }
             playbackPositionSeconds = beatMarkers[closestIndex].Seconds;
         }
-        
+
         cuePoint = playbackPositionSeconds;
         return Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
     }
 
-    private void ToggleLoop() {
+    public void ToggleLoop() {
         if(File == null) return;
         loop.Enabled = !loop.Enabled;
         SetLoopSize(loopSize, true);
+    }
+
+    public void LoopSizeIncrease() {
+        int index = Array.FindIndex(loopSizes, s => s.Item2 == loopSize);
+        if(index != -1 && index < loopSizes.Length - 1) SetLoopSize(loopSizes[index + 1].Item2, false);
+    }
+
+    public void LoopSizeDecrease() {
+        int index = Array.FindIndex(loopSizes, s => s.Item2 == loopSize);
+        if(index != -1 && index > 0)SetLoopSize(loopSizes[index - 1].Item2, false);
+    }
+
+    public void JumpSizeIncrease() {
+        int index = Array.FindIndex(loopSizes, s => s.Item2 == jumpSize);
+        if(index != -1 && index < loopSizes.Length - 1)SetJumpSize(loopSizes[index + 1].Item2);
+    }
+
+    public void JumpSizeDecrease() {
+        int index = Array.FindIndex(loopSizes, s => s.Item2 == jumpSize);
+        if(index != -1 && index > 0)SetJumpSize(loopSizes[index - 1].Item2);
+    }
+
+    public void JogWheelForward() {
+        if(File == null) return;
+        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
+        long offset = p + Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, 0.05 / beatsPerSecond);
+        if(offset > trackLengthBytes) return;
+        if(offset < 0) offset = 0;
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
+    }
+
+    public void JogWheelBackward() {
+        if(File == null) return;
+        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
+        long offset = p - Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, 0.05 / beatsPerSecond);
+        if(offset > trackLengthBytes) return;
+        if(offset < 0) offset = 0;
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
     }
 
     private void SetLoopSize(double size, bool resetStart) {
@@ -852,7 +890,7 @@
         UpdateSettings();
     }
 
-    private void ToggleLoopJumpSync() {
+    public void ToggleLoopJumpSync() {
         loopJumpLock = !loopJumpLock;
         if(loopJumpLock) jumpSize = loopSize;
         UpdateSettings();
@@ -886,7 +924,7 @@
         if(offset > trackLengthBytes) return;
         if(offset < 0) offset = 0;
 
-        // FIXME: This doesn't work correctly while playing; may have to ask Ian about it ;)
+        // FIXME: This doesn't work correctly while playing; may have to ask Ian @ Un4seen about it ;)
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
     }
 
