@@ -426,7 +426,7 @@
             BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
             if(midiEvents != null) {
                 foreach(BASS_MIDI_EVENT midiEvent in midiEvents) {
-                    Console.WriteLine($"MIDI Event {midiEvent.eventtype}: Param={midiEvent.param} Chan={midiEvent.chan} Pos={midiEvent.pos} Tick={midiEvent.tick}");
+                    //Console.WriteLine($"MIDI Event {midiEvent.eventtype}: Param={midiEvent.param} Chan={midiEvent.chan} Pos={midiEvent.pos} Tick={midiEvent.tick}");
 
                     profile.General.GetType().GetProperties().ToList().ForEach(prop => {
                         MidiControllerProfile.MidiMapping mapping = (prop.GetValue(profile.General) as MidiControllerProfile.MidiMapping)!;
@@ -443,6 +443,9 @@
                                                 InvokeAsync(filesUI!.SelectDown);
                                                 InvokeAsync(filesUI!.SelectUp);
                                             }
+                                            break;
+                                        case "ExpandFolder":
+                                            InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
                                             break;
                                         case "LoadSelectedFileToPlayer0":
                                             player1File = selectedFile;

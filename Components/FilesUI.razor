@@ -30,7 +30,7 @@
                         <img src="@Assets["/images/waiting.gif"]" />
                     </div>
                 } else {
-                    <div class="@(GetFileClasses(file))"        @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
+                    <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
                 }
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
@@ -59,6 +59,7 @@
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
+    scrollSelectedItemIntoView = () => document.querySelector(".files-list-container .selected")?.scrollIntoView({ block: "center" });
 </script>
 
 @code {
@@ -432,6 +433,8 @@
             if(currentIndex > 0) ChangeSelectedFile(files[currentIndex - 1]).Wait();
         }
         InvokeAsync(StateHasChanged);
+
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView");
     }
 
     public void SelectDown() {
@@ -443,6 +446,8 @@
             if(currentIndex < files.Count - 1) ChangeSelectedFile(files[currentIndex + 1]).Wait();
         }
         InvokeAsync(StateHasChanged);
+
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView");
     }
     #endregion
 }

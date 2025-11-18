@@ -70,24 +70,24 @@
             <span>Hi:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Hi.ToString("N2")) Hz</span>
         </div>
 
-        @foreach((Settings.PlayerSettings player, int index) withIndex in settings.Playback.Players.WithIndex()) {
+        @foreach(var playerObj in settings.Playback.Players.Select((player, index) => new { player, index })) {
             <div class="sub-header">
-                <h5>Player @(withIndex.index + 1)</h5>
+                <h5>Player @(playerObj.index + 1)</h5>
 
                 <div class="field">
-                    <label for="@($"player{withIndex.index}-name")">Name</label>
-                    <InputText id="@($"player{withIndex.index}-name")" @bind-value="withIndex.player.Name" />
+                    <label for="@($"player{playerObj.index}-name")">Name</label>
+                    <InputText id="@($"player{playerObj.index}-name")" @bind-value="playerObj.player.Name" />
                 </div>
                 <div class="field">
-                    <label for="@($"player{withIndex.index}-color")">Color</label>
+                    <label for="@($"player{playerObj.index}-color")">Color</label>
                     <InputText class="as-number"
-                               id="@($"player{withIndex.index}-color")"
-                               @bind-value="withIndex.player.Color" />
-                    <div class="color" style="background-color: @(withIndex.player.Color)"></div>
+                               id="@($"player{playerObj.index}-color")"
+                               @bind-value="playerObj.player.Color" />
+                    <div class="color" style="background-color: @(playerObj.player.Color)"></div>
                 </div>
                 <div class="field">
-                    <label for="@($"player{withIndex.index}-reverse-controls")">Reverse Controls Order</label>
-                    <InputCheckbox id="@($"player{withIndex.index}-reverse-controls")" @bind-value="withIndex.player.ReverseControls" />
+                    <label for="@($"player{playerObj.index}-reverse-controls")">Reverse Controls Order</label>
+                    <InputCheckbox id="@($"player{playerObj.index}-reverse-controls")" @bind-value="playerObj.player.ReverseControls" />
                 </div>
             </div>
         }

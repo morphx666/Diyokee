@@ -159,13 +159,30 @@
         }
 
         if(currentIndex < folders.Count - 1 && currentIndex != -1) {
-            selectedFolder = folders[currentIndex + 1].RelativePath;
+            if(folders[currentIndex].HasSubfolders && folders[currentIndex].IsExpanded && subFolderUI != null) {
+                selectedFolder = subFolderUI.folders[0].RelativePath;
+            } else {
+                selectedFolder = folders[currentIndex + 1].RelativePath;
+            }
         } else if(subFolderUI != null) {
             selectedFolder = subFolderUI.folders[0].RelativePath;
         }
 
         SelectedFolderChanged.InvokeAsync(selectedFolder);
         InvokeAsync(StateHasChanged);
+    }
+
+    public void ExpandSelectedFolder() {
+        int currentIndex = folders.FindIndex(f => f.RelativePath == selectedFolder);
+        if(currentIndex == -1) {
+            subFolderUI?.ExpandSelectedFolder();
+        } else {
+            MediaFolder folder = folders[currentIndex];
+            if(folder.HasSubfolders) {
+                folder.IsExpanded = !folder.IsExpanded;
+                InvokeAsync(StateHasChanged);
+            }
+        }
     }
     #endregion
 }
