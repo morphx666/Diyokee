@@ -437,7 +437,7 @@
                                     mapping.Parameter == midiEvent.param &&
                                     mapping.Channel == midiEvent.chan) {
                                     switch(prop.Name) {
-                                        case "FoldersFilesSwitch":
+                                        case "FoldersFilesToggle":
                                             navigateFolders = !navigateFolders;
                                             if(!navigateFolders) {
                                                 InvokeAsync(filesUI!.SelectDown);

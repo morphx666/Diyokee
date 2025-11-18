@@ -59,7 +59,7 @@
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
-    scrollSelectedItemIntoView = () => document.querySelector(".files-list-container .selected")?.scrollIntoView({ block: "center" });
+    scrollSelectedItemIntoView = () => document.querySelector(".files-list-container .selected")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 </script>
 
 @code {

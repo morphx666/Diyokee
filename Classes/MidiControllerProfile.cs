@@ -14,7 +14,7 @@ namespace Diyokee {
         }
 
         public class GeneralMapping {
-            public MidiMapping FoldersFilesSwitch { get; set; } = new();
+            public MidiMapping FoldersFilesToggle { get; set; } = new();
             public MidiMapping BrowseUp { get; set; } = new();
             public MidiMapping BrowseDown { get; set; } = new();
             public MidiMapping ExpandFolder { get; set; } = new();
@@ -40,9 +40,12 @@ namespace Diyokee {
             public MidiMapping Filter { get; set; } = new();
             public MidiMapping TempoUp { get; set; } = new();
             public MidiMapping TempoDown { get; set; } = new();
-            public MidiMapping LoopSet { get; set; } = new();
-            public MidiMapping LoopSize { get; set; } = new();
-            public MidiMapping JumpSize { get; set; } = new();
+            public MidiMapping LoopJumpLockToggle { get; set; } = new();
+            public MidiMapping LoopToggle { get; set; } = new();
+            public MidiMapping LoopSizeIncrease { get; set; } = new();
+            public MidiMapping LoopSizeDecrease { get; set; } = new();
+            public MidiMapping JumpSizeIncrease { get; set; } = new();
+            public MidiMapping JumpSizeDecrease { get; set; } = new();
             public MidiMapping JumpForward { get; set; } = new();
             public MidiMapping JumpBackward { get; set; } = new();
         }

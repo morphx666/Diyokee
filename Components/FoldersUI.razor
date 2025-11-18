@@ -1,6 +1,7 @@
 ﻿@using Diyokee.MediaProviders
 @using System.Diagnostics
 @using static Diyokee.MediaProviders.IMediaProvider
+@inject IJSRuntime JS
 
 <div class="error" hidden="@directoryExists">Directory not found</div>
 
@@ -12,43 +13,48 @@
                     <img src="@Assets["/images/waiting.gif"]" />
                 </div>
             } else {
-                <div class="icons"
-                     @onclick="() => {
-                     if(folder.HasSubfolders) {
-                         folder.IsExpanded = !folder.IsExpanded;
-                     } else {
-                         selectedFolder = folder.RelativePath;
-                         SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                     }
-                 }">
-                <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
-                @if(folder.HasSubfolders) {
-                    <i class="fa-solid fa-xmark plus-hack"></i>
-                }
-            </div>
-        }
+                <div
+                    class="icons"
+                    @onclick="() => {
+                        if(folder.HasSubfolders) {
+                            folder.IsExpanded = !folder.IsExpanded;
+                        } else {
+                            selectedFolder = folder.RelativePath;
+                            SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                        }
+                    }">
+                    <i class="fa-regular @(folder.HasSubfolders ? (folder.IsExpanded ? "fa-folder-open" : "fa-folder") : "fa-folder")"></i>
+                    @if(folder.HasSubfolders) {
+                        <i class="fa-solid fa-xmark plus-hack"></i>
+                    }
+                </div>
+            }
 
-        <span class="ellipsis"
-              @onclick="() => {
-              selectedFolder = folder.RelativePath;
-              SelectedFolderChanged.InvokeAsync(folder.RelativePath);
-                          }"
-              @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
-            @folder.Name
-        </span>
+            <span class="ellipsis"
+                  @onclick="() => {
+                  selectedFolder = folder.RelativePath;
+                  SelectedFolderChanged.InvokeAsync(folder.RelativePath);
+                              }"
+                  @ondblclick="() => folder.IsExpanded = !folder.IsExpanded">
+                @folder.Name
+            </span>
+        </div>
     </div>
-</div>
-<div class="subfolders">
-    @if(folder.IsExpanded) {
-        <FoldersUI Provider="@Provider"
-                   RelativePath="@folder.RelativePath"
-                   Parent="@this"
-                   ParentMediaFolder="@folder"
-                   SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)"
-                   @ref="subFolderUI" />
-    }
-</div>
+    <div class="subfolders">
+        @if(folder.IsExpanded) {
+            <FoldersUI Provider="@Provider"
+                       RelativePath="@folder.RelativePath"
+                       Parent="@this"
+                       ParentMediaFolder="@folder"
+                       SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)"
+                       @ref="subFolderUI" />
+        }
+    </div>
 }
+
+<script>
+    scrollSelectedItemIntoView = (block = "nearest") => document.querySelector(".folder.selected")?.scrollIntoView({ block: block, behavior: "smooth" });
+</script>
 
 @code {
     private static string selectedFolder = "";
@@ -91,6 +97,8 @@
         directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
 
         Task.Run(async () => {
+            await Task.Delay(500);
+
             folders = Provider.Directories(RelativePath);
             if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
             if(Parent != null) await InvokeAsync(Parent.StateHasChanged);
@@ -103,18 +111,13 @@
                     MediaFolder? f = fList.FirstOrDefault(f => f.Name == dirsToExpand[i]);
                     if(f != null) {
                         f.IsExpanded = true;
-                        if(i == dirsToExpand.Length - 1) {
-                            fList = Provider.Directories(f.RelativePath);
-
-                            await InvokeAsync(() => {
-                                ChangeSelectedFolder(f.RelativePath);
-                            });
-                        }
+                        fList = Provider.Directories(f.RelativePath);
+                        await InvokeAsync(() => ChangeSelectedFolder(f.RelativePath));
                     }
                 }
-            }
 
-            await InvokeAsync(StateHasChanged);
+                await JS.InvokeVoidAsync("scrollSelectedItemIntoView", "end");
+            }
         });
         deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == '\\');
     }
@@ -147,10 +150,11 @@
         }
         SelectedFolderChanged.InvokeAsync(selectedFolder);
         InvokeAsync(StateHasChanged);
+
+        JS.InvokeVoidAsync("scrollSelectedItemIntoView");
     }
 
     public void SelectDown() {
-        // TODO: Handle when moving down over an expanded folder
         int currentIndex = folders.FindIndex(f => f.RelativePath == selectedFolder);
 
         if(currentIndex == -1 && subFolderUI != null) {
@@ -170,6 +174,8 @@
 
         SelectedFolderChanged.InvokeAsync(selectedFolder);
         InvokeAsync(StateHasChanged);
+
+        JS.InvokeVoidAsync("scrollSelectedItemIntoView");
     }
 
     public void ExpandSelectedFolder() {
