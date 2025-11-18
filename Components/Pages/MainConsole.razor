@@ -439,6 +439,10 @@
                                     switch(prop.Name) {
                                         case "FoldersFilesSwitch":
                                             navigateFolders = !navigateFolders;
+                                            if(!navigateFolders) {
+                                                InvokeAsync(filesUI!.SelectDown);
+                                                InvokeAsync(filesUI!.SelectUp);
+                                            }
                                             break;
                                         case "LoadSelectedFileToPlayer0":
                                             player1File = selectedFile;

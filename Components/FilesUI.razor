@@ -195,6 +195,11 @@
             await cache!.SaveChangesAsync();
             await cache.DisposeAsync();
         });
+
+        if(files.Count > 0 && selectedFile == "") {
+            await ChangeSelectedFile(files[0]);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void SetSortingIndex(int index) {
