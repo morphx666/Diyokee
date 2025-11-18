@@ -4,25 +4,6 @@
     gap: 2rem;
 }
 
-.profiles {
-    .button-add-provider {
-        font-family: "FontAwesome Solid";
-        font-size: 1rem;
-        color: var(--primary-light);
-        background: none;
-        border: none;
-        margin-left: 0.4rem;
-        cursor: pointer;
-
-        opacity: 0.7;
-        transition: opacity 250ms;
-
-        &:hover {
-            opacity: 1;
-        }
-    }
-}
-
 .mappings {
     display: flex;
     flex-direction: column;
@@ -43,41 +24,49 @@
             display: flex;
             flex-direction: row;
             gap: 1px;
-
-            button {
-                font-family: "FontAwesome Solid";
-                font-size: 1rem;
-                background: none;
-                border: none;
-                margin-left: 0.4rem;
-                cursor: pointer;
-
-                opacity: 0.7;
-                transition: opacity 250ms;
-
-                &:hover {
-                    opacity: 1;
-                }
-
-                &.button-listen {
-                    color: var(--primary-light);
-                }
-
-                &.button-delete {
-                    color: var(--secondary-light);
-                }
-
-                &.button-listening {
-                    color: var(--primary-light);
-                    opacity: 1;
-                    animation: rotate 2s linear infinite;
-                }
-
-                &.not-configured {
-                    opacity: 0.3;
-                }
-            }
         }
+    }
+}
+
+button {
+    font-family: "FontAwesome Solid";
+    font-size: 1rem;
+    background: none;
+    border: none;
+    margin-left: 0.4rem;
+    cursor: pointer;
+
+    opacity: 0.7;
+    transition: opacity 250ms;
+
+    &:hover {
+        opacity: 1;
+    }
+
+    &.button-add-provider {
+        color: var(--primary-light);
+    }
+
+    &.button-listen {
+        color: var(--primary-light);
+    }
+
+    &.button-delete {
+        color: var(--secondary-light);
+    }
+
+    &.button-listening {
+        color: var(--primary-light);
+        opacity: 1;
+        animation: rotate 2s linear infinite;
+    }
+
+    &.refresh-devices {
+        color: var(--text-white);
+    }
+
+    &.not-configured {
+        opacity: 0.3;
     }
 }
 

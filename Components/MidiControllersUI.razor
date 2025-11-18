@@ -8,7 +8,7 @@
     <div class="select-container">
         <InputSelect id="midi-device-name" TValue="string" @bind-Value="Settings.MidiDeviceName">
             @if(MidiDevices.Length == 0) {
-                <option Value="">(no devices found)</option>
+                <option Value="" selected>(no devices found)</option>
             } else {
                 @foreach(var device in MidiDevices) {
                     <option Value="@device.name">@device.name</option>
@@ -16,9 +16,10 @@
             }
         </InputSelect>
     </div>
+    <button class="refresh-devices" onclick="@ReloadDevices"><i class="fa-solid fa-arrow-rotate-right"></i></button>
 </div>
 
-<div class="field profiles">
+<div class="field">
     <label for="midi-profile">Profile</label>
     <div class="select-container">
         <InputSelect id="midi-profile" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
@@ -105,15 +106,16 @@
     public Settings Settings { get; set; } = default!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
-            if(Program.MidiControllersProfiles.Count > 0) {
-                selectedProfile = Program.MidiControllersProfiles[0];
-
-                await InvokeAsync(StateHasChanged);
-            }
+        if(firstRender && Program.MidiControllersProfiles.Count > 0) {
+            selectedProfile = Program.MidiControllersProfiles[0];
+            await InvokeAsync(StateHasChanged);
         }
 
         base.OnAfterRender(firstRender);
+    }
+
+    private void ReloadDevices() {
+        InvokeAsync(StateHasChanged);
     }
 
     private void AddProfile() {
