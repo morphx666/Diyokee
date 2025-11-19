@@ -67,6 +67,7 @@ namespace Diyokee {
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();
         [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = true;
+        [JsonProperty("midi-device-name")] public string MidiDeviceName { get; set; } = "";
 
         public List<EqualizerProfile> EqualizerProfiles { get; } = [];
 
@@ -101,9 +102,12 @@ namespace Diyokee {
             }
         }
 
+        private readonly Lock lockObj = new();
         public async Task Save() {
-            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            await File.WriteAllTextAsync(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
+            lock(lockObj) {
+                string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+                File.WriteAllText(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
+            }
         }
 
         public object Clone() {

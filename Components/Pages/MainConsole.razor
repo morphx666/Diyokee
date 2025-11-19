@@ -4,6 +4,7 @@
 @using Newtonsoft.Json
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Mix
+@using Un4seen.Bass.AddOn.Midi
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 @inject SessionState session
@@ -87,9 +88,10 @@
                 </div>
 
                 <div class="sources panel">
-                    <MediaProvider 
+                    <MediaProviderContainerUI 
                         Provider="@selectedMediaProvider"
                         SelectedFolderChanged="SelectedFolderChanged"
+                        @ref="mediaProviderContainerUI"
                     />
                 </div>
             </div>
@@ -108,7 +110,13 @@
                      @ref="filesUI" />
         </div>
 
-        <SettingsUI OnSave="UpdateApp" OnClose="() => SetPlayersMouseCapturing(true)" @ref="settingsUi" />
+        <SettingsUI
+            OnSave="UpdateApp"
+            OnClose="() => {
+                        SetPlayersMouseCapturing(true);
+                        enableMidiEvents = true;
+                    }"
+            @ref="settingsUi" />
     </CascadingValue>
 </div>
 
@@ -122,6 +130,7 @@
     private DFile? player2File = null;
 
     private FilesUI? filesUI;
+    private MediaProviderContainerUI? mediaProviderContainerUI;
 
     private Player? player1;
     private Player? player2;
@@ -142,6 +151,7 @@
     private Knob? mainGain = null!;
 
     private bool shouldRender = true;
+    private bool enableMidiEvents = true;
 
     public MainConsole() {
         SetMediaProviders();
@@ -207,6 +217,7 @@
 
     private void OpenSettingsDialog() {
         SetPlayersMouseCapturing(false);
+        enableMidiEvents = false;
         settingsUi.Open();
     }
 
@@ -329,6 +340,8 @@
         return false;
     }
 
+    private bool IsPlaying => player1!.IsPlaying || player2!.IsPlaying;
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             await Task.Delay(500);
@@ -341,8 +354,211 @@
 
             DFile? file = session.Get<DFile>(nameof(selectedFile));
             if(file != null) filesUI?.ChangeSelectedFile(file);
+
+            MidiMonitor();
+
+            // =====================================
+
+            // KeyTools keyTools = new();
+
+            // BASS_MIDI_DEVICEINFO[] info = BassMidi.BASS_MIDI_InGetGeviceInfos();
+            // var err = Bass.BASS_ErrorGetCode();
+            // for(int i = 0; i < info.Length; i++) {
+            //     Debug.WriteLine($"MIDI IN Device {i}: {info[i].name}");
+
+            //     var midiStream = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
+
+            //     midiProc = (device, time, buffer, length, user) => {
+            //         byte[] bytes = new byte[length];
+            //         System.Runtime.InteropServices.Marshal.Copy(buffer, bytes, 0, length);
+
+            //         BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
+            //         if(midiEvents != null) {
+            //             foreach(BASS_MIDI_EVENT midiEvent in midiEvents) {
+            //                 Debug.Write($"MIDI Event {midiEvent.eventtype}: ");
+
+            //                 if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
+            //                     int keyNumber = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? midiEvent.param & 0xFF : -1;
+            //                     int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
+
+            //                     string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
+
+            //                     if(keyVelocity > 0) {
+            //                         double trackKeyNumber = keyTools.ToMidiNote(player1?.File.Key ?? key);
+
+            //                         player1?.SetPitch(keyNumber - trackKeyNumber);
+            //                         player1?.Play(false);
+            //                     } else {
+            //                         player1?.Stop(true);
+            //                     }
+
+            //                     Debug.Write($"Note: {key,3} | Freq: {keyTools.MidiNoteToFrequency(keyNumber),8:N2} | Velocity: {keyVelocity,4}");
+            //                     Debug.Write($" | Key: {keyTools.ToMidiNote(key),4}");
+
+            //                     Debug.Write($"Param: {midiEvent.param,5} | Note: {keyNumber,3} | Velocity: {keyVelocity,4}");
+            //                 } else {
+            //                     Debug.Write($"Param: {midiEvent.param,5}");
+            //                 }
+
+            //                 Debug.WriteLine($" | Channel: {midiEvent.chan,2} | Tick: {midiEvent.tick,4} | Pos: {midiEvent.pos,5}");
+            //             }
+            //         }
+
+            //         BassMidi.BASS_MIDI_StreamEvents(midiStream, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
+            //     };
+
+            //     bool r1 = BassMidi.BASS_MIDI_InInit(i, midiProc, IntPtr.Zero);
+            //     var err1 = Bass.BASS_ErrorGetCode();
+            //     bool r2 = BassMidi.BASS_MIDI_InStart(i);
+            //     var err2 = Bass.BASS_ErrorGetCode();
+            // }
         }
 
         await InvokeAsync(StateHasChanged); // This updates the SYNC->PLAYER buttons
+    }
+
+    private void MidiMonitor() {
+        bool navigateFolders = true;
+
+        Program.MidiTools.OnMidiEvent += (string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) => {
+            if(!enableMidiEvents) return;
+
+            //Console.WriteLine(propertyName);
+            int velocity = (midiEvent.param >> 8) & 0xFF;
+
+            switch(propertyName) {
+                case "FoldersFilesToggle":
+                    navigateFolders = !navigateFolders;
+                    if(!navigateFolders) {
+                        InvokeAsync(filesUI!.SelectDown);
+                        InvokeAsync(filesUI!.SelectUp);
+                    }
+                    return;
+                case "ExpandFolder":
+                    InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
+                    return;
+                case "LoadSelectedFileToPlayer0":
+                    player1File = selectedFile;
+                    shouldRender = true;
+                    if(!IsPlaying) InvokeAsync(StateHasChanged);
+                    return;
+                case "LoadSelectedFileToPlayer1":
+                    player2File = selectedFile;
+                    shouldRender = true;
+                    if(!IsPlaying) InvokeAsync(StateHasChanged);
+                    return;
+                case "Crossfader":
+                    double crossfaderValue = 1.0 - midiEvent.param / 127.0;
+                    InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
+                    return;
+                case "BrowseUp":
+                    if(mapping.Parameter != midiEvent.param) return;
+                    if(navigateFolders) {
+                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
+                    } else {
+                        InvokeAsync(filesUI!.SelectUp);
+                    }
+                    return;
+                case "BrowseDown":
+                    if(mapping.Parameter != midiEvent.param) return;
+                    if(navigateFolders) {
+                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
+                    } else {
+                        InvokeAsync(filesUI!.SelectDown);
+                    }
+                    return;
+                case "Gain":
+                    double gainValue = ((midiEvent.param >> 8) & 0xFF) / 127.0;
+                    InvokeAsync(() => mainGain!.SetValue(gainValue, true));
+                    return;
+            }
+
+            Player? targetPlayer = null;
+            if(section == "player0") targetPlayer = player1;
+            else if(section == "player1") targetPlayer = player2;
+            if(targetPlayer == null) return;
+
+            bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
+            double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
+
+            switch(propertyName) {
+                case "PlayPause":
+                    if(velocity > 0) targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                    return;
+                case "Stop":
+                    if(velocity > 0) targetPlayer.Stop(false);
+                    return;
+                case "Cue":
+                    if(velocity > 0) {
+                        targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                    } else {
+                        targetPlayer.Stop(true);
+                    }
+                    return;
+                case "LoopJumpLockToggle":
+                    if(velocity > 0) targetPlayer.ToggleLoopJumpSync();
+                    return;
+                case "LoopToggle":
+                    if(velocity > 0) targetPlayer.ToggleLoop();
+                    return;
+                case "LoopSizeIncrease":
+                    if(velocity > 0) targetPlayer.LoopSizeIncrease();
+                    return;
+                case "LoopSizeDecrease":
+                    if(velocity > 0) targetPlayer.LoopSizeDecrease();
+                    return;
+                case "JumpSizeIncrease":
+                    if(velocity > 0) targetPlayer.JumpSizeIncrease();
+                    return;
+                case "JumpSizeDecrease":
+                    if(velocity > 0) targetPlayer.JumpSizeDecrease();
+                    return;
+                case "SnapToBeatMarker":
+                    if(velocity > 0) targetPlayer.SnapToClosestBeatMarker();
+                    return;
+                case "Volume":
+                    double volume = value;
+                    InvokeAsync(() => targetPlayer.SetVolume(volume));
+                    return;
+                case "EqHi":
+                    InvokeAsync(() => {
+                        targetPlayer?.EqControls.ApplyEqHi(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "EqMid":
+                    InvokeAsync(() => {
+                        targetPlayer?.EqControls.ApplyEqMid(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "EqLow":
+                    InvokeAsync(() => {
+                        targetPlayer?.EqControls.ApplyEqLow(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "Filter":
+                    targetPlayer.FilterControls.FiltersValues.Filter = value;
+                    InvokeAsync(targetPlayer.FilterControls.UpdateKnobs);
+                    return;
+                case "JogWheelForward":
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer?.JogWheelForward();
+                    return;
+                case "JogWheelBackward":
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer?.JogWheelBackward();
+                    return;
+                case "Tempo":
+                    double tempo = 1.0 - value;
+                    InvokeAsync(() => targetPlayer.SetTempo(tempo));
+                    return;
+                case "BpmMatch": {
+                    InvokeAsync(targetPlayer.SyncBPMToOtherPlayer);
+                    return;
+                }
+            }
+        };
+
+        Program.MidiTools.Start();
     }
 }

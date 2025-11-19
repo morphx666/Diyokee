@@ -73,8 +73,9 @@
             align-items: center;
             margin-bottom: 0.5rem;
 
-            &:has(select) {
+            .select-container {
                 position: relative;
+                flex: 1;
 
                 &::after {
                     content: '\f0d7';
@@ -135,7 +136,7 @@
         }
 
         input:not([type="checkbox"]), select {
-            flex: 1;
+            width: 100%;
 
             appearance: none;
             font-family: Montserrat;

@@ -9,6 +9,11 @@
 }
 
 @font-face {
+    font-family: "FontAwesome Regular";
+    src: url("/fonts/fa-free-6.7.2-web/webfonts/fa-regular-400.ttf") format("truetype");
+}
+
+@font-face {
     font-family: "FontAwesome Solid";
     src: url("/fonts/fa-free-6.7.2-web/webfonts/fa-solid-900.ttf") format("truetype");
 }
@@ -32,7 +37,8 @@
     --mono-font-family: "JetBrains Mono";
 
     --ctrl-highlight: #81bcb7;
-    --ctrl-highlight-soft: #81bcb7cc;
+    --ctrl-highlight-soft: #4be7fabb; /* #81bcb7; */
+    --ctrl-focus-rect: #ff450088;
 
     --primary: 00, 123, 255; /* --pale-blue */
     --primary-light: #00ceff;

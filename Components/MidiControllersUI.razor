@@ -1,0 +1,221 @@
+﻿@using System.Diagnostics
+@using System.Threading.Tasks
+@using Un4seen.Bass
+@using Un4seen.Bass.AddOn.Midi
+
+<div class="field">
+    <label for="midi-device-name">Controller</label>
+    <div class="select-container">
+        <InputSelect id="midi-device-name" TValue="string" @bind-Value="Settings.MidiDeviceName">
+            @if(MidiDevices.Length == 0) {
+                <option Value="" selected>(no devices found)</option>
+            } else {
+                @foreach(var device in MidiDevices) {
+                    <option Value="@device.name">@device.name</option>
+                }
+            }
+        </InputSelect>
+    </div>
+    <button class="refresh-devices" onclick="@ReloadDevices"><i class="fa-solid fa-arrow-rotate-right"></i></button>
+</div>
+
+<div class="field">
+    <label for="midi-profile">Profile</label>
+    <div class="select-container profile-name">
+        <InputSelect id="midi-profile" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
+            @foreach(var profile in MidiProfiles) {
+                <option Value="@profile">@profile.Name</option>
+            }
+        </InputSelect>
+        @if(isEditingName) {
+            <InputText @bind-Value="SelectedProfileName"
+                       @onblur="@(() => isEditingName = false)" />
+        }
+    </div>
+    <button class="button-add-profile" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+    <button class="button-delete-profile" onclick="@DeleteProfile"><i class="fa-solid fa-circle-xmark"></i></button>
+    <button class="button-edit-profile-name" onclick="@EditMode"><i class="fa-solid fa-pen"></i></button>
+</div>
+
+@if(selectedProfile != null) {
+    <div class="sections-container">
+        <div class="general">
+            <h4>General</h4>
+            <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
+                @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
+                    <div class="mapping-container">
+                        <div class="mapping-name">
+                            <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
+                            <label class="@(!isListening && detectedProperty == $"general{p.Name}" ? "highlight" : "")">@PrettyName(p.Name)</label>
+                        </div>
+                        <div class="buttons-container">
+                            @if(isListening && detectedProperty == $"general{p.Name}") {
+                                <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
+                            } else {
+                                <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General, "general"))">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            }
+                            <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @foreach(var player in selectedProfile.Players.Select((value, index) => new { value, index })) {
+            <div class="player">
+                <h4>Player @Settings.Playback.Players[player.index].Name</h4>
+                <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
+                    @foreach(var p in typeof(MidiControllerProfile.PlayerMapping).GetProperties()) {
+                        if(p.PropertyType != typeof(MidiControllerProfile.MidiMapping)) continue;
+
+                        <div class="mapping-container">
+                            <div class="mapping-name">
+                                <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, player.value)" />
+                                <label class="@(!isListening && detectedProperty == $"player{player.index}{p.Name}" ? "highlight" : "")">@PrettyName(p.Name)</label>
+                            </div>
+                            <div class="buttons-container">
+                                @if(isListening && detectedProperty == $"player{player.index}{p.Name}") {
+                                    <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
+                                } else {
+                                    <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value, $"player{player.index}"))">
+                                        <i class="fa-solid fa-gear"></i>
+                                    </button>
+                                }
+                                <button class="button-delete @(isListening || !HasMapping(p.Name, player.value) ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, player.value))">
+                                    <i class="fa-solid fa-circle-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private MidiControllerProfile selectedProfile = default!;
+    private bool isListening = false;
+    private string listeningProperty = string.Empty;
+    private string detectedProperty = string.Empty;
+    private MidiControllerProfile.MidiMapping mapping = new();
+    private bool isEditingName = false;
+
+    private BASS_MIDI_DEVICEINFO[] MidiDevices => BassMidi.BASS_MIDI_InGetGeviceInfos();
+    private string SelectedProfileName {
+        get => selectedProfile?.Name ?? string.Empty;
+        set => selectedProfile.Name = value;
+    }
+
+    [Parameter]
+    public List<MidiControllerProfile> MidiProfiles { get; set; } = [];
+
+    [Parameter]
+    public Settings Settings { get; set; } = default!;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender && MidiProfiles.Count > 0) {
+            selectedProfile = MidiProfiles[0];
+            Program.MidiTools.OnMidiEvent += MidiEventsHandler;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        base.OnAfterRender(firstRender);
+    }
+
+    private void EditMode() {
+        isEditingName = true;
+    }
+
+    private void ReloadDevices() {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void AddProfile() {
+        var newProfile = new MidiControllerProfile {
+            Name = "New Profile"
+        };
+        MidiProfiles.Add(newProfile);
+        selectedProfile = newProfile;
+    }
+
+    private void DeleteProfile() {
+        if(selectedProfile != null) {
+            MidiProfiles.Remove(selectedProfile);
+            selectedProfile = MidiProfiles.FirstOrDefault() ?? default!;
+        }
+    }
+
+    private void ListenForMidiEvent(string propertyName, object section, string sectionName) {
+        isListening = true;
+        listeningProperty = propertyName;
+        detectedProperty = $"{sectionName}{propertyName}";
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void MidiEventsHandler(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
+        mapping = new MidiControllerProfile.MidiMapping {
+            EventType = midiEvent.eventtype,
+            Parameter = midiEvent.param,
+            Channel = midiEvent.chan
+        };
+
+        mapping.Note = midiEvent.param & 0xFF;
+        mapping.Velocity = (midiEvent.param >> 8) & 0xFF;
+        mapping.Controller = midiEvent.param & 0xFF;
+
+        detectedProperty = $"{section}{propertyName}";
+
+        if(listeningProperty == propertyName) {
+            RecordMapping(section);
+        } else {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void RecordMapping(object section) {
+        if(mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE && selectedProfile != null) {
+            section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
+        }
+        mapping = new();
+
+        StopListening();
+    }
+
+    private void StopListening() {
+        isListening = false;
+        listeningProperty = string.Empty;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void RemoveMidiEventHandler() {
+        if(MidiEventsHandler != null) {
+            Program.MidiTools!.OnMidiEvent -= MidiEventsHandler; // This CS8601 warning has a to be a bug... or I'm missing something
+        }
+    }
+
+    private bool HasMapping(string propertyName, object section) {
+        var mapping = section.GetType().GetProperty(propertyName)?.GetValue(section) as MidiControllerProfile.MidiMapping;
+        return mapping != null && mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE;
+    }
+
+    private void DeleteMapping(string propertyName, object section) {
+        section.GetType().GetProperty(propertyName)?.SetValue(section, new MidiControllerProfile.MidiMapping());
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string PrettyName(string name) {
+        // Convert from PascalCase to "Pascal Case"
+        if(name.Contains("Player")) {
+            name = name.Replace("Player0", $"Player{Settings.Playback.Players[0].Name}");
+            name = name.Replace("Player1", $"Player{Settings.Playback.Players[1].Name}");
+        }
+        return System.Text.RegularExpressions.Regex.Replace(name, "(\\B[A-Z])", " $1");
+    }
+}

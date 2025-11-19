@@ -22,19 +22,19 @@
     </div>
 
     <div class="row">
-        <div class="field">
+        <div class="field"
+            tabindex="0"
+            @onblur="@(() => {
+                albumsAcVisible = false;
+                player?.EnableMouseEvents = true;
+            })">
             <label for="album">Album</label>
             <InputText id="album"
                 @bind-value="file.Album"
-                @onclick="@(async () => {
+                @onclick="@(async (e) => {
                                 albumsAcVisible = true;
-                                if(player != null) player.EnableMouseEvents = false;
+                                player?.EnableMouseEvents = false;
                                 await JS.InvokeVoidAsync("scrollToSelectedItem");
-                            })"
-                @onblur="@(async () => {
-                                await Task.Delay(100); // Process item onclick first (if any)
-                                albumsAcVisible = false;
-                                if(player != null) player.EnableMouseEvents = true;
                             })" />
             <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                 @foreach(var album in albums) {
@@ -42,7 +42,7 @@
                         @onclick="@(async () => {
                                 file.Album = album;
                                 albumsAcVisible = false;
-                                if(player != null) player.EnableMouseEvents = true;
+                                player?.EnableMouseEvents = true;
                             })">
                         @album
                     </div>
@@ -50,27 +50,27 @@
             </div>
         </div>
 
-        <div class="field">
+        <div class="field"
+            tabindex="1"
+            @onblur="@(() => {
+                genresAcVisible = false;
+                player?.EnableMouseEvents = true;
+            })">
             <label for="genre">Genre</label>
             <InputText id="genre"
                 @bind-value="file.Genre"
                 @onclick="@(async () => {
-                                    genresAcVisible = true;
-                                    if(player != null) player.EnableMouseEvents = false;
-                                    await JS.InvokeVoidAsync("scrollToSelectedItem");
-                                })"
-                @onblur="@(async () => {
-                                    await Task.Delay(100); // Process item onclick first (if any)
-                                    genresAcVisible = false;
-                                    if(player != null) player.EnableMouseEvents = true;
-                                })" />
+                                genresAcVisible = true;
+                                player?.EnableMouseEvents = false;
+                                await JS.InvokeVoidAsync("scrollToSelectedItem");
+                            })" />
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
                     <div class="item @(genre == file.Genre ? "selected" : "")"
                         @onclick="@(async () => {
                                 file.Genre = genre;
                                 genresAcVisible = false;
-                                if(player != null) player.EnableMouseEvents = true;
+                                player?.EnableMouseEvents = true;
                             })">
                         @genre
                     </div>
@@ -106,57 +106,65 @@
                 <div class="recalculate" @onclick="() => BpmMultiply(0.5)"><i class="fa-solid fa-divide"></i>2</div>
             </div>
 
-            <div class="field">
-                <label for="key">Key</label>
-                <InputText
-                    id="key"
-                    class="as-number"
-                    ReadOnly="true"
-                    @bind-value="FileKeyInSelectedNotation"
-                    @onclick="@(async () => {
-                                    keysAcVisible = true;
-                                    if(player != null) player.EnableMouseEvents = false;
-                                    await JS.InvokeVoidAsync("scrollToSelectedItem");
-                                })"
-                    @onblur="@(async () => {
-                                    await Task.Delay(100); // Process item's onclick first (if any)
-                                    keysAcVisible = false;
-                                    if(player != null) player.EnableMouseEvents = true;
-                                })" />
-                <div class="autocomplete scroller @(keysAcVisible ? "show" : "")">
-                    @foreach(var key in KeyTools.NotationToKeysMap[selectedNotation]) {
-                        <div class="item @(key == file.Key ? "selected" : "")"
-                            @onclick="@(async () => {
-                                    file.Key = key;
-                                    keysAcVisible = false;
-                                    if(player != null) player.EnableMouseEvents = true;
-                                })">
-                            @key
-                        </div>
-                    }
+            <div class="key-notation-container">
+                <div class="field"
+                    tabindex="2"
+                    @onblur="@(() => {
+                        keysAcVisible = false;
+                        player?.EnableMouseEvents = true;
+                    })">
+                    <label for="key">Key</label>
+                    <InputText
+                        id="key"
+                        class="as-number"
+                        ReadOnly="true"
+                        @bind-value="FileKeyInSelectedNotation"
+                        @onclick="@(async () => {
+                                        keysAcVisible = true;
+                                        player?.EnableMouseEvents = false;
+                                        await JS.InvokeVoidAsync("scrollToSelectedItem");
+                                    })" />
+                    <div class="autocomplete scroller @(keysAcVisible ? "show" : "")">
+                        @foreach(var key in KeyTools.NotationToKeysMap[selectedNotation]) {
+                            <div class="item @(key == keyTools.ConvertTo(file.Key, selectedNotation) ? "selected" : "")"
+                                @onclick="@(async () => {
+                                        file.Key = key;
+                                        keysAcVisible = false;
+                                        player?.EnableMouseEvents = true;
+                                    })">
+                                @key
+                            </div>
+                        }
+                    </div>
                 </div>
 
-                <InputText
-                    id="notation"
-                    ReadOnly="true"
-                    @bind-value="NotationAsString"
-                    @onclick="@(async () => {
-                            notationsAcVisible = true;
-                            if(player != null) player.EnableMouseEvents = false;
-                            await JS.InvokeVoidAsync("scrollToSelectedItem");
-                        })"
-                    @onblur="@(async () => {
-                            await Task.Delay(150); // Process item's onclick first (if any)
-                            notationsAcVisible = false;
-                            if(player != null) player.EnableMouseEvents = true;
-                        })" />
-                <div class="autocomplete scroller @(notationsAcVisible ? "show" : "")">
-                    @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
-                        <div class="item @(notation == NotationAsString ? "selected" : "")"
-                             @onclick="@(() => NotationAsString = notation)">
-                            @notation
-                        </div>
-                    }
+                <div class="field"
+                    tabindex="3"
+                    @onblur="@(() => {
+                        notationsAcVisible = false;
+                        player?.EnableMouseEvents = true;
+                    })">
+                    <InputText
+                        id="notation"
+                        ReadOnly="true"
+                        @bind-value="NotationAsString"
+                        @onclick="@(async () => {
+                                notationsAcVisible = true;
+                                player?.EnableMouseEvents = false;
+                                await JS.InvokeVoidAsync("scrollToSelectedItem");
+                            })" />
+                    <div class="autocomplete notation scroller @(notationsAcVisible ? "show" : "")">
+                        @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
+                            <div class="item @(notation == NotationAsString ? "selected" : "")"
+                                @onclick="@(async () => {
+                                    NotationAsString = notation;
+                                    notationsAcVisible = false;
+                                    player?.EnableMouseEvents = true;
+                                })">
+                                @notation
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -177,7 +185,21 @@
 </ModalDialog>
 
 <script>
-    scrollToSelectedItem = () => document.querySelector(".item.selected").scrollTo({ top: 0 });
+    scrollToSelectedItem = () => {
+        let el = document.querySelector(".field .show .item.selected");
+        if(el === null) {
+            window.setTimeout(scrollToSelectedItem, 50);
+        } else {
+            el.scrollIntoView();
+            while(el != null) {
+                if(el.classList.contains("field")) {
+                    el.focus();
+                    break;
+                }
+                el = el.parentElement;
+            }
+        }
+    }
 </script>
 
 @code {

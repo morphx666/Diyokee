@@ -34,8 +34,6 @@
             let [x, y, w, h, unit] = param;
             if(unit === undefined) unit = "px";
 
-            if(x!=-1)console.log(`${x}${unit}`);
-
             if(x != -1) element.style.left = `${x}${unit}`;
             if(y != -1) element.style.top = `${y}${unit}`;
 
@@ -104,6 +102,11 @@
 
         forceRefresh = () => {
             window.dispatchEvent(new Event('resize'));
+        }
+
+        scrollSelectedItemIntoView = (selector, block = "nearest") => {
+            document.querySelector(selector)?.scrollIntoView({ block: block, behavior: "smooth" });
+            console.log("Scrolling selected item into view");
         }
     </script>
 </body>

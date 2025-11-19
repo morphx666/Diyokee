@@ -9,23 +9,37 @@
             <div><i class="fa-solid fa-headphones-simple"></i> Monitor</div>
         </div>
     </div>
-    @foreach(var (device, deviceIndex) in audioDevices.WithIndex()) {
+    @foreach(var deviceObj in audioDevices.Select((device, index) => (device, index))) {
         <div class="device">
-            <h5>@device.Name</h5>
+            <h5>@deviceObj.device.Name</h5>
             <div class="channels">
-                @foreach(var (channel, channelIndex) in device.Speakers.WithIndex()) {
-                    <div class="channel">@channel</div>
+                @foreach(var channelObj in deviceObj.device.Speakers.Select((channel, index) => (channel, index))) {
+                    <div class="channel">@channelObj.channel</div>
                     <div class="outputs-select">
-                        <input type="checkbox" @bind="master[deviceIndex][channelIndex]" @onmouseup="@(() => Update(true, deviceIndex, channelIndex))" id="@($"cb-master-{deviceIndex}{channelIndex}")" />
-                        <input type="checkbox" @bind="monitor[deviceIndex][channelIndex]" @onmouseup="@(() => Update(false, deviceIndex, channelIndex))" id="@($"cb-monitor-{deviceIndex}{channelIndex}")" />
+                        <input
+                            type="checkbox"
+                            @bind="master[deviceObj.index][channelObj.index]"
+                            @onmouseup="@(() => Update(true, deviceObj.index, channelObj.index))"
+                            id="@($"cb-master-{deviceObj.index}{channelObj.index}")" />
+                        <input
+                            type="checkbox"
+                            @bind="monitor[deviceObj.index][channelObj.index]"
+                            @onmouseup="@(() => Update(false, deviceObj.index, channelObj.index))"
+                            id="@($"cb-monitor-{deviceObj.index}{channelObj.index}")" />
                     </div>
                 }
             </div>
         </div>
     }
 </div>
-<div class="restart-warning" hidden="@(!hideRestartRequiredMsg)">&nbsp;</div>
-<div class="restart-warning" hidden="@hideRestartRequiredMsg">Changes made to the AudioMatrix will require restarting the application</div>
+
+<div class="restart-warning">
+    @if(hideRestartRequiredMsg) {
+        <span>&nbsp;</span>
+    } else {
+        <span>Changes made to the AudioMatrix will require restarting the application</span>
+    }
+</div>
 
 @code {
     private List<AudioDevice> audioDevices { get; set; } = new();

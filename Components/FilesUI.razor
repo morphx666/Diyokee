@@ -13,8 +13,8 @@
     <div class="spinner" style="@(providerIsBusy ? "" : "display: none")">
         <img src="@Assets["/images/spinner.png"]" />
     </div>
-    <div class="files-scrollable scroller">
-        <div class="files-list-container" tabindex="0">
+    <div class="files-scrollable scroller" tabindex="1">
+        <div class="files-list-container">
             <div class="column cell" @onclick="() => SetSortingIndex(0)">Artist<i class="fa-solid @(sortIndex == 0 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
             <div class="column cell" @onclick="() => SetSortingIndex(1)">Title<i class="fa-solid @(sortIndex == 1 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
             <div class="column cell" @onclick="() => SetSortingIndex(2)">Genre<i class="fa-solid @(sortIndex == 2 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
@@ -30,7 +30,7 @@
                         <img src="@Assets["/images/waiting.gif"]" />
                     </div>
                 } else {
-                    <div class="@(GetFileClasses(file))"        @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
+                    <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
                 }
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
                 <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
@@ -195,6 +195,11 @@
             await cache!.SaveChangesAsync();
             await cache.DisposeAsync();
         });
+
+        if(files.Count > 0 && selectedFile == "") {
+            await ChangeSelectedFile(files[0]);
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     private void SetSortingIndex(int index) {
@@ -375,7 +380,7 @@
         return sb.ToString().TrimEnd('|');
     }
 
-    public async void ChangeSelectedFile(DFile? file) {
+    public async Task ChangeSelectedFile(DFile? file) {
         string newFilename = file?.Filename ?? "";
         if(selectedFile == newFilename) return;
 
@@ -409,8 +414,6 @@
         return base.OnAfterRenderAsync(firstRender);
     }
 
-    // Is this the correct way to handle parameter changes?
-    // https://stackoverflow.com/questions/79302784/why-blazor-component-parameters-should-be-the-auto-properties
     public override Task SetParametersAsync(ParameterView parameters) {
         parameters.SetParameterProperties(this);
 
@@ -418,4 +421,32 @@
 
         return base.OnParametersSetAsync();
     }
+
+    #region MidiSupport
+    public void SelectUp() {
+        if(files.Count == 0) return;
+        if(selectedFile == "") {
+            ChangeSelectedFile(files[0]).Wait();
+        } else {
+            int currentIndex = files.FindIndex(f => f.Filename == selectedFile);
+            if(currentIndex > 0) ChangeSelectedFile(files[currentIndex - 1]).Wait();
+        }
+        InvokeAsync(StateHasChanged);
+
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".files-list-container .selected");
+    }
+
+    public void SelectDown() {
+        if(files.Count == 0) return;
+        if(selectedFile == "") {
+            ChangeSelectedFile(files[0]).Wait();
+        } else {
+            int currentIndex = files.FindIndex(f => f.Filename == selectedFile);
+            if(currentIndex < files.Count - 1) ChangeSelectedFile(files[currentIndex + 1]).Wait();
+        }
+        InvokeAsync(StateHasChanged);
+
+        if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".files-list-container .selected");
+    }
+    #endregion
 }

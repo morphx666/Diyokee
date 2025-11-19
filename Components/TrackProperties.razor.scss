@@ -1,5 +1,17 @@
 ﻿.year {
-    max-width: 8rem;
+    max-width: 9rem;
+}
+
+.key-notation-container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem;
+
+    .notation {
+        left: 0 !important;
+        width: fit-content !important;
+    }
 }
 
 .bpm-container {
@@ -53,8 +65,8 @@
     }
 
     .player-container {
-        height: 250px;
         width: 100%;
+        height: 256px;
 
         background-color: var(--panel-background-color-light);
     }

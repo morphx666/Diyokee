@@ -1,0 +1,40 @@
+.folders {
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+    height: calc(100% - 2.4rem);
+
+    overflow-y: auto;
+
+    position: relative;
+    &:focus { // FIXME: This should only be shown when the focus is triggered by a MIDI controller
+        &::after {
+            //content: "";
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: calc(100% - 2px);
+            height: calc(100% - 2px);
+            outline: 1px solid var(--ctrl-focus-rect);
+            pointer-events: none;
+
+            animation: fade-in-out 2s forwards;
+        }
+    }
+
+    @keyframes fade-in-out {
+        0% {
+            opacity: 0;
+        }
+        25% {
+            opacity: 1;
+        }
+        60% {
+            opacity: 1;
+        }
+        100% {
+            opacity: 0;
+        }
+    }
+}
