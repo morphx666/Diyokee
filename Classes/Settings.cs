@@ -102,9 +102,12 @@ namespace Diyokee {
             }
         }
 
+        private readonly Lock lockObj = new();
         public async Task Save() {
-            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
-            await File.WriteAllTextAsync(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
+            lock(lockObj) {
+                string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+                File.WriteAllText(Path.Combine(workingDirectory, "settings.json"), JsonConvert.SerializeObject(this, Formatting.Indented));
+            }
         }
 
         public object Clone() {

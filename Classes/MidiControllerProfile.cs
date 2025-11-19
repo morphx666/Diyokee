@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 using Un4seen.Bass.AddOn.Midi;
 
 namespace Diyokee {
-    public class MidiControllerProfile {
+    public class MidiControllerProfile : ICloneable {
         public class MidiMapping {
             public BASSMIDIEvent EventType { get; set; } = BASSMIDIEvent.MIDI_EVENT_NONE;
             public int Note { get; set; } = -1;
@@ -83,6 +83,17 @@ namespace Diyokee {
                 string filePath = Path.Combine(profilesPath, $"{profile.Name}.json");
                 await File.WriteAllTextAsync(filePath, JsonConvert.SerializeObject(profile, Formatting.Indented));
             }
+        }
+
+        public static string GetProfilePath(string fileName) {
+            string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+            string profilesPath = Path.Combine(workingDirectory, "controllers");
+            if(!Directory.Exists(profilesPath)) Directory.CreateDirectory(profilesPath);
+            return Path.Combine(profilesPath, fileName + ".json");
+        }
+
+        public object Clone() {
+            return JsonConvert.DeserializeObject<MidiControllerProfile>(JsonConvert.SerializeObject(this)) ?? new MidiControllerProfile();
         }
     }
 }

@@ -132,12 +132,13 @@ internal class Program {
                     UseShellExecute = true
                 });
             } else {
+                string line = new('—', 57 + Settings.WebHostUrl.Length);
                 Logger.LogInformation(
                     $"""
 
-                    --------------------------------------------------------------------
+                    {line}
                         You may now open your browser and navigate to: {Settings.WebHostUrl}");
-                    --------------------------------------------------------------------
+                    {line}
 
                     """);
             }

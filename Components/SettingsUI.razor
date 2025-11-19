@@ -94,7 +94,9 @@
 
         <div class="header">
             <h3>Midi</h3>
-            <MidiControllersUI Settings="settings" />
+            <MidiControllersUI
+                Settings="settings"
+                MidiProfiles="midiProfiles"/>
         </div>
     </div>
 </ModalDialog>
@@ -109,11 +111,13 @@
     public EventCallback OnClose { get; set; } = default!;
 
     private Settings settings = default!;
+    private List<MidiControllerProfile> midiProfiles = default!;
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
     public void Open() {
         settings = (Settings)Program.Settings.Clone();
+        midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
         dialog.Open();
     }
 
@@ -124,7 +128,12 @@
     }
 
     public async void Save() {
+        foreach(var mp in Program.MidiControllersProfiles) {
+            File.Delete(MidiControllerProfile.GetProfilePath(mp.Name));
+        }
+
         Program.Settings = settings;
+        Program.MidiControllersProfiles = midiProfiles;
         await Program.Settings.Save();
         await MidiControllerProfile.SaveAll(Program.MidiControllersProfiles);
         Close();

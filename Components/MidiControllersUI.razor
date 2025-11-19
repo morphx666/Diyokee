@@ -21,14 +21,22 @@
 
 <div class="field">
     <label for="midi-profile">Profile</label>
-    <div class="select-container">
+    <div class="select-container profile-name">
         <InputSelect id="midi-profile" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
-            @foreach(var profile in Program.MidiControllersProfiles) {
+            @foreach(var profile in MidiProfiles) {
                 <option Value="@profile">@profile.Name</option>
             }
         </InputSelect>
+        @if(isEditingName) {
+            <InputText 
+                @bind-Value="SelectedProfileName"
+                @onblur="@(() => isEditingName = false)"
+            />
+        }
     </div>
-    <button class="button-add-provider" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+    <button class="button-add-profile" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
+    <button class="button-delete-profile" onclick="@DeleteProfile"><i class="fa-solid fa-circle-xmark"></i></button>
+    <button class="button-edit-profile-name" onclick="@EditMode"><i class="fa-solid fa-pen"></i></button>
 </div>
 
 @if(selectedProfile != null) {
@@ -99,19 +107,33 @@
     private string listeningProperty = string.Empty;
     private int midiStreamHandle = -1;
     private MidiControllerProfile.MidiMapping mapping = new();
+    private bool isEditingName = false;
 
     private BASS_MIDI_DEVICEINFO[] MidiDevices => BassMidi.BASS_MIDI_InGetGeviceInfos();
+    private string SelectedProfileName {
+        get => selectedProfile?.Name ?? string.Empty;
+        set {
+            selectedProfile.Name = value;
+        }
+    }
+
+    [Parameter]
+    public List<MidiControllerProfile> MidiProfiles { get; set; } = [];
 
     [Parameter]
     public Settings Settings { get; set; } = default!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender && Program.MidiControllersProfiles.Count > 0) {
-            selectedProfile = Program.MidiControllersProfiles[0];
+        if(firstRender && MidiProfiles.Count > 0) {
+            selectedProfile = MidiProfiles[0];
             await InvokeAsync(StateHasChanged);
         }
 
         base.OnAfterRender(firstRender);
+    }
+
+    private void EditMode() {
+        isEditingName = true;
     }
 
     private void ReloadDevices() {
@@ -122,8 +144,15 @@
         var newProfile = new MidiControllerProfile {
             Name = "New Profile"
         };
-        Program.MidiControllersProfiles.Add(newProfile);
+        MidiProfiles.Add(newProfile);
         selectedProfile = newProfile;
+    }
+
+    private void DeleteProfile() {
+        if(selectedProfile != null) {
+            MidiProfiles.Remove(selectedProfile);
+            selectedProfile = MidiProfiles.FirstOrDefault() ?? default!;
+        }
     }
 
     private void ListenForMidiEvent(string propertyName, object section) {

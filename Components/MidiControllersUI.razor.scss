@@ -35,7 +35,6 @@ button {
     font-size: 1rem;
     background: none;
     border: none;
-    margin-left: 0.4rem;
     cursor: pointer;
 
     opacity: 0.7;
@@ -45,8 +44,16 @@ button {
         opacity: 1;
     }
 
-    &.button-add-provider {
+    &.button-add-profile {
         color: var(--primary-light);
+    }
+
+    &.button-delete-profile {
+        color: var(--secondary-light);
+    }
+
+    &.button-edit-profile-name {
+        color: var(--text-white);
     }
 
     &.button-listen {
@@ -69,6 +76,18 @@ button {
 
     &.not-configured {
         opacity: 0.3;
+    }
+}
+
+::deep .profile-name {
+    position: relative;
+    
+    input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: calc(100% - 32px) !important;
+        border-bottom: 3px solid var(--ctrl-highlight) !important;
     }
 }
 
