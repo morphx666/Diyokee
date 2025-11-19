@@ -28,10 +28,8 @@
             }
         </InputSelect>
         @if(isEditingName) {
-            <InputText 
-                @bind-Value="SelectedProfileName"
-                @onblur="@(() => isEditingName = false)"
-            />
+            <InputText @bind-Value="SelectedProfileName"
+                       @onblur="@(() => isEditingName = false)" />
         }
     </div>
     <button class="button-add-profile" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
@@ -48,13 +46,13 @@
                     <div class="mapping-container">
                         <div class="mapping-name">
                             <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
-                            <label>@PrettyName(p.Name)</label>
+                            <label class="@(!isListening && detectedProperty == $"general{p.Name}" ? "highlight" : "")">@PrettyName(p.Name)</label>
                         </div>
                         <div class="buttons-container">
-                            @if(isListening && listeningProperty == p.Name) {
+                            @if(isListening && detectedProperty == $"general{p.Name}") {
                                 <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
                             } else {
-                                <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General))">
+                                <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.General, "general"))">
                                     <i class="fa-solid fa-gear"></i>
                                 </button>
                             }
@@ -77,13 +75,13 @@
                         <div class="mapping-container">
                             <div class="mapping-name">
                                 <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, player.value)" />
-                                <label>@PrettyName(p.Name)</label>
+                                <label class="@(!isListening && detectedProperty == $"player{player.index}{p.Name}" ? "highlight" : "")">@PrettyName(p.Name)</label>
                             </div>
                             <div class="buttons-container">
-                                @if(isListening && listeningProperty == p.Name) {
+                                @if(isListening && detectedProperty == $"player{player.index}{p.Name}") {
                                     <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
                                 } else {
-                                    <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value))">
+                                    <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, player.value) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, player.value, $"player{player.index}"))">
                                         <i class="fa-solid fa-gear"></i>
                                     </button>
                                 }
@@ -100,21 +98,17 @@
 }
 
 @code {
-    private MIDIINPROC midiProc = default!;
-
     private MidiControllerProfile selectedProfile = default!;
     private bool isListening = false;
     private string listeningProperty = string.Empty;
-    private int midiStreamHandle = -1;
+    private string detectedProperty = string.Empty;
     private MidiControllerProfile.MidiMapping mapping = new();
     private bool isEditingName = false;
 
     private BASS_MIDI_DEVICEINFO[] MidiDevices => BassMidi.BASS_MIDI_InGetGeviceInfos();
     private string SelectedProfileName {
         get => selectedProfile?.Name ?? string.Empty;
-        set {
-            selectedProfile.Name = value;
-        }
+        set => selectedProfile.Name = value;
     }
 
     [Parameter]
@@ -126,6 +120,7 @@
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender && MidiProfiles.Count > 0) {
             selectedProfile = MidiProfiles[0];
+            Program.MidiTools.OnMidiEvent += MidiEventsHandler;
             await InvokeAsync(StateHasChanged);
         }
 
@@ -155,67 +150,53 @@
         }
     }
 
-    private void ListenForMidiEvent(string propertyName, object section) {
+    private void ListenForMidiEvent(string propertyName, object section, string sectionName) {
         isListening = true;
         listeningProperty = propertyName;
-
-        midiProc = (device, time, buffer, length, user) => {
-            byte[] bytes = new byte[length];
-            System.Runtime.InteropServices.Marshal.Copy(buffer, bytes, 0, length);
-
-            BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
-            if(midiEvents != null && midiEvents.Length > 0) {
-                mapping = new MidiControllerProfile.MidiMapping {
-                    EventType = midiEvents[0].eventtype,
-                    Parameter = midiEvents[0].param,
-                    Channel = midiEvents[0].chan
-                };
-
-                mapping.Note = midiEvents[0].param & 0xFF;
-                mapping.Velocity = (midiEvents[0].param >> 8) & 0xFF;
-                mapping.Controller = midiEvents[0].param & 0xFF;
-
-                RecordMapping(section);
-            }
-
-            BassMidi.BASS_MIDI_StreamEvents(midiStreamHandle, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);
-        };
-
-        int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == Settings.MidiDeviceName);
-        BASS_MIDI_DEVICEINFO deviceInfo = BassMidi.BASS_MIDI_InGetDeviceInfo(deviceIndex);
-        if(deviceInfo.IsInitialized) {
-            BassMidi.BASS_MIDI_InStop(deviceIndex);
-            BassMidi.BASS_MIDI_InFree(deviceIndex);
-        }
-        BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
-        BassMidi.BASS_MIDI_InStart(deviceIndex);
-        midiStreamHandle = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
-
+        detectedProperty = $"{sectionName}{propertyName}";
         InvokeAsync(StateHasChanged);
     }
 
-    private void RecordMapping(object section) {
-        if(midiStreamHandle != -1) {
-            if(mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE && selectedProfile != null) {
-                section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
-            }
-            int deviceIndex = MidiDevices.ToList().FindIndex(d => d.name == Settings.MidiDeviceName);
+    private void MidiEventsHandler(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
+        mapping = new MidiControllerProfile.MidiMapping {
+            EventType = midiEvent.eventtype,
+            Parameter = midiEvent.param,
+            Channel = midiEvent.chan
+        };
 
-            BassMidi.BASS_MIDI_InStop(deviceIndex);
-            //BassMidi.BASS_MIDI_InFree(deviceIndex);
-            var result = Bass.BASS_StreamFree(midiStreamHandle);
+        mapping.Note = midiEvent.param & 0xFF;
+        mapping.Velocity = (midiEvent.param >> 8) & 0xFF;
+        mapping.Controller = midiEvent.param & 0xFF;
 
-            midiStreamHandle = -1;
-            mapping = new();
+        detectedProperty = $"{section}{propertyName}";
+
+        if(listeningProperty == propertyName) {
+            RecordMapping(section);
+        } else {
+            InvokeAsync(StateHasChanged);
         }
+    }
+
+    private void RecordMapping(object section) {
+        if(mapping.EventType != BASSMIDIEvent.MIDI_EVENT_NONE && selectedProfile != null) {
+            section.GetType().GetProperty(listeningProperty)?.SetValue(section, mapping);
+        }
+        mapping = new();
 
         StopListening();
     }
 
     private void StopListening() {
         isListening = false;
+        listeningProperty = string.Empty;
 
         InvokeAsync(StateHasChanged);
+    }
+
+    public void RemoveMidiEventHandler() {
+        if(MidiEventsHandler != null) {
+            Program.MidiTools!.OnMidiEvent -= MidiEventsHandler; // This CS8601 warning has a to be a bug... or I'm missing something
+        }
     }
 
     private bool HasMapping(string propertyName, object section) {

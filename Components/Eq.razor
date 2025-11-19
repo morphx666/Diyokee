@@ -9,24 +9,24 @@
      @ref="knobs">
     <Knob Name="HI" @ref="eqHi" ValueChanged="ApplyEqHi" />
     <Knob Name="MID" @ref="eqMid" ValueChanged="ApplyEqMid" />
-    <Knob Name="LO" @ref="eqLo" ValueChanged="ApplyEqLo" />
+    <Knob Name="LOW" @ref="eqLow" ValueChanged="ApplyEqLow" />
 
     <div class="eq-options" style="display: @(eqOptionsVisible ? "block" : "none")">
         @foreach(var profile in Program.Settings.EqualizerProfiles) {
             <div class="eq-option @(profile.Name == EqProfile.Name ? "selected" : "")"
                  @onclick="@(() => {
-                    EqProfile = profile;
-                    eqOptionsVisible = false;
-                    EqProfileChanged.InvokeAsync(EqProfile);
-                })">
-                <div>@profile.Name</div>
-                <div class="frequencies">
-                    <span>Low</span><span>@profile.Low.ToString("N2") Hz</span>
-                    <span>Mid</span><span>@profile.Mid.ToString("N2") Hz</span>
-                    <span>Hi</span><span>@profile.Hi.ToString("N2") Hz</span>
-                </div>
+                 EqProfile = profile;
+                 eqOptionsVisible = false;
+                 EqProfileChanged.InvokeAsync(EqProfile);
+             })">
+            <div>@profile.Name</div>
+            <div class="frequencies">
+                <span>Low</span><span>@profile.Low.ToString("N2") Hz</span>
+                <span>Mid</span><span>@profile.Mid.ToString("N2") Hz</span>
+                <span>Hi</span><span>@profile.Hi.ToString("N2") Hz</span>
             </div>
-        }
+        </div>
+                }
     </div>
 </div>
 
@@ -49,37 +49,37 @@
 @code {
     private Knob? eqHi;
     private Knob? eqMid;
-    private Knob? eqLo;
+    private Knob? eqLow;
     private ElementReference? knobs;
     private EqualizerProfile eqProfile = default!;
 
     private bool eqOptionsVisible = false;
 
     private bool enableMouseEvents = true;
-    public bool EnableMouseEvents { 
+    public bool EnableMouseEvents {
         get => enableMouseEvents;
         set {
             if(eqHi != null) eqHi.EnableMouseEvents = value;
             if(eqMid != null) eqMid.EnableMouseEvents = value;
-            if(eqLo != null) eqLo.EnableMouseEvents = value;
+            if(eqLow != null) eqLow.EnableMouseEvents = value;
         }
     }
 
-    public EqualizerProfile EqProfile { 
+    public EqualizerProfile EqProfile {
         get => eqProfile;
         set {
             eqProfile = value;
 
             ApplyEqHi(eqValues.Hi);
             ApplyEqMid(eqValues.Mid);
-            ApplyEqLo(eqValues.Lo);
+            ApplyEqLow(eqValues.Low);
         }
     }
 
     public struct EqValues {
         public double Hi;
         public double Mid;
-        public double Lo;
+        public double Low;
     }
     private EqValues eqValues = new();
 
@@ -95,7 +95,7 @@
     public Eq() {
         eqValues.Hi = 0.5;
         eqValues.Mid = 0.5;
-        eqValues.Lo = 0.5;
+        eqValues.Low = 0.5;
 
         EqProfile = Program.Settings.EqualizerProfiles[0];
     }
@@ -103,30 +103,36 @@
     public void Reset() {
         eqHi?.SetValue(0.5);
         eqMid?.SetValue(0.5);
-        eqLo?.SetValue(0.5);
+        eqLow?.SetValue(0.5);
     }
 
-    private async void ApplyEqHi(double value) {
+    public async void ApplyEqHi(double value) {
         eqValues.Hi = value;
         await ValueChanged.InvokeAsync(eqValues);
     }
 
-    private async void ApplyEqMid(double value) {
+    public async void ApplyEqMid(double value) {
         eqValues.Mid = value;
         await ValueChanged.InvokeAsync(eqValues);
     }
 
-    private async void ApplyEqLo(double value) {
-        eqValues.Lo = value;
+    public async void ApplyEqLow(double value) {
+        eqValues.Low = value;
         await ValueChanged.InvokeAsync(eqValues);
     }
 
-    public async void SetEqValues(EqValues values) {
-        eqValues = values;
-        eqHi?.SetValue(values.Hi);
-        eqMid?.SetValue(values.Mid);
-        eqLo?.SetValue(values.Lo);
+    public async void UpdateKnobs() {
+        if(eqHi != null && eqHi.Value != eqValues.Hi || true) await eqHi!.SetValue(eqValues.Hi, true);
+        if(eqMid != null && eqMid.Value != eqValues.Mid) await eqMid!.SetValue(eqValues.Mid, true);
+        if(eqLow != null && eqLow.Value != eqValues.Low) await eqLow!.SetValue(eqValues.Low, true);
     }
+
+    // public async void SetEqValues(EqValues values) {
+    //     eqValues = values;
+    //     if(eqHi?.Value != values.Hi) eqHi?.SetValue(values.Hi);
+    //     if(eqMid?.Value != values.Mid) eqMid?.SetValue(values.Mid);
+    //     if(eqLow?.Value != values.Low) eqLow?.SetValue(values.Low);
+    // }
 
     public Eq.EqValues GetEqValues() {
         return eqValues;
@@ -136,7 +142,7 @@
         if(firstRender) {
             eqHi?.SetInitialValue(eqValues.Hi);
             eqMid?.SetInitialValue(eqValues.Mid);
-            eqLo?.SetInitialValue(eqValues.Lo);
+            eqLow?.SetInitialValue(eqValues.Low);
 
             await InvokeAsync(StateHasChanged);
         }

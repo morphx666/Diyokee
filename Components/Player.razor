@@ -78,7 +78,7 @@
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
             <Eq ValueChanged="ApplyEqValues" EqProfileChanged="EqProfileChanged" @ref="EqControls" />
-            <Filters ValueChanged="ApplyFilterValues" @ref=FilterControls />
+            <FiltersUI ValueChanged="ApplyFilterValues" @ref="FilterControls" />
         }
     </div>
 
@@ -179,7 +179,7 @@
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
     [JsonProperty] public Eq EqControls = null!;
-    [JsonProperty] public Filters FilterControls = null!;
+    [JsonProperty] public FiltersUI FilterControls = null!;
 
     [JsonProperty] private int waveformWidth = 0;
     [JsonProperty] private long waveformStepLength = 0;
@@ -426,10 +426,10 @@
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
-        // Lo
+        // Low
         eqParams.lBand = 0;
         eqParams.fCenter = EqControls.EqProfile.Low;
-        eqParams.fGain = (float)(eqValues.Lo * 30 - 15);
+        eqParams.fGain = (float)(eqValues.Low * 30 - 15);
         Bass.BASS_FXSetParameters(eqHandle, eqParams);
 
         // Mid
@@ -450,7 +450,11 @@
         UpdateSettings();
     }
 
-    private void ApplyFilterValues(Filters.FilterKeyValues filtersValues) {
+    public void SetFilterValue(double value) { // FIXME: Temporary workaround until the proper ApplyFilterValues() is implemented
+        FilterControls.FiltersValues.Filter = value;
+    }
+
+    private void ApplyFilterValues(FiltersUI.FilterKeyValues filtersValues) {
     }
 
     private double GetRemainingTime() {

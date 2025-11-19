@@ -18,7 +18,7 @@
     [Parameter]
     public EventCallback<FilterKeyValues> ValueChanged { get; set; }
 
-    public Filters() {
+    public FiltersUI() {
         FiltersValues.Filter = 0.5;
         FiltersValues.Key = 0.5;
     }
@@ -36,6 +36,10 @@
     private async void ApplyEqKey(double value) {
         FiltersValues.Key = value;
         await ValueChanged.InvokeAsync(FiltersValues);
+    }
+
+    public async Task UpdateKnobs() {
+        if(eqFilter != null && FiltersValues.Filter != eqFilter.Value) await eqFilter.SetValue(FiltersValues.Filter, true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

@@ -20,7 +20,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-right-from-bracket.svg" width="12"> button to sync the track to the other player
 - Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/volume-high.svg" width="12"> fader to change the volume.
 - Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/music.svg" width="12"> fader to change the tempo (BPM).
-- Use the Lo/Mid/Hi knobs to change the track's equalization.  
+- Use the Hi/Mid/Low knobs to change the track's equalization.  
   Right-click over the Eq control to [display a menu with several presets](http:/xfx.net/ftp/diyokee-releases/diyokee-switch-eq-profiles.mp4) from popular mixing consoles.
 - Use the fader between the two players to cross-fade between them.
 - Faders and knobs can be used by clicking and dragging or by moving the mouse over them and using the scroll wheel.

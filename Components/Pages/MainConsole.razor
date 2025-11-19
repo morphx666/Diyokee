@@ -114,7 +114,7 @@
             OnSave="UpdateApp"
             OnClose="() => {
                         SetPlayersMouseCapturing(true);
-                        MidiMonitor();
+                        enableMidiEvents = true;
                     }"
             @ref="settingsUi" />
     </CascadingValue>
@@ -151,6 +151,7 @@
     private Knob? mainGain = null!;
 
     private bool shouldRender = true;
+    private bool enableMidiEvents = true;
 
     public MainConsole() {
         SetMediaProviders();
@@ -216,6 +217,7 @@
 
     private void OpenSettingsDialog() {
         SetPlayersMouseCapturing(false);
+        enableMidiEvents = false;
         settingsUi.Open();
     }
 
@@ -340,8 +342,6 @@
 
     private bool IsPlaying => player1!.IsPlaying || player2!.IsPlaying;
 
-    MIDIINPROC midiProc = default!;
-    private MidiTools midiTools = default!;
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             await Task.Delay(500);
@@ -420,8 +420,9 @@
     private void MidiMonitor() {
         bool navigateFolders = true;
 
-        midiTools = new();
-        midiTools.OnMidiEvent += (string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) => {
+        Program.MidiTools.OnMidiEvent += (string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) => {
+            if(!enableMidiEvents) return;
+
             //Console.WriteLine(propertyName);
             int velocity = (midiEvent.param >> 8) & 0xFF;
 
@@ -520,33 +521,26 @@
                     InvokeAsync(() => targetPlayer.SetVolume(volume));
                     return;
                 case "EqHi":
-                    var eqHi = targetPlayer.EqControls.GetEqValues();
-                    eqHi.Hi = value;
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.SetEqValues(eqHi);
-                        shouldRender = true;
-                        if(!IsPlaying) InvokeAsync(StateHasChanged);
+                        targetPlayer?.EqControls.ApplyEqHi(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
                     });
                     return;
                 case "EqMid":
-                    var eqMid = targetPlayer.EqControls.GetEqValues();
-                    eqMid.Mid = value;
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.SetEqValues(eqMid);
-                        shouldRender = true;
-                        if(!IsPlaying) InvokeAsync(StateHasChanged);
+                        targetPlayer?.EqControls.ApplyEqMid(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
                     });
                     return;
                 case "EqLow":
-                    var eqLo = targetPlayer.EqControls.GetEqValues();
-                    eqLo.Lo = value;
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.SetEqValues(eqLo);
-                        shouldRender = true;
-                        if(!IsPlaying) InvokeAsync(StateHasChanged);
+                        targetPlayer?.EqControls.ApplyEqLow(value);
+                        targetPlayer?.EqControls.UpdateKnobs();
                     });
                     return;
                 case "Filter":
+                    targetPlayer.FilterControls.FiltersValues.Filter = value;
+                    InvokeAsync(targetPlayer.FilterControls.UpdateKnobs);
                     return;
                 case "JogWheelForward":
                     if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer?.JogWheelForward();
@@ -564,6 +558,7 @@
                 }
             }
         };
-        midiTools.Start();
+
+        Program.MidiTools.Start();
     }
 }

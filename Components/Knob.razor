@@ -46,6 +46,7 @@
     private double knobSize = 0;
     private double initialValue = 0.5;
     private double fromAngle = 0; // We should allow this to be configurable in the future
+    private const double minAngle = 1.08;
 
     public void SetInitialValue(double value) {
         Value = value;
@@ -85,7 +86,7 @@
 
         switch(index) {
             case 1:
-                return angle >= 0 ? $"transform: rotate(-90deg) skew({90 - Math.Min(angle, 90)}deg" : "display: none";
+                return angle >= minAngle ? $"transform: rotate(-90deg) skew({90 - Math.Min(angle, 90)}deg" : "display: none";
             case 2:
                 return angle >= 90 ? $"transform: rotate(0deg) skew({180 - Math.Min(angle, 180)}deg" : "display: none";
             case 3:
@@ -104,13 +105,13 @@
 
     private string GetCapStartCss() {
         double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        return angle == 0 ? "display: none" : "";
+        return angle <= minAngle ? "display: none" : "";
     }
 
     private string GetCapEndCss() {
         double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
         angle = Math.Abs(angle);
-        return angle == 0 ? "display: none" : $"transform: rotate({angle}deg)";
+        return angle <= minAngle ? "display: none" : $"transform: rotate({angle}deg)";
     }
 
     [JSInvokable]

@@ -16,6 +16,7 @@ internal class Program {
 
     public static Settings Settings = new();
     public static List<MidiControllerProfile> MidiControllersProfiles = [];
+    public static MidiTools MidiTools = new();
 
     private static async Task Main(string[] args) {
         string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;

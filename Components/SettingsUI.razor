@@ -96,7 +96,8 @@
             <h3>Midi</h3>
             <MidiControllersUI
                 Settings="settings"
-                MidiProfiles="midiProfiles"/>
+                MidiProfiles="midiProfiles"
+                @ref="midiControllersUI"/>
         </div>
     </div>
 </ModalDialog>
@@ -112,6 +113,7 @@
 
     private Settings settings = default!;
     private List<MidiControllerProfile> midiProfiles = default!;
+    private MidiControllersUI midiControllersUI = default!;
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
@@ -122,6 +124,7 @@
     }
 
     public void Close() {
+        midiControllersUI.RemoveMidiEventHandler();
         dialog.Close();
 
         OnClose.InvokeAsync();
