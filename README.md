@@ -30,7 +30,11 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Double-click a track in the files list to open the Track Properties dialog.
   ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
 - Use the Jump and Cue buttons to switch between Loop/Jump and Cue tabs.
-![image](https://github.com/user-attachments/assets/0487c141-c905-4c06-971a-43369ebf5403)
+  ![image](https://github.com/user-attachments/assets/0487c141-c905-4c06-971a-43369ebf5403)
+- Since 2025/11/19 Diyokee supports MIDI controllers. Click the Settings button and scroll down to the MIDI section to select the MIDI device and create a profile for your controller.
+  ![image](https://github.com/user-attachments/assets/7c2dbdbd-50ed-4b91-b639-5a5c2206ab96)
+
+
 
 ## Notable missing features
 
