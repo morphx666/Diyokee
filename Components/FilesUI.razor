@@ -214,7 +214,7 @@
 
     private void SortFilesList() {
         if(sortAscending) {
-            if(sortIndex == 0) files = files.OrderBy(f => f.Artist).ToList();
+            if(sortIndex == 0) files = files.OrderBy(f => f.Artist).ThenBy(f => f.Title).ToList();
             if(sortIndex == 1) files = files.OrderBy(f => f.Title).ToList();
             if(sortIndex == 2) files = files.OrderBy(f => f.Genre).ToList();
             if(sortIndex == 3) files = files.OrderBy(f => f.Album).ToList();
@@ -223,7 +223,7 @@
             if(sortIndex == 6) files = files.OrderBy(f => f.ReplayGain).ToList();
             if(sortIndex == 7) files = files.OrderBy(f => f.Duration).ToList();
         } else {
-            if(sortIndex == 0) files = files.OrderByDescending(f => f.Artist).ToList();
+            if(sortIndex == 0) files = files.OrderByDescending(f => f.Artist).ThenBy(f => f.Title).ToList();
             if(sortIndex == 1) files = files.OrderByDescending(f => f.Title).ToList();
             if(sortIndex == 2) files = files.OrderByDescending(f => f.Genre).ToList();
             if(sortIndex == 3) files = files.OrderByDescending(f => f.Album).ToList();

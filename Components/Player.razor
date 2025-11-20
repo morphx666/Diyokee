@@ -45,32 +45,30 @@
     }
 
     <div class="waveform-full">
-        <Waveform
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(File?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
-            Player="this"
-            @ref="waveformFull" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.Full"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@(File?.DownbeatAt ?? -1)"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Player="this"
+                  @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
-            DownbeatAt="@(File?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
-            Player="this"
-            @ref="waveform" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.AudioSynced"
+                  BeatMarkers="@beatMarkers"
+                  DownbeatAt="@(File?.DownbeatAt ?? -1)"
+                  MaxPeak="@maxPeak"
+                  Peaks="@peaks"
+                  SecondsToPosX="@secondsToPosX"
+                  WaveformWidth="@waveformWidth"
+                  Loop="loop"
+                  Player="this"
+                  @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
@@ -118,7 +116,7 @@
                     <div class="loop-size-container">
                         @foreach(var size in loopSizes) {
                             <div class="button @(loopSize == size.Item2 ? "selected" : "")"
-                                @onclick="() => SetLoopSize(size.Item2, false)">
+                                 @onclick="() => SetLoopSize(size.Item2, false)">
                                 @size.Item1
                             </div>
                         }
@@ -127,7 +125,7 @@
                     <div class="loop-size-container">
                         @foreach(var size in loopSizes) {
                             <div class="button @(jumpSize == size.Item2 ? "selected" : "")"
-                                @onclick="() => SetJumpSize(size.Item2)">
+                                 @onclick="() => SetJumpSize(size.Item2)">
                                 @size.Item1
                             </div>
                         }
@@ -172,6 +170,7 @@
 
     [JsonProperty] private double trackGain = 1;
     [JsonProperty] private double crossFaderVolume = 1;
+    [JsonProperty] private bool isMono = false;
 
     private Fader? faderVolume;
     private Fader? faderTempo;
@@ -255,7 +254,7 @@
             enableMouseEvents = value;
             if(!MinimalMode) {
                 EqControls.EnableMouseEvents = value;
-                if(faderTempo !=null)faderTempo.EnableMouseEvents = value;
+                if(faderTempo != null) faderTempo.EnableMouseEvents = value;
             }
             faderVolume!.EnableMouseEvents = value;
             waveform!.EnableMouseEvents = value;
@@ -508,6 +507,9 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC01");
 
+        BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(streamHandle);
+        isMono = channelInfo.chans == 1;
+
         fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
                                                             | BASSFlag.BASS_STREAM_DECODE
                                                             | BASSFlag.BASS_FX_FREESOURCE);
@@ -520,7 +522,7 @@
 
         if(!MinimalMode) {
             InitResonantFilter();
-            int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspProc, IntPtr.Zero, 0);
+            int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspResonantFilter, IntPtr.Zero, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
         }
@@ -811,17 +813,17 @@
 
     public void LoopSizeDecrease() {
         int index = Array.FindIndex(loopSizes, s => s.Item2 == loopSize);
-        if(index != -1 && index > 0)SetLoopSize(loopSizes[index - 1].Item2, false);
+        if(index != -1 && index > 0) SetLoopSize(loopSizes[index - 1].Item2, false);
     }
 
     public void JumpSizeIncrease() {
         int index = Array.FindIndex(loopSizes, s => s.Item2 == jumpSize);
-        if(index != -1 && index < loopSizes.Length - 1)SetJumpSize(loopSizes[index + 1].Item2);
+        if(index != -1 && index < loopSizes.Length - 1) SetJumpSize(loopSizes[index + 1].Item2);
     }
 
     public void JumpSizeDecrease() {
         int index = Array.FindIndex(loopSizes, s => s.Item2 == jumpSize);
-        if(index != -1 && index > 0)SetJumpSize(loopSizes[index - 1].Item2);
+        if(index != -1 && index > 0) SetJumpSize(loopSizes[index - 1].Item2);
     }
 
     public void JogWheelForward() {
@@ -932,43 +934,57 @@
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
     }
 
-    private DSPPROC dspProc = null!;
+    private DSPPROC dspResonantFilter = null!;
     private double[] din = new double[5];
     private double[] dout = new double[5];
     private void InitResonantFilter() {
-        // Resonant lowpass filter
-        // For highpass filter, just change the sign of the feedback (HPF = sample - out ?)
+        // Cascaded resonant lp/hp filter
+        // https://www.musicdsp.org/en/latest/Filters/131-cascaded-resonant-lp-hp-filter.html
+        // http://192.168.1.8:88/Filters/131-cascaded-resonant-lp-hp-filter.html (RPi4 (/home/xfx/musicdsp/build/html): sudo python -m http.server 88)
         // https://github.com/bdejong/musicdsp
-        // http://192.168.1.8:88/Filters/26-moog-vcf-variation-2.html (RPi4 (/home/xfx/musicdsp/build/html): sudo python -m http.server 88)
-        dspProc = new((int handle, int channel, IntPtr buffer, int length, IntPtr user) => {
-            int l4 = length / 4;
-            double[] input = new double[l4];
-            float[] data = new float[l4];
-            Marshal.Copy(buffer, data, 0, l4);
 
-            double fc = 0.5;
-            double res = FilterControls.FiltersValues.Filter * 4;
-            double f = fc * 1.16;
-            double fb = res * (1.0 - 0.15 * f * f);
+        int step = isMono ? 1 : 2;
+        const float lowPassMaxFreq = 0.95f;
+        const float hiPassMinFreq = 0.03f;
 
-            for(int i = 0; i < l4; i++) {
-                input[i] = data[i];
+        dspResonantFilter = new((int handle, int channel, IntPtr buffer, int length, IntPtr user) => {
+            int len = length / (2 * step);
+            float[] input = new float[len];
+            float[] result = new float[len];
+            Marshal.Copy(buffer, input, 0, len);
 
-                input[i] -= dout[4] * fb;
-                input[i] *= 0.35013 * (f * f) * (f * f);
-                dout[1] = input[i] + 0.3 * din[1] + (1 - f) * dout[1]; // Pole 1
-                din[1] = input[i];
-                dout[2] = dout[1] + 0.3 * din[2] + (1 - f) * dout[2];  // Pole 2
-                din[2] = dout[1];
-                dout[3] = dout[2] + 0.3 * din[3] + (1 - f) * dout[3];  // Pole 3
-                din[3] = dout[2];
-                dout[4] = dout[3] + 0.3 * din[4] + (1 - f) * dout[4];  // Pole 4
-                din[4] = dout[3];
+            float n1_l = 0, n2_l = 0, n3_l = 0, n4_l = 0;
+            float n1_r = 0, n2_r = 0, n3_r = 0, n4_r = 0;
 
-                data[i] = (float)dout[4];
+            float res = (float)FilterControls.FiltersValues.Filter;
+            if(res == 0.5f) return;
+            if(res >= lowPassMaxFreq) res = lowPassMaxFreq;
+            if(res <= hiPassMinFreq) res = hiPassMinFreq;
+
+            float cut_lp = res < 0.5f ? Math.Max(hiPassMinFreq, lowPassMaxFreq - 2.0f * (0.5f - res)) : lowPassMaxFreq; // cutoff frequency of the lowpass [0..1)
+            float cut_hp = res > 0.5 ? Math.Min(2.0f * (res - 0.5f), lowPassMaxFreq) : hiPassMinFreq; // cutoff frequency of the hipass [0..1)
+            float res_lp = res < 0.5f ? 2.0f * (0.5f - res) : 0.0f; // resonance of the lowpass (0..1)
+            float res_hp = res > 0.5f ? 2.0f * (res - 0.5f) : 0.0f; // resonance of the hipass (0..1)
+
+            float fb_lp = res_lp + res_lp / (1.0f - cut_lp);
+            float fb_hp = res_hp + res_hp / (1.0f - cut_hp);
+
+            for(int i = 0; i < len; i += step) {
+                n1_l += cut_lp * (input[i] - n1_l + fb_lp * (n1_l - n2_l));
+                n2_l += cut_lp * (n1_l - n2_l);
+                n3_l += cut_hp * (input[i] - n3_l + fb_hp * (n3_l - n4_l));
+                n4_l += cut_hp * (n3_l - n4_l);
+                result[i] = n2_l - n4_l;
+
+                if(isMono) continue;
+                n1_r += cut_lp * (input[i + 1] - n1_r + fb_lp * (n1_r - n2_r));
+                n2_r += cut_lp * (n1_r - n2_r);
+                n3_r += cut_hp * (input[i + 1] - n3_r + fb_hp * (n3_r - n4_r));
+                n4_r += cut_hp * (n3_r - n4_r);
+                result[i + 1] = n2_r - n4_r;
             }
 
-            Marshal.Copy(data, 0, buffer, l4);
+            Marshal.Copy(result, 0, buffer, len);
         });
     }
 
@@ -1096,6 +1112,7 @@
                 beatMarkers = p.beatMarkers;
                 cuePoint = p.cuePoint;
                 IsPlaying = p.IsPlaying;
+                isMono = p.isMono;
             }
         }
     }

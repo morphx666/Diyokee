@@ -93,7 +93,7 @@
         directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
 
         Task.Run(async () => {
-            await Task.Delay(500);
+            await Task.Delay(1500);
 
             folders = Provider.Directories(RelativePath);
             if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
@@ -111,9 +111,9 @@
                         await InvokeAsync(() => ChangeSelectedFolder(f.RelativePath));
                     }
                 }
-
                 await JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected", "end");
             }
+            await InvokeAsync(StateHasChanged);
         });
         deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == '\\');
     }
