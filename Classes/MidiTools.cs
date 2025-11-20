@@ -10,7 +10,8 @@ namespace Diyokee {
         private int midiStream = -1;
 
         public void Start() {
-            var profile = Program.MidiControllersProfiles[0];
+            var profile = Program.MidiControllersProfiles.FirstOrDefault();
+            if(profile == null) profile = new();
             if(midiStream != -1) Stop();
 
             midiStream = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
