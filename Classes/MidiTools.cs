@@ -5,7 +5,6 @@ namespace Diyokee {
     public class MidiTools {
         public delegate void MidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent);
         public MidiEvent OnMidiEvent = default!;
-
         private MIDIINPROC midiProc = default!;
         private int midiStream = -1;
 
@@ -104,7 +103,7 @@ namespace Diyokee {
 
         public void Stop() {
             if(midiStream == -1) return;
-            
+
             Bass.BASS_StreamFree(midiStream);
 
             BASS_MIDI_DEVICEINFO[] midiDevices = BassMidi.BASS_MIDI_InGetGeviceInfos();
