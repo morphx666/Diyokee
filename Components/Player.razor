@@ -455,7 +455,7 @@
     }
 
     private void ApplyFilterValues(FiltersUI.FilterKeyValues filterValues) {
-        SetPitch((filterValues.Key - 0.5) * 12); // +/- 6 semitones
+        SetPitch((filterValues.Key - 0.5) * 12);
     }
 
     private double GetRemainingTime() {
@@ -1028,6 +1028,7 @@
     private async Task MonitorPlayback() {
         int intervals = 0;
         int delay = 60;
+
         while(true) {
             await Task.Delay(delay);
 
@@ -1045,6 +1046,12 @@
 
                 await waveform.Refresh();
                 if(intervals % 5 == 0) await waveformFull!.Refresh();
+            } else if(IsPlaying) {
+                long p = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
+                Stop(false);
+                CreateStreams();
+                Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
+
             }
 
             if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
