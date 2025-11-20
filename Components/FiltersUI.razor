@@ -1,16 +1,16 @@
 ﻿<div class="knobs-container"
      @ref="knobs">
-    <Knob Name="FILTER" @ref="eqFilter" ValueChanged="ApplyEqFilter" />
-    <Knob Name="KEY" @ref="eqKey" ValueChanged="ApplyEqKey" Enabled="false" />
+    <Knob Name="COLOR" @ref="eqColor" ValueChanged="ApplyEqColor" />
+    <Knob Name="KEY" @ref="eqKey" ValueChanged="ApplyEqKey" />
 </div>
 
 @code {
     private ElementReference? knobs;
-    private Knob? eqFilter;
+    private Knob? eqColor;
     private Knob? eqKey;
 
     public struct FilterKeyValues {
-        public double Filter;
+        public double Color;
         public double Key;
     }
     public FilterKeyValues FiltersValues = new();
@@ -19,17 +19,17 @@
     public EventCallback<FilterKeyValues> ValueChanged { get; set; }
 
     public FiltersUI() {
-        FiltersValues.Filter = 0.5;
+        FiltersValues.Color = 0.5;
         FiltersValues.Key = 0.5;
     }
 
     public void Reset() {
-        eqFilter?.SetValue(0.5);
+        eqColor?.SetValue(0.5);
         eqKey?.SetValue(0.5);
     }
 
-    private async void ApplyEqFilter(double value) {
-        FiltersValues.Filter = value;
+    private async void ApplyEqColor(double value) {
+        FiltersValues.Color = value;
         await ValueChanged.InvokeAsync(FiltersValues);
     }
 
@@ -39,12 +39,13 @@
     }
 
     public async Task UpdateKnobs() {
-        if(eqFilter != null && FiltersValues.Filter != eqFilter.Value) await eqFilter.SetValue(FiltersValues.Filter, true);
+        if(eqColor != null && FiltersValues.Color != eqColor.Value) await eqColor.SetValue(FiltersValues.Color, true);
+        if(eqKey != null && FiltersValues.Key != eqKey.Value) await eqKey.SetValue(FiltersValues.Key, true);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            eqFilter?.SetInitialValue(FiltersValues.Filter);
+            eqColor?.SetInitialValue(FiltersValues.Color);
             eqKey?.SetInitialValue(FiltersValues.Key);
 
             await InvokeAsync(StateHasChanged);

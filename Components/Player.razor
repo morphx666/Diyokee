@@ -449,11 +449,13 @@
         UpdateSettings();
     }
 
-    public void SetFilterValue(double value) { // FIXME: Temporary workaround until the proper ApplyFilterValues() is implemented
-        FilterControls.FiltersValues.Filter = value;
+    public void SetFiltersValues(double color = -1, double key = -1) {
+        if(color != -1) FilterControls.FiltersValues.Color = color;
+        if(key != -1) FilterControls.FiltersValues.Key = key;
     }
 
-    private void ApplyFilterValues(FiltersUI.FilterKeyValues filtersValues) {
+    private void ApplyFilterValues(FiltersUI.FilterKeyValues filterValues) {
+        SetPitch((filterValues.Key - 0.5) * 12); // +/- 6 semitones
     }
 
     private double GetRemainingTime() {
@@ -956,7 +958,7 @@
             float n1_l = 0, n2_l = 0, n3_l = 0, n4_l = 0;
             float n1_r = 0, n2_r = 0, n3_r = 0, n4_r = 0;
 
-            float res = (float)FilterControls.FiltersValues.Filter;
+            float res = (float)FilterControls.FiltersValues.Color;
             if(res == 0.5f) return;
             if(res >= lowPassMaxFreq) res = lowPassMaxFreq;
             if(res <= hiPassMinFreq) res = hiPassMinFreq;
