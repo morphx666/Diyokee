@@ -37,7 +37,8 @@ namespace Diyokee {
             [JsonProperty("sync-players-bpm")] public bool SyncPlayersBpm { get; set; } = false;
             [JsonProperty("sync-playback")] public bool SyncPlayback { get; set; } = true;
             [JsonProperty("tempo-range")] public double TempoRange { get; set; } = 10;
-            [JsonProperty("players")] public PlayerSettings[] Players { get; set; } = [
+            [JsonProperty("players")]
+            public PlayerSettings[] Players { get; set; } = [
                 new() { Name = "A", Color = "#977696" },
                 new() { Name = "B", Color = "#279597", ReverseControls = true },
             ];
@@ -60,7 +61,8 @@ namespace Diyokee {
         [JsonProperty("bassnet-reg-key")] public string BassNetRegKey { get; set; } = "";
         [JsonProperty("media-providers")] public List<MediaProvider> MediaProviders { get; set; } = [];
         [JsonProperty("encoder")] public EncoderOptions Encoder { get; set; } = new();
-        [JsonProperty("ui")] public Dictionary<string, string> UIElements { get; set; } = new() {
+        [JsonProperty("ui")]
+        public Dictionary<string, string> UIElements { get; set; } = new() {
             ["main-resize-horizontal"] = "400",
             ["main-resize-vertical"] = "420"
         };
@@ -72,34 +74,35 @@ namespace Diyokee {
         public List<EqualizerProfile> EqualizerProfiles { get; } = [];
 
         public async static Task<Settings> Load() {
+            Settings settings = default!;
             string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
+
             if(File.Exists(Path.Combine(workingDirectory, "settings.json"))) {
-                Settings settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
+                settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
+            } else {
+                settings = new();
+            }
 
-                if(settings.MediaProviders.Count == 0) {
-                    settings.MediaProviders.Add(new());
-                }
+            if(settings.MediaProviders.Count == 0) {
+                settings.MediaProviders.Add(new());
+            }
 
-                if(settings.EqualizerProfiles.Count == 0) {
-                    settings.EqualizerProfiles.AddRange([
-                        new() {Name = "Pioneer DJM", Low = 70, Mid = 1000, Hi = 13000},
+            if(settings.EqualizerProfiles.Count == 0) {
+                settings.EqualizerProfiles.AddRange([
+                    new() {Name = "Pioneer DJM", Low = 70, Mid = 1000, Hi = 13000},
                         new() {Name = "EVO 4", Low = 200, Mid = 1200, Hi = 6500},
                         new() {Name = "Allen & Heath Xone 42", Low = 420, Mid = 1200, Hi = 2700},
                         new() {Name = "Allen & Heath Xone 4D", Low = 120, Mid = 1400, Hi = 10000},
                         new() {Name = "Rane", Low = 300, Mid = 1200, Hi = 4000},
                         new() {Name = "Behringer DDM", Low = 330, Mid = 1400, Hi = 4200}
-                    ]);
-                }
-
-                if(settings.Playback.EqProfile == "") {
-                    settings.Playback.EqProfile = settings.EqualizerProfiles[0].Name;
-                }
-
-                return settings;
-            } else {
-                Settings settings = new();
-                return settings;
+                ]);
             }
+
+            if(settings.Playback.EqProfile == "") {
+                settings.Playback.EqProfile = settings.EqualizerProfiles[0].Name;
+            }
+
+            return settings;
         }
 
         private readonly Lock lockObj = new();

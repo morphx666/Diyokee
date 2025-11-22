@@ -294,7 +294,7 @@
         this.mediaProviders.Clear();
 
         foreach(Settings.MediaProvider mp in Program.Settings.MediaProviders) {
-            if(mp.Type == "local") { // We only support local/netshare for now
+            if(mp.Type == "local") { // We only support local/netshare paths for now
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
                                                 ? MediaProviderLocal.DefaultDirectory
