@@ -150,9 +150,9 @@
             Provider?.Files(RelativePath).ForEach(file => {
                 string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
                 files.Add(new DFile {
-                        Artist = "...",
-                        Filename = fullFileName
-                    });
+                    Artist = "...",
+                    Filename = fullFileName
+                });
             });
         }
         if(componentCanRender) await JS.InvokeVoidAsync("scrollFilesViewTop");

@@ -6,13 +6,13 @@ internal class Runtime {
     public enum Platforms {
         Windows,
         Linux,
-        Mac,
+        MacIntel,
+        MacApple,
         ARMSoft,
         ARMHard,
         Aarch64
     }
     private static Platforms? mPlatform;
-    private static char? mPathSeparator;
 
     public static Platforms Platform {
         get {
@@ -23,8 +23,9 @@ internal class Runtime {
 
     public static char PathSeparator {
         get {
-            if(mPathSeparator == null) DetectPlatform();
-            return mPathSeparator.HasValue ? mPathSeparator.Value : default;
+            return Path.DirectorySeparatorChar;
+            //if(mPathSeparator == null) DetectPlatform();
+            //return mPathSeparator.HasValue ? mPathSeparator.Value : default;
         }
     }
 
@@ -36,7 +37,6 @@ internal class Runtime {
     }
 
     private static void DetectPlatform() {
-        mPathSeparator = '/';
         switch (Environment.OSVersion.Platform) {
             case PlatformID.Win32NT:
             case PlatformID.Win32S:
@@ -44,11 +44,10 @@ internal class Runtime {
             case PlatformID.WinCE:
             case PlatformID.Xbox:
                 mPlatform = Platforms.Windows;
-                mPathSeparator = '\\';
                 break;
 
             case PlatformID.MacOSX:
-                mPlatform = Platforms.Mac;
+                mPlatform = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? Platforms.MacApple : Platforms.MacIntel;
                 break;
 
             default:
@@ -56,7 +55,7 @@ internal class Runtime {
                     Directory.Exists("/System") &&
                     Directory.Exists("/Users") &&
                     Directory.Exists("/Volumes")) {
-                    mPlatform = Platforms.Mac;
+                    mPlatform = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture == System.Runtime.InteropServices.Architecture.Arm64 ? Platforms.MacApple : Platforms.MacIntel;
                 } else {
                     mPlatform = Platforms.Linux;
 

@@ -2,6 +2,7 @@ using Diyokee;
 using Diyokee.Components;
 using Diyokee.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.JSInterop.Infrastructure;
 using System.Diagnostics;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
@@ -188,7 +189,10 @@ internal class Program {
     private static bool InitBASS(string workingDirectory) {
         char c = Runtime.PathSeparator;
         string platform = Runtime.Platform.ToString().ToLower();
-        string architecture = Environment.Is64BitProcess || Runtime.Platform == Runtime.Platforms.Mac ? "x64" : "x86";
+        string architecture = Environment.Is64BitProcess
+                                || Runtime.Platform == Runtime.Platforms.MacIntel
+                                || Runtime.Platform == Runtime.Platforms.MacApple
+                                ? "x64" : "x86";
 
         if(platform.StartsWith("arm")) {
             platform = "arm";
@@ -196,6 +200,9 @@ internal class Program {
         } else if(platform.StartsWith("aarch64")) {
             platform = "arm";
             architecture = "aarch64";
+        } else if(platform == "macapple") {
+            platform = "mac";
+            architecture = "arm64";
         }
 
         string srcDir = Path.Combine(Runtime.RunningDirectory, $"bass{c}{platform}{c}{architecture}{c}");

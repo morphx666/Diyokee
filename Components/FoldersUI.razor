@@ -93,7 +93,7 @@
         directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
 
         Task.Run(async () => {
-            await Task.Delay(1500);
+            await Task.Delay(50); // Just for good measure
 
             folders = Provider.Directories(RelativePath);
             if(ParentMediaFolder != null) ParentMediaFolder.IsBusy = false;
