@@ -297,7 +297,7 @@
             if(mp.Type == "local") { // We only support local/netshare for now
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
-                                                ? Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+                                                ? MediaProviderLocal.DefaultDirectory
                                                 : mp.RootDirectory,
                                             mp.InitialPath);
                 this.mediaProviders.Add(nmp);
@@ -305,7 +305,8 @@
         }
 
         if(this.mediaProviders.Count == 0) {
-            throw new Exception("No valid media providers found");
+            MediaProviderLocal nmp = new("default", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
+            //throw new Exception("No valid media providers found");
         } else {
             selectedMediaProvider = this.mediaProviders[0];
         }

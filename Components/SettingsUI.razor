@@ -149,10 +149,11 @@
     }
 
     private void AddProvider() {
-        var newProvider = new Settings.MediaProvider();
-        newProvider.Type = "local";
-        newProvider.Name = "New Local Provider";
-        newProvider.RootDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
+        var newProvider = new Settings.MediaProvider() {
+                Type = "local",
+                Name = "New Local Provider",
+                RootDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+            };
         settings.MediaProviders.Add(newProvider);
     }
 }
