@@ -1,0 +1,462 @@
+{
+  "Name": "Pioneer DJ XDJ-RR",
+  "Enabled": true,
+  "General": {
+    "FoldersFilesToggle": {
+      "EventType": 1,
+      "Note": 50,
+      "Channel": 0,
+      "Velocity": 127,
+      "Parameter": 32562,
+      "Controller": -1
+    },
+    "BrowseUp": {
+      "EventType": 64,
+      "Note": -1,
+      "Channel": 0,
+      "Velocity": -1,
+      "Parameter": 32591,
+      "Controller": 79
+    },
+    "BrowseDown": {
+      "EventType": 64,
+      "Note": -1,
+      "Channel": 0,
+      "Velocity": -1,
+      "Parameter": 335,
+      "Controller": 79
+    },
+    "ExpandFolder": {
+      "EventType": 1,
+      "Note": 51,
+      "Channel": 0,
+      "Velocity": 127,
+      "Parameter": 32563,
+      "Controller": -1
+    },
+    "LoadSelectedFileToPlayer0": {
+      "EventType": 1,
+      "Note": 81,
+      "Channel": 0,
+      "Velocity": 127,
+      "Parameter": 32593,
+      "Controller": -1
+    },
+    "LoadSelectedFileToPlayer1": {
+      "EventType": 1,
+      "Note": 81,
+      "Channel": 1,
+      "Velocity": 127,
+      "Parameter": 32593,
+      "Controller": -1
+    },
+    "Gain": {
+      "EventType": 64,
+      "Note": -1,
+      "Channel": 4,
+      "Velocity": -1,
+      "Parameter": 16664,
+      "Controller": 24
+    },
+    "Crossfader": {
+      "EventType": 14,
+      "Note": -1,
+      "Channel": 4,
+      "Velocity": -1,
+      "Parameter": 58,
+      "Controller": -1
+    }
+  },
+  "Players": [
+    {
+      "Index": 0,
+      "PlayPause": {
+        "EventType": 1,
+        "Note": 0,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32512,
+        "Controller": -1
+      },
+      "Stop": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Cue": {
+        "EventType": 1,
+        "Note": 1,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32513,
+        "Controller": -1
+      },
+      "SnapToBeatMarker": {
+        "EventType": 1,
+        "Note": 32,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32544,
+        "Controller": 32
+      },
+      "LoadSelectedFile": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "BpmMatch": {
+        "EventType": 1,
+        "Note": 31,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32543,
+        "Controller": 31
+      },
+      "Volume": {
+        "EventType": 64,
+        "Note": 90,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 23057,
+        "Controller": 17
+      },
+      "Tempo": {
+        "EventType": 10,
+        "Note": -1,
+        "Channel": 0,
+        "Velocity": -1,
+        "Parameter": 63,
+        "Controller": -1
+      },
+      "EqHi": {
+        "EventType": 64,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 16130,
+        "Controller": 2
+      },
+      "EqMid": {
+        "EventType": 64,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 16131,
+        "Controller": 3
+      },
+      "EqLow": {
+        "EventType": 64,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 15620,
+        "Controller": 4
+      },
+      "Color": {
+        "EventType": 20,
+        "Note": 65,
+        "Channel": 4,
+        "Velocity": 0,
+        "Parameter": 65,
+        "Controller": 65
+      },
+      "TempoUp": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoDown": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopJumpLockToggle": {
+        "EventType": 1,
+        "Note": 39,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32551,
+        "Controller": 39
+      },
+      "LoopToggle": {
+        "EventType": 1,
+        "Note": 35,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32547,
+        "Controller": 35
+      },
+      "LoopSizeIncrease": {
+        "EventType": 1,
+        "Note": 4,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32516,
+        "Controller": 4
+      },
+      "LoopSizeDecrease": {
+        "EventType": 1,
+        "Note": 5,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32517,
+        "Controller": 5
+      },
+      "JumpSizeIncrease": {
+        "EventType": 1,
+        "Note": 2,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32514,
+        "Controller": 2
+      },
+      "JumpSizeDecrease": {
+        "EventType": 1,
+        "Note": 3,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32515,
+        "Controller": 3
+      },
+      "JumpForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelForward": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 0,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33
+      },
+      "JogWheelBackward": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 0,
+        "Velocity": 63,
+        "Parameter": 16161,
+        "Controller": 33
+      }
+    },
+    {
+      "Index": 1,
+      "PlayPause": {
+        "EventType": 1,
+        "Note": 0,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32512,
+        "Controller": -1
+      },
+      "Stop": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Cue": {
+        "EventType": 1,
+        "Note": 1,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32513,
+        "Controller": -1
+      },
+      "SnapToBeatMarker": {
+        "EventType": 1,
+        "Note": 32,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32544,
+        "Controller": 32
+      },
+      "LoadSelectedFile": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "BpmMatch": {
+        "EventType": 1,
+        "Note": 31,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32543,
+        "Controller": 31
+      },
+      "Volume": {
+        "EventType": 64,
+        "Note": 92,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 23570,
+        "Controller": 18
+      },
+      "Tempo": {
+        "EventType": 10,
+        "Note": -1,
+        "Channel": 1,
+        "Velocity": -1,
+        "Parameter": 63,
+        "Controller": -1
+      },
+      "EqHi": {
+        "EventType": 12,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 63,
+        "Controller": -1
+      },
+      "EqMid": {
+        "EventType": 64,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 16136,
+        "Controller": 8
+      },
+      "EqLow": {
+        "EventType": 64,
+        "Note": -1,
+        "Channel": 4,
+        "Velocity": -1,
+        "Parameter": 16137,
+        "Controller": 9
+      },
+      "Color": {
+        "EventType": 13,
+        "Note": 60,
+        "Channel": 4,
+        "Velocity": 0,
+        "Parameter": 60,
+        "Controller": 60
+      },
+      "TempoUp": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoDown": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopJumpLockToggle": {
+        "EventType": 1,
+        "Note": 39,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32551,
+        "Controller": 39
+      },
+      "LoopToggle": {
+        "EventType": 1,
+        "Note": 35,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32547,
+        "Controller": 35
+      },
+      "LoopSizeIncrease": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 1,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33
+      },
+      "LoopSizeDecrease": {
+        "EventType": 1,
+        "Note": 5,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32517,
+        "Controller": 5
+      },
+      "JumpSizeIncrease": {
+        "EventType": 1,
+        "Note": 2,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32514,
+        "Controller": 2
+      },
+      "JumpSizeDecrease": {
+        "EventType": 1,
+        "Note": 3,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32515,
+        "Controller": 3
+      },
+      "JumpForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelForward": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 1,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33
+      },
+      "JogWheelBackward": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 1,
+        "Velocity": 63,
+        "Parameter": 16161,
+        "Controller": 33
+      }
+    }
+  ]
+}

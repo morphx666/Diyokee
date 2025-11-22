@@ -97,7 +97,8 @@
         </div>
         @if(!MinimalMode) {
             <div class="button-3d icon" @onmouseup="HandleRequestedFileCue"><i class="fa-solid fa-eject"></i></div>
-            <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class="fa-solid fa-arrow-right-from-bracket"></i> @(OtherPlayer?.Settings.Name ?? "")</div>
+            <div class="button-3d icon" @onmouseup="HandleSyncBPMToOtherPlayer"><i class='fa-solid fa-music'></i><i class="fa-solid fa-arrow-left"></i><span>@(OtherPlayer?.Settings.Name ?? "")</span></div>
+            <div class="button-3d icon" @onmouseup="HandleSyncKeyToOtherPlayer"><i class='fa-solid fa-key'></i><i class="fa-solid fa-arrow-left"></i><span>@(OtherPlayer?.Settings.Name ?? "")</span></div>
             <div class="sync-adjust">
                 <span>SYNC</span>
                 <div class="sync-buttons">
@@ -301,6 +302,10 @@
         if(e.Button == 0) SyncBPMToOtherPlayer();
     }
 
+    private void HandleSyncKeyToOtherPlayer(MouseEventArgs e) {
+        if(e.Button == 0) SyncKeyToOtherPlayer();
+    }
+
     public void Play(bool autoSync) {
         if(masterSplitterHandle == 0) return;
         if(IsPlaying) {
@@ -372,12 +377,23 @@
     }
 
     public async void SyncBPMToOtherPlayer() {
-        if(OtherPlayer?.File == null || File.BPM == 0) return;
+        if(OtherPlayer?.File == null || File.BPM <= 0 || OtherPlayer.File.BPM <= 0) return;
 
         double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
         double factor = (1.0 - otherPlayerBPM / File.BPM) * 1.0 / Math.Abs(tempoRange);
         double faderValue = factor + 0.5;
         await faderTempo!.SetValue(faderValue);
+    }
+
+    private async void SyncKeyToOtherPlayer() {
+        if(OtherPlayer?.File == null || File.Key == string.Empty || OtherPlayer.File.Key == string.Empty) return;
+
+        var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.File.Key);
+        var thisPlayerKey = keyTools.ToMidiNote(File.Key);
+        SetPitch(otherPlayerKey - thisPlayerKey);
+
+        FilterControls.FiltersValues.Key = (otherPlayerKey - thisPlayerKey) / 12.0 + 0.5;
+        await InvokeAsync(FilterControls.UpdateKnobs);
     }
 
     private double ReScaleTempoFader() {

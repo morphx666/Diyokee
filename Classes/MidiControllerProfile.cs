@@ -37,7 +37,7 @@ namespace Diyokee {
             public MidiMapping EqHi { get; set; } = new();
             public MidiMapping EqMid { get; set; } = new();
             public MidiMapping EqLow { get; set; } = new();
-            public MidiMapping Filter { get; set; } = new();
+            public MidiMapping Color { get; set; } = new();
             public MidiMapping TempoUp { get; set; } = new();
             public MidiMapping TempoDown { get; set; } = new();
             public MidiMapping LoopJumpLockToggle { get; set; } = new();
