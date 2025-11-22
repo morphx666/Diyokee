@@ -77,7 +77,7 @@ namespace Diyokee {
                 Settings settings = JsonConvert.DeserializeObject<Settings>(await File.ReadAllTextAsync(Path.Combine(workingDirectory, "settings.json"))) ?? new();
 
                 if(settings.MediaProviders.Count == 0) {
-                    settings.MediaProviders.Add(new());
+                    settings.MediaProviders.Add(new MediaProviders.MediaProviderLocal( ));
                 }
 
                 if(settings.EqualizerProfiles.Count == 0) {

@@ -42,4 +42,9 @@ public class MediaProviderLocal : MediaProviderBase {
                         .OrderBy(f => f.Name)
                         .Select(f => Path.GetRelativePath(relativePath, f.FullName))];
     }
+
+    public static MediaProviderLocal Default() {
+        string rootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyMusic), "Diyokee");
+        return new("default", rootPath);
+    }
 }

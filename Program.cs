@@ -172,7 +172,7 @@ internal class Program {
         }
 
         // Attach to the first device, for now...
-        if(Settings.Encoder.Enabled) {
+        if(Settings.Encoder.Enabled && Runtime.Platform != Runtime.Platforms.MacApple) {
             int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandles.First().Handle, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
             _ = BassEnc.BASS_Encode_ServerInit(encodeHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
         }
@@ -231,7 +231,7 @@ internal class Program {
 
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
-
+        
         SetupDevice(Settings.Audio.MainOutputDevice);
         SetupDevice(Settings.Audio.MonitorDevice, false);
 
