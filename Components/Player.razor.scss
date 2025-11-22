@@ -41,6 +41,14 @@
         .bpm-key {
             min-width: 10ch;
             padding-right: 1rem;
+
+            .track-key {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 0.5em;
+            }
         }
 
         .player-name {
@@ -120,11 +128,6 @@
 
             i, span {
                 margin-top: -1rem;
-
-                &.fa-arrow-left {
-                    font-size: 0.8em;
-                    line-height: 2em;
-                }
             }
 
             &.active {
@@ -296,5 +299,10 @@
                 }
             }
         }
+    }
+
+    ::deep .small-arrow {
+        font-size: 0.6em;
+        line-height: 2em;
     }
 }
