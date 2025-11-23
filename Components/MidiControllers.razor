@@ -115,7 +115,7 @@
     public List<MidiControllerProfile> MidiProfiles { get; set; } = [];
 
     [Parameter]
-    public Settings Settings { get; set; } = default!;
+    public Diyokee.Settings Settings { get; set; } = default!;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender && MidiProfiles.Count > 0) {

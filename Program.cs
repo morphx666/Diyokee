@@ -15,7 +15,7 @@ internal class Program {
     public static int BassLatencyMs = 0;
     public static ILogger Logger = null!;
 
-    public static Settings Settings = new();
+    public static Diyokee.Settings Settings = new();
     public static List<MidiControllerProfile> MidiControllersProfiles = [];
     public static MidiTools MidiTools = new();
 
@@ -25,7 +25,7 @@ internal class Program {
         Directory.SetCurrentDirectory(workingDirectory);
 #endif
 
-        Settings = await Settings.Load();
+        Settings = await Diyokee.Settings.Load();
         MidiControllersProfiles = await MidiControllerProfile.LoadAll();
         AutoSave();
 

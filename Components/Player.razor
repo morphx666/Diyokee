@@ -77,7 +77,7 @@
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
             <Eq ValueChanged="ApplyEqValues" EqProfileChanged="EqProfileChanged" @ref="EqControls" />
-            <FiltersUI ValueChanged="ApplyFilterValues" @ref="FilterControls" />
+            <Filters ValueChanged="ApplyFilterValues" @ref="FilterControls" />
         }
     </div>
 
@@ -141,7 +141,7 @@
                 </div>
 
                 <div class="scroller @(selectedTab == 1 ? "" : "hidden") @(File == null ? "disabled" : "")">
-                    <CuePointsUI Player="this" />
+                    <CuePoints Player="this" />
                 </div>
             </div>
 
@@ -180,7 +180,7 @@
     private Waveform? waveformFull;
     private VuMeter? vuMeter;
     [JsonProperty] public Eq EqControls = null!;
-    [JsonProperty] public FiltersUI FilterControls = null!;
+    [JsonProperty] public Filters FilterControls = null!;
 
     [JsonProperty] private int waveformWidth = 0;
     [JsonProperty] private long waveformStepLength = 0;
@@ -488,7 +488,7 @@
         if(key != -1) FilterControls.FiltersValues.Key = key;
     }
 
-    private void ApplyFilterValues(FiltersUI.FilterKeyValues filterValues) {
+    private void ApplyFilterValues(Filters.FilterKeyValues filterValues) {
         SetPitch((filterValues.Key - 0.5) * 12);
     }
 
@@ -523,7 +523,7 @@
         if(loop.Enabled) ToggleLoop();
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
-        waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, FilesUI.TimeSlice);
+        waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, Files.TimeSlice);
 
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);

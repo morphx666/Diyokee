@@ -227,7 +227,7 @@
     private int lastMsValue;
 
     [Parameter]
-    public FilesUI Files { get; set; } = null!;
+    public Files FilesComponent { get; set; } = null!;
 
     [Parameter]
     public EventCallback OnClose { get; set; } = default!;
@@ -262,7 +262,7 @@
     }
 
     private async Task Save() {
-        await Files.UpdateFile(file);
+        await FilesComponent.UpdateFile(file);
         Close();
     }
 
@@ -325,12 +325,12 @@
     }
 
     private async void ReCalcBpm() {
-        BPM = Files.CalcBpm(file);
+        BPM = FilesComponent.CalcBpm(file);
         await InvokeAsync(StateHasChanged);
     }
 
     private async void ReCalcDownbeat() {
-        file.DownbeatAt = Files.CalcDownbeat(file);
+        file.DownbeatAt = FilesComponent.CalcDownbeat(file);
         await InvokeAsync(StateHasChanged);
     }
 

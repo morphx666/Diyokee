@@ -4,7 +4,7 @@
 <div
     class="folders scroller"
     tabindex="0">
-    <FoldersUI
+    <Folders
         Provider="@Provider"
         RelativePath=""
         SelectedFolderChanged="(folder) => SelectedFolderChanged.InvokeAsync(folder)"
@@ -18,5 +18,5 @@
     [Parameter]
     public EventCallback<string> SelectedFolderChanged { get; set; }
 
-    public FoldersUI? FoldersUI;
+    public Folders? FoldersUI;
 }

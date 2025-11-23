@@ -88,7 +88,7 @@
                 </div>
 
                 <div class="sources panel">
-                    <MediaProviderContainerUI 
+                    <MediaProviderContainer
                         Provider="@selectedMediaProvider"
                         SelectedFolderChanged="SelectedFolderChanged"
                         @ref="mediaProviderContainerUI"
@@ -102,21 +102,22 @@
                          OnResizeEnd="HandleDividerResize"
                          Constrains="mediaProviderConstrains" />
 
-            <FilesUI Provider="@selectedMediaProvider"
-                     RelativePath="@selectedFolder"
-                     SelectedFileChanged="SelectedFileChanged"
-                     TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
-                     TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
-                     @ref="filesUI" />
+            <Files
+                Provider="@selectedMediaProvider"
+                RelativePath="@selectedFolder"
+                SelectedFileChanged="SelectedFileChanged"
+                TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
+                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
+                @ref="filesComponent" />
         </div>
 
-        <SettingsUI
+        <Settings
             OnSave="UpdateApp"
             OnClose="() => {
                         SetPlayersMouseCapturing(true);
                         enableMidiEvents = true;
                     }"
-            @ref="settingsUi" />
+            @ref="settingsComponent" />
     </CascadingValue>
 </div>
 
@@ -129,13 +130,13 @@
     private DFile? player1File = null;
     private DFile? player2File = null;
 
-    private FilesUI? filesUI;
-    private MediaProviderContainerUI? mediaProviderContainerUI;
+    private Files? filesComponent;
+    private MediaProviderContainer? mediaProviderContainerUI;
 
     private Player? player1;
     private Player? player2;
 
-    private SettingsUI settingsUi = null!;
+    private Components.Settings settingsComponent = null!;
 
     private Fader? crossFader;
 
@@ -218,7 +219,7 @@
     private void OpenSettingsDialog() {
         SetPlayersMouseCapturing(false);
         enableMidiEvents = false;
-        settingsUi.Open();
+        settingsComponent.Open();
     }
 
     private void HandleMouseDown(MouseEventArgs e) {
@@ -293,7 +294,7 @@
     private void SetMediaProviders() {
         this.mediaProviders.Clear();
 
-        foreach(Settings.MediaProvider mp in Program.Settings.MediaProviders) {
+        foreach(Diyokee.Settings.MediaProvider mp in Program.Settings.MediaProviders) {
             if(mp.Type == "local") { // We only support local/netshare paths for now
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
@@ -354,7 +355,7 @@
             }
 
             DFile? file = session.Get<DFile>(nameof(selectedFile));
-            if(file != null) filesUI?.ChangeSelectedFile(file);
+            if(file != null) filesComponent?.ChangeSelectedFile(file);
 
             MidiMonitor();
 
@@ -431,8 +432,8 @@
                 case "FoldersFilesToggle":
                     navigateFolders = !navigateFolders;
                     if(!navigateFolders) {
-                        InvokeAsync(filesUI!.SelectDown);
-                        InvokeAsync(filesUI!.SelectUp);
+                        InvokeAsync(filesComponent!.SelectDown);
+                        InvokeAsync(filesComponent!.SelectUp);
                     }
                     return;
                 case "ExpandFolder":
@@ -457,7 +458,7 @@
                     if(navigateFolders) {
                         InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
                     } else {
-                        InvokeAsync(filesUI!.SelectUp);
+                        InvokeAsync(filesComponent!.SelectUp);
                     }
                     return;
                 case "BrowseDown":
@@ -465,7 +466,7 @@
                     if(navigateFolders) {
                         InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
                     } else {
-                        InvokeAsync(filesUI!.SelectDown);
+                        InvokeAsync(filesComponent!.SelectDown);
                     }
                     return;
                 case "Gain":

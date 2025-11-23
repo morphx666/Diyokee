@@ -48,7 +48,7 @@
     private bool hideRestartRequiredMsg = true;
 
     [Parameter]
-    public Settings Settings { get; set; } = default!;
+    public Diyokee.Settings Settings { get; set; } = default!;
 
     private bool IsSelected(bool isMasterOutput, string deviceName, AudioDevice.DeviceSpeakers channel) {
         List<AudioDevice> devices = isMasterOutput ? Settings.Audio.MainOutputDevice : Settings.Audio.MonitorDevice;

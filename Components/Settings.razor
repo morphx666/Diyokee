@@ -16,7 +16,7 @@
         <h3>Media Providers</h3>
         <div class="media-providers scroller">
             @foreach(var provider in settings.MediaProviders) {
-                <MediaProviderUI
+                <MediaProvider
                     Provider="provider"
                     OnDeleteProvider="@(() => DeleteProvider(provider))" />
             }
@@ -94,10 +94,10 @@
 
         <div class="header">
             <h3>Midi</h3>
-            <MidiControllersUI
+            <MidiControllers
                 Settings="settings"
                 MidiProfiles="midiProfiles"
-                @ref="midiControllersUI"/>
+                @ref="midiControllersComponent"/>
         </div>
     </div>
 </ModalDialog>
@@ -111,20 +111,20 @@
     [Parameter]
     public EventCallback OnClose { get; set; } = default!;
 
-    private Settings settings = default!;
+    private Diyokee.Settings settings = default!;
     private List<MidiControllerProfile> midiProfiles = default!;
-    private MidiControllersUI midiControllersUI = default!;
+    private MidiControllers midiControllersComponent = default!;
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
     public void Open() {
-        settings = (Settings)Program.Settings.Clone();
+        settings = (Diyokee.Settings)Program.Settings.Clone();
         midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
         dialog.Open();
     }
 
     public void Close() {
-        midiControllersUI.RemoveMidiEventHandler();
+        midiControllersComponent.RemoveMidiEventHandler();
         dialog.Close();
 
         OnClose.InvokeAsync();
@@ -144,12 +144,12 @@
         await OnSave.InvokeAsync();
     }
 
-    private void DeleteProvider(Settings.MediaProvider provider) {
+    private void DeleteProvider(Diyokee.Settings.MediaProvider provider) {
         settings.MediaProviders.Remove(provider);
     }
 
     private void AddProvider() {
-        var newProvider = new Settings.MediaProvider() {
+        var newProvider = new Diyokee.Settings.MediaProvider() {
                 Type = "local",
                 Name = "New Local Provider",
                 RootDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
