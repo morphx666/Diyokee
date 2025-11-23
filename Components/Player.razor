@@ -17,7 +17,8 @@
 @inject SessionState session
 
 <div class="player-container"
-     ondragover="event.preventDefault();"
+     @ondragover="HandleDragOver"
+     @ondragover:preventDefault="true"
      @ondrop="HandleDrop"
      @ondragenter="HandleDragEnter"
      @ondragleave="HandleDragLeave">
@@ -421,7 +422,7 @@
     private string GetKeyAdjustment() {
         if(File == null || File.Key == string.Empty) return "&nbsp;";
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
-        if(semitones == 0) return File.Key;
+        if(semitones == 0) return keyTools.ConvertTo(File.Key, KeyTools.Notations.CamelotKey);
         int keyNumber = keyTools.ToMidiNote(File.Key);
         string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), KeyTools.Notations.CamelotKey);        
 
@@ -524,8 +525,6 @@
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, FilesUI.TimeSlice);
 
-        // peaks = [];
-        // beatMarkers.Clear();
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);
             queueAutoSnap = !IsPlaying;
@@ -1111,6 +1110,11 @@
         mouseState!.IsCaptured = false;
 
         await RequestedFileCue.InvokeAsync();
+    }
+
+    private void HandleDragOver(DragEventArgs e) {
+        // Do nothing
+        // This is just a placeholder to avoid the deprecation warning about using inline JavaScript: ondragover="event.preventDefault()"
     }
 
     private void SavePlayerState() {
