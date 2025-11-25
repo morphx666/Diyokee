@@ -1,0 +1,39 @@
+.scroller {
+    height: 20em;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+
+    .entry {
+        display: flex;
+        align-items: center;
+        padding: 0.25em;
+
+        &:hover {
+            background-color: var(--panel-background-color-light);
+        }
+    
+        .selected {
+            border-bottom: 1px solid var(--ctrl-highlight-soft);
+        }
+    }
+
+    i {
+        margin-right: 0.5em;
+        color: var(--panel-background-color-light-light);
+    }
+}
+
+.selected-folder {
+    font-size: 0.8rem;
+    color: var(--ctrl-highlight-soft);
+
+    margin: 1rem 0 0 8ch;
+    width: calc(100% - 8ch);
+    padding-bottom: 0.5rem;
+
+    border-bottom: 1px solid var(--panel-background-color-dark);
+    border-bottom: 1px solid var(--panel-background-color-dark);
+}

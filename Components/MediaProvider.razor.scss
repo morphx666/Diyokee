@@ -22,6 +22,21 @@
             font-size: 0.8rem;
             color: var(--help);
         }
+
+        .button-select-location {
+            color: var(--primary-light);
+            background: var(--panel-background-color-dark);
+            border: none;
+            padding: 0.3em;
+            cursor: pointer;
+
+            color: rgb(from var(--primary-light) r g b / 70%);
+            transition: color 250ms;
+
+            &:hover {
+                color: rgb(from var(--primary-light) r g b / 100%);
+            }
+        }
     }
 
     .button-delete-provider {
@@ -38,7 +53,7 @@
         cursor: pointer;
 
         right: 0.5rem;
-        bottom: 0;
+        top: 0;
     }
 
     &:hover .button-delete-provider {

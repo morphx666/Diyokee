@@ -1,0 +1,110 @@
+﻿<ModalDialog
+    @ref="dialog"
+    Title="Select Folder"
+    Buttons="buttons"
+    Movable=true>
+
+    <div class="scroller">
+        @foreach(DriveInfo drive in DriveInfo.GetDrives()) {
+            <div class="container">
+                <div class="entry">
+                    @if(HasSubDirectories(drive.RootDirectory.FullName)) {
+                        <div @onclick="@(() => Toggle(drive.RootDirectory.FullName))">
+                            @if(expandedFolders.Contains(drive.RootDirectory.FullName)) {
+                                <i class="fa-regular fa-square-minus"></i>
+                            } else {
+                                <i class="fa-regular fa-square-plus"></i>
+                            }
+                        </div>
+                    } else {
+                        <i class="fa-regular fa-square"></i>
+                    }
+                    <div @onclick="@(() => selectedFolder = drive.RootDirectory.FullName)" class="@(selectedFolder == drive.RootDirectory.FullName ? "selected" : "")">
+                        <span>@drive.Name</span>&nbsp; <span>[@drive.VolumeLabel]</span>
+                    </div>
+                </div>
+                @GetSubDirectories(drive.RootDirectory)
+            </div>
+        }
+    </div>
+
+    <div class="selected-folder ellipsis">@selectedFolder &nbsp;</div>
+</ModalDialog>
+
+@code {
+    private ModalDialog dialog = null!;
+
+    private ModalDialog.Button[] buttons => new[] {
+        new ModalDialog.Button { Text = "Select", Class = "primary", Click = EventCallback.Factory.Create(this, Ok) },
+        new ModalDialog.Button { Text = "Cancel", Class = "secondary", Click = EventCallback.Factory.Create(this, Cancel) }
+    };
+
+    [Parameter]
+    public EventCallback<string> OnFolderSelected { get; set; }
+
+    private List<string> expandedFolders = [];
+    private string selectedFolder = string.Empty;
+
+    protected virtual RenderFragment GetSubDirectories(DirectoryInfo di) {
+        if(!expandedFolders.Contains(di.FullName)) return @<span></span>;
+
+        int indent = di.FullName.Split(Path.DirectorySeparatorChar).Length;
+
+        return
+            @<div class="container" style="margin-left: @(indent * 8)px">
+                @foreach(DirectoryInfo sdi in di.GetDirectories()) {
+                    if((sdi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
+
+                    <div class="entry">
+                        @if(HasSubDirectories(sdi.FullName)) {
+                            <div @onclick="@(() => Toggle(sdi.FullName))">
+                                @if(expandedFolders.Contains(sdi.FullName)) {
+                                    <i class="fa-regular fa-square-minus"></i>
+                                } else {
+                                    <i class="fa-regular fa-square-plus"></i>
+                                }
+                            </div>
+                        } else {
+                            <i class="fa-regular fa-square"></i>
+                        }
+                        <div @onclick="@(() => selectedFolder = sdi.FullName)" class="@(selectedFolder == sdi.FullName ? "selected" : "")">
+                            <span>@sdi.Name</span>
+                        </div>
+                    </div>
+                    @GetSubDirectories(sdi);
+                }
+            </div>
+    ;
+    }
+
+    private void Toggle(string path) {
+        if(!HasSubDirectories(path)) return;
+
+        if(expandedFolders.Contains(path)) {
+            expandedFolders.Remove(path);
+        } else {
+            expandedFolders.Add(path);
+        }
+    }
+
+    private bool HasSubDirectories(string path) {
+        try {
+            return Directory.GetDirectories(path).Length > 0;
+        } catch {
+            return false;
+        }
+    }
+
+    public void Open() {
+        dialog.Open();
+    }
+
+    private void Cancel() {
+        dialog.Close();
+    }
+
+    private void Ok() {
+        OnFolderSelected.InvokeAsync(selectedFolder);
+        dialog.Save();
+    }
+}

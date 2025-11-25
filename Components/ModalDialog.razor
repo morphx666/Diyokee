@@ -14,13 +14,21 @@
         </div>
 
         <div class="buttons-container">
-            <div class="dlg-button primary" @onclick="Save">Save</div>
-            <div class="dlg-button secondary" @onclick="Close">Cancel</div>
+            @foreach(var button in Buttons) {
+                <div class="dlg-button @button.Class" @onclick="button.Click"><i class="@button.Icon"></i> @button.Text</div>
+            }
         </div>
     </div>
 </div>
 
 @code {
+    public class Button {
+        public string Text { get; set; } = "";
+        public string Icon { get; set; } = "";
+        public string Class { get; set; } = "";
+        public EventCallback Click { get; set; }
+    }
+
     [Parameter]
     public string Title { get; set; } = "";
 
@@ -38,6 +46,10 @@
 
     [Parameter]
     public EventCallback OnSave { get; set; }
+
+    // FIX: Move initialization to OnInitialized to ensure 'this' is available
+    [Parameter]
+    public Button[] Buttons { get; set; } = Array.Empty<Button>();
 
     public bool IsOpen { get; set; } = false;
 
@@ -74,7 +86,7 @@
         }
     }
 
-    private void Save() {
+    public void Save() {
         OnSave.InvokeAsync();
         Close();
     }
@@ -141,6 +153,15 @@
                     }
                 }
             });
+        }
+    }
+
+    protected override void OnInitialized() {
+        if(Buttons == null) {
+            Buttons = new Button[] {
+                new Button { Text = "Save", Icon = "fa-solid fa-check", Class = "primary", Click = EventCallback.Factory.Create(this, Save) },
+                new Button { Text = "Cancel", Icon = "fa-solid fa-ban", Class = "secondary", Click = EventCallback.Factory.Create(this, Close) }
+            };
         }
     }
 }
