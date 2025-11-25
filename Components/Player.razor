@@ -1066,13 +1066,13 @@
 
     private async Task MonitorPlayback() {
         int intervals = 0;
-        int delay = 60;
+        int delay = 30;
         long lastPos = 0;
         bool isPlayingBackwards = false;
         bool isPaused = false;
 
         while(true) {
-            await Task.Delay(delay);
+            await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 4 : 1));
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
                 if(isPaused) {
@@ -1113,16 +1113,16 @@
                 }
 
                 await waveform.Refresh();
-                if(intervals % 5 == 0) await waveformFull!.Refresh();
+                if(intervals % 10 == 0) await waveformFull!.Refresh();
             } else if(IsPlaying) {
-                long p = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
+                //long pos = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
                 Stop(false);
                 CreateStreams();
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
 
             }
 
-            if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
+            //if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 
