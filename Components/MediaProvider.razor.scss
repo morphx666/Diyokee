@@ -27,7 +27,8 @@
             color: var(--primary-light);
             background: var(--panel-background-color-dark);
             border: none;
-            padding: 0.3em;
+            border-left: 1px solid var(--panel-background-color-dark-dark);
+            padding: 0.28em 0.5em;
             cursor: pointer;
 
             color: rgb(from var(--primary-light) r g b / 70%);
@@ -41,7 +42,6 @@
 
     .button-delete-provider {
         position: absolute;
-        display: none;
 
         font-family: "FontAwesome Solid";
         font-size: 1rem;
@@ -54,9 +54,12 @@
 
         right: 0.5rem;
         top: 0;
+
+        opacity: 0;
+        transition: opacity 250ms;
     }
 
     &:hover .button-delete-provider {
-        display: block;
+        opacity: 1;
     }
 }

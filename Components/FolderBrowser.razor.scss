@@ -14,7 +14,7 @@
         &:hover {
             background-color: var(--panel-background-color-light);
         }
-    
+
         .selected {
             border-bottom: 1px solid var(--ctrl-highlight-soft);
         }
@@ -23,6 +23,10 @@
     i {
         margin-right: 0.5em;
         color: var(--panel-background-color-light-light);
+
+        &[class*="-plus"], &[class*="-minus"] {
+            cursor: pointer;
+        }
     }
 }
 

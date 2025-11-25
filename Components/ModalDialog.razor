@@ -157,10 +157,10 @@
     }
 
     protected override void OnInitialized() {
-        if(Buttons == null) {
+        if(Buttons.Length == 0) {
             Buttons = new Button[] {
-                new Button { Text = "Save", Icon = "fa-solid fa-check", Class = "primary", Click = EventCallback.Factory.Create(this, Save) },
-                new Button { Text = "Cancel", Icon = "fa-solid fa-ban", Class = "secondary", Click = EventCallback.Factory.Create(this, Close) }
+                new Button { Text = "Save", Class = "primary", Click = EventCallback.Factory.Create(this, Save) },
+                new Button { Text = "Cancel", Class = "secondary", Click = EventCallback.Factory.Create(this, Close) }
             };
         }
     }
