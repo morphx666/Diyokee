@@ -157,8 +157,9 @@
     private string lastFilename = "";
     private int selectedTab = 0;
 
+    [JsonProperty] private int masterHandle = 0;
     [JsonProperty] private int streamHandle = 0;
-    [JsonProperty] private int fxHandle = 0;
+    [JsonProperty] private int tempoHandle = 0;
     [JsonProperty] private int eqHandle = 0;
     [JsonProperty] private List<int> splitterStreams = [];
     [JsonProperty] private int masterSplitterHandle = 0;
@@ -370,7 +371,7 @@
         if(masterSplitterHandle == 0) return;
         double tempo = ReScaleTempoFader() * 100.0;
 
-        bool r = Bass.BASS_ChannelSetAttribute(fxHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
+        bool r = Bass.BASS_ChannelSetAttribute(tempoHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
         if(Program.Settings.Playback.SyncPlayersBpm) {
             // FIXME: Implement necessary checks to avoid infinite recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
@@ -505,6 +506,10 @@
             Bass.BASS_ChannelStop(streamHandle);
             Bass.BASS_StreamFree(streamHandle);
             streamHandle = 0;
+
+            Bass.BASS_ChannelStop(masterHandle);
+            Bass.BASS_StreamFree(masterHandle);
+            masterHandle = 0;
         }
 
         if(File == null || faderVolume == null) return;
@@ -534,40 +539,44 @@
     private (BASSError Error, string Message) CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
 
-        streamHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
+        masterHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC01");
+        if(masterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(masterHandle));
 
-        BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(streamHandle);
+        BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(masterHandle);
         isMono = channelInfo.chans == 1;
 
-        fxHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
-                                                            | BASSFlag.BASS_STREAM_DECODE
-                                                            | BASSFlag.BASS_FX_FREESOURCE);
+        streamHandle = BassFx.BASS_FX_ReverseCreate(masterHandle, 30, BASSFlag.BASS_FX_FREESOURCE | BASSFlag.BASS_STREAM_DECODE);
+        Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
+        if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(streamHandle));
+
+        tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
+                                                               | BASSFlag.BASS_STREAM_DECODE
+                                                               | BASSFlag.BASS_FX_FREESOURCE);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(fxHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC02");
+        if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
 
         eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC03");
+        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
 
         if(!MinimalMode) {
             InitResonantFilter();
             int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspResonantFilter, IntPtr.Zero, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
+            if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(dspHandle));
         }
 
         splitterStreams.Clear();
         masterSplitterHandle = 0;
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(fxHandle, BASSFlag.BASS_STREAM_DECODE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC04");
+            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(splitterHandle));
             splitterStreams.Add(splitterHandle);
 
             bool r = BassMix.BASS_Mixer_StreamAddChannel(mixHandle.Handle, splitterHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE
@@ -576,23 +585,23 @@
                                                                                            | BASSFlag.BASS_STREAM_AUTOFREE
                                                                                            | BASSFlag.BASS_MIXER_CHAN_MATRIX);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC05");
+            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_StreamAddChannel));
 
 
             float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
             r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC06");
+            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
         }
         masterSplitterHandle = splitterStreams[0];
 
         gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC07");
+        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
 
         pitchHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, "SC08");
+        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
         pitch.fPitchShift = 0;
         pitch.fSemitones = 0;
         pitch.lOsamp = 64;
@@ -969,8 +978,6 @@
     }
 
     private DSPPROC dspResonantFilter = null!;
-    private double[] din = new double[5];
-    private double[] dout = new double[5];
     private void InitResonantFilter() {
         // Cascaded resonant lp/hp filter
         // https://www.musicdsp.org/en/latest/Filters/131-cascaded-resonant-lp-hp-filter.html
@@ -1059,34 +1066,63 @@
 
     private async Task MonitorPlayback() {
         int intervals = 0;
-        int delay = 60;
+        int delay = 30;
+        long lastPos = 0;
+        bool isPlayingBackwards = false;
+        bool isPaused = false;
 
         while(true) {
-            await Task.Delay(delay);
+            await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 4 : 1));
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
+                if(isPaused) {
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
+                    isPaused = false;
+                }
+
                 if(waveform!.IsMouseDown) {
-                    long p = waveform.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, p));
+                    long pos = waveform.PlaybackHead * waveformStepLength / WaveformBarWidth;
+                    long playerPos = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
+
+                    if(pos == lastPos) {
+                        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
+                        isPaused = true;
+                    } else {
+                        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos));
+
+                        if(pos > lastPos) {
+                            Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
+                            isPlayingBackwards = false;
+                        } else if(pos < lastPos) {
+                            Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_REVERSE);
+                            isPlayingBackwards = true;
+                        }
+                        lastPos = pos;
+                    }
+
                 } else if(waveformFull!.IsMouseDown) {
-                    long p = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, p));
+                    long pos = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos));
                 } else {
                     waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle) * WaveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
+
+                    if(isPlayingBackwards) {
+                        Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
+                    }
                 }
 
                 await waveform.Refresh();
-                if(intervals % 5 == 0) await waveformFull!.Refresh();
+                if(intervals % 10 == 0) await waveformFull!.Refresh();
             } else if(IsPlaying) {
-                long p = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
+                //long pos = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
                 Stop(false);
                 CreateStreams();
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
 
             }
 
-            if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
+            //if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -1126,8 +1162,9 @@
         if(playerJson != null) {
             Player? p = JsonConvert.DeserializeObject<Player>(playerJson);
             if(p != null) {
+                masterHandle = p.masterHandle;
                 streamHandle = p.streamHandle;
-                fxHandle = p.fxHandle;
+                tempoHandle = p.tempoHandle;
                 eqHandle = p.eqHandle;
                 splitterStreams = p.splitterStreams;
                 masterSplitterHandle = p.masterSplitterHandle;
