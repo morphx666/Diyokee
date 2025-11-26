@@ -425,7 +425,7 @@
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
         if(semitones == 0) return keyTools.ConvertTo(File.Key, KeyTools.Notations.CamelotKey);
         int keyNumber = keyTools.ToMidiNote(File.Key);
-        string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), KeyTools.Notations.CamelotKey);        
+        string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), KeyTools.Notations.CamelotKey);
 
         string keyChange;
         if(semitones > 0) {
@@ -968,13 +968,20 @@
     }
 
     private void DoJump(int direction) {
-        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-        long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, jumpSize / beatsPerSecond);
-        if(offset > trackLengthBytes) return;
-        if(offset < 0) offset = 0;
+        Task.Run(async () => {
+            while(true) {
+                await Task.Delay(1);
+                if(InBeat) {
+                    long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
+                    long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, direction * (secondsPerBeat / 10) + jumpSize / beatsPerSecond);
+                    if(offset > trackLengthBytes) return;
+                    if(offset < 0) offset = 0;
 
-        // FIXME: This doesn't work correctly while playing; may have to ask Ian @ Un4seen about it ;)
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
+                    break;
+                }
+            }
+        });
     }
 
     private DSPPROC dspResonantFilter = null!;
