@@ -19,7 +19,9 @@
                     } else {
                         <i class="fa-regular fa-square"></i>
                     }
-                    <div @onclick="@(() => selectedFolder = drive.RootDirectory.FullName)" class="@(selectedFolder == drive.RootDirectory.FullName ? "selected" : "")">
+                    <div
+                        class="entry-name @(selectedFolder == drive.RootDirectory.FullName ? "selected" : "")"
+                        @onclick="@(() => selectedFolder = drive.RootDirectory.FullName)">
                         <span>@drive.Name</span>&nbsp; <span>[@drive.VolumeLabel]</span>
                     </div>
                 </div>
@@ -44,6 +46,7 @@
 
     private List<string> expandedFolders = [];
     private string selectedFolder = string.Empty;
+    private string lastSelectedFolder = string.Empty;
 
     protected virtual RenderFragment GetSubDirectories(DirectoryInfo di) {
         if(!expandedFolders.Contains(di.FullName)) return @<span></span>;
@@ -52,7 +55,7 @@
 
         return
             @<div class="container" style="margin-left: @(indent * 8)px">
-                @foreach(DirectoryInfo sdi in di.GetDirectories()) {
+                @foreach(DirectoryInfo sdi in di.GetDirectories().OrderBy(d => d.Name)) {
                     if((sdi.Attributes & FileAttributes.Hidden) == FileAttributes.Hidden) continue;
 
                     <div class="entry">
@@ -67,7 +70,9 @@
                         } else {
                             <i class="fa-regular fa-square"></i>
                         }
-                        <div @onclick="@(() => selectedFolder = sdi.FullName)" class="@(selectedFolder == sdi.FullName ? "selected" : "")">
+                        <div
+                            class="entry-name @(selectedFolder == sdi.FullName ? "selected" : "")"
+                            @onclick="@(() => selectedFolder = sdi.FullName)">
                             <span>@sdi.Name</span>
                         </div>
                     </div>
