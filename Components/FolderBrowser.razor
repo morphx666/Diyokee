@@ -5,12 +5,12 @@
     Movable=true>
 
     <div class="scroller">
-        @foreach(DriveInfo drive in DriveInfo.GetDrives()) {
+        @foreach(var drive in GetDrives()) {
             <div class="container">
                 <div class="entry">
-                    @if(HasSubDirectories(drive.RootDirectory.FullName)) {
-                        <div @onclick="@(() => Toggle(drive.RootDirectory.FullName))">
-                            @if(expandedFolders.Contains(drive.RootDirectory.FullName)) {
+                    @if(HasSubDirectories(drive.Directory.FullName)) {
+                        <div @onclick="@(() => Toggle(drive.Directory.FullName))">
+                            @if(expandedFolders.Contains(drive.Directory.FullName)) {
                                 <i class="fa-regular fa-square-minus"></i>
                             } else {
                                 <i class="fa-regular fa-square-plus"></i>
@@ -19,13 +19,12 @@
                     } else {
                         <i class="fa-regular fa-square"></i>
                     }
-                    <div
-                        class="entry-name @(selectedFolder == drive.RootDirectory.FullName ? "selected" : "")"
-                        @onclick="@(() => selectedFolder = drive.RootDirectory.FullName)">
-                        <span>@drive.Name</span>&nbsp; <span>[@drive.VolumeLabel]</span>
+                    <div class="entry-name @(selectedFolder == drive.Directory.FullName ? "selected" : "")"
+                         @onclick="@(() => selectedFolder = drive.Directory.FullName)">
+                        <span>@drive.Name</span>&nbsp; <span>[@drive.Volume]</span>
                     </div>
                 </div>
-                @GetSubDirectories(drive.RootDirectory)
+                @GetSubDirectories(drive.Directory)
             </div>
         }
     </div>
@@ -47,6 +46,33 @@
     private List<string> expandedFolders = [];
     private string selectedFolder = string.Empty;
     private string lastSelectedFolder = string.Empty;
+
+    private (DirectoryInfo Directory, string Name, string Volume)[] GetDrives() {
+        switch(Runtime.Platform) {
+            case Runtime.Platforms.Windows:
+                return DriveInfo.GetDrives()
+                    .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, d.VolumeLabel))
+                    .ToArray();
+
+            case Runtime.Platforms.MacApple:
+            case Runtime.Platforms.MacIntel:
+                return DriveInfo.GetDrives()
+                    .Where(d => d.RootDirectory.FullName.StartsWith("/Volumes/"))
+                    .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, d.VolumeLabel))
+                    .Append(new(new DirectoryInfo("/"), "Root", "System Root"))
+                    .Append(new(new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "Home", Environment.UserName))
+                    .ToArray();
+
+            case Runtime.Platforms.Linux:
+                return new[] {
+                    (new DirectoryInfo("/"), "Root", "Root"),
+                    (new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "Home", Environment.UserName)
+                };
+
+            default:
+                return [];
+        }
+    }
 
     protected virtual RenderFragment GetSubDirectories(DirectoryInfo di) {
         if(!expandedFolders.Contains(di.FullName)) return @<span></span>;

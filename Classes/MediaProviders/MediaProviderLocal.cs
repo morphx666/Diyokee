@@ -47,7 +47,7 @@ public class MediaProviderLocal : MediaProviderBase {
         get {
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic);
             if(path == "" || !Directory.Exists(path)) {
-                path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             }
             return path;
         }

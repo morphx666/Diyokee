@@ -152,7 +152,7 @@
         var newProvider = new Diyokee.Settings.MediaProvider() {
                 Type = "local",
                 Name = "New Local Provider",
-                RootDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyMusic)
+                RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
             };
         settings.MediaProviders.Add(newProvider);
     }

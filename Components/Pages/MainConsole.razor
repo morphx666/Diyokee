@@ -306,7 +306,7 @@
         }
 
         if(this.mediaProviders.Count == 0) {
-            MediaProviderLocal nmp = new("default", Environment.GetFolderPath(Environment.SpecialFolder.MyMusic));
+            MediaProviderLocal nmp = new("default", MediaProviderLocal.DefaultDirectory);
             //throw new Exception("No valid media providers found");
         } else {
             selectedMediaProvider = this.mediaProviders[0];
