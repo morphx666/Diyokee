@@ -203,6 +203,9 @@ internal class Program {
         } else if(platform == "macapple") {
             platform = "mac";
             architecture = "arm64";
+        } else if(platform == "macintel") {
+            platform = "mac";
+            architecture = "x64";
         }
 
         string srcDir = Path.Combine(Runtime.RunningDirectory, $"bass{c}{platform}{c}{architecture}{c}");
