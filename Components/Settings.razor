@@ -124,7 +124,6 @@
     }
 
     public void Close() {
-        midiControllersComponent.RemoveMidiEventHandler();
         dialog.Close();
 
         OnClose.InvokeAsync();

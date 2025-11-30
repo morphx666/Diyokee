@@ -1038,6 +1038,7 @@
 
     // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it
     // Disabling it would disable the playback sync and the beat monitor
+    // TODO: Can we use the BASS channel syncs to do this more efficiently? !IMPORTANT
     private async Task MonitorBeats() {
         double threshold = 0.01;
         int interval = 0;
@@ -1122,14 +1123,11 @@
                 await waveform.Refresh();
                 if(intervals % 10 == 0) await waveformFull!.Refresh();
             } else if(IsPlaying) {
-                //long pos = Bass.BASS_ChannelGetPosition(streamHandle, BASSMode.BASS_POS_BYTE);
                 Stop(false);
                 CreateStreams();
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
 
             }
-
-            //if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 

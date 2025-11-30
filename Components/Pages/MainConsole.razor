@@ -483,6 +483,14 @@
             bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
             double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
 
+            var PlayerAction = (Action fcn) => {
+                if(velocity > 0) {
+                    fcn();
+                    shouldRender = true;
+                    InvokeAsync(StateHasChanged);
+                }
+            };
+
             switch(propertyName) {
                 case "PlayPause":
                     if(velocity > 0) targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
@@ -498,25 +506,25 @@
                     }
                     return;
                 case "LoopJumpLockToggle":
-                    if(velocity > 0) targetPlayer.ToggleLoopJumpSync();
+                    PlayerAction(targetPlayer.ToggleLoopJumpSync);
                     return;
                 case "LoopToggle":
-                    if(velocity > 0) targetPlayer.ToggleLoop();
+                    PlayerAction(targetPlayer.ToggleLoop);
                     return;
                 case "LoopSizeIncrease":
-                    if(velocity > 0) targetPlayer.LoopSizeIncrease();
+                    PlayerAction(targetPlayer.LoopSizeIncrease);
                     return;
                 case "LoopSizeDecrease":
-                    if(velocity > 0) targetPlayer.LoopSizeDecrease();
+                    PlayerAction(targetPlayer.LoopSizeDecrease);
                     return;
                 case "JumpSizeIncrease":
-                    if(velocity > 0) targetPlayer.JumpSizeIncrease();
+                    PlayerAction(targetPlayer.JumpSizeIncrease);
                     return;
                 case "JumpSizeDecrease":
-                    if(velocity > 0) targetPlayer.JumpSizeDecrease();
+                    PlayerAction(targetPlayer.JumpSizeDecrease);
                     return;
                 case "SnapToBeatMarker":
-                    if(velocity > 0) targetPlayer.SnapToClosestBeatMarker();
+                    PlayerAction(targetPlayer.SnapToClosestBeatMarker);
                     return;
                 case "Volume":
                     double volume = value;
@@ -524,20 +532,20 @@
                     return;
                 case "EqHi":
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.ApplyEqHi(value);
-                        targetPlayer?.EqControls.UpdateKnobs();
+                        targetPlayer.EqControls.ApplyEqHi(value);
+                        targetPlayer.EqControls.UpdateKnobs();
                     });
                     return;
                 case "EqMid":
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.ApplyEqMid(value);
-                        targetPlayer?.EqControls.UpdateKnobs();
+                        targetPlayer.EqControls.ApplyEqMid(value);
+                        targetPlayer.EqControls.UpdateKnobs();
                     });
                     return;
                 case "EqLow":
                     InvokeAsync(() => {
-                        targetPlayer?.EqControls.ApplyEqLow(value);
-                        targetPlayer?.EqControls.UpdateKnobs();
+                        targetPlayer.EqControls.ApplyEqLow(value);
+                        targetPlayer.EqControls.UpdateKnobs();
                     });
                     return;
                 case "Color":
@@ -545,10 +553,10 @@
                     InvokeAsync(targetPlayer.FilterControls.UpdateKnobs);
                     return;
                 case "JogWheelForward":
-                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer?.JogWheelForward();
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelForward();
                     return;
                 case "JogWheelBackward":
-                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer?.JogWheelBackward();
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelBackward();
                     return;
                 case "Tempo":
                     double tempo = 1.0 - value;
