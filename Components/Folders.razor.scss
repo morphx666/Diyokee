@@ -1,20 +1,21 @@
 .folder {
     user-select: none;
     cursor: pointer;
+    height: calc(2rem - 1px);
+    padding-block: 0.3rem;
 
     .name {
         display: flex;
         flex-direction: row;
         align-items: center;
         gap: 0.2rem;
-        padding: calc(0.2rem + 1px) 0.5rem;
 
         .icons {
             position: relative;
             display: flex;
             flex-direction: row;
-            gap: 4px;
             align-items: center;
+            gap: 4px;
             width: 2rem;
 
             i {

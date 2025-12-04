@@ -102,6 +102,7 @@
             .tabs {
                 display: grid;
                 grid-auto-flow: column;
+                padding-bottom: 1px;
                 
                 background-color: var(--panel-background-color-dark-dark);
                 border-bottom: 1px solid var(--panel-background-color-dark);

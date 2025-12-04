@@ -1083,7 +1083,7 @@
             await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 4 : 1));
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                if(isPaused) {
+                if(isPaused && IsPlaying) {
                     splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                     isPaused = false;
                 }

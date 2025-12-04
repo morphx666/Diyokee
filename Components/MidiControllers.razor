@@ -6,7 +6,7 @@
 <div class="field">
     <label for="midi-device-name">Controller</label>
     <div class="select-container">
-        <InputSelect id="midi-device-name" TValue="string" @bind-Value="Settings.MidiDeviceName">
+        <InputSelect id="midi-device-name" @bind-Value="Settings.MidiDeviceName">
             @if(MidiDevices.Length == 0) {
                 <option Value="" selected>(no devices found)</option>
             } else {
@@ -22,14 +22,16 @@
 <div class="field">
     <label for="midi-profile">Profile</label>
     <div class="select-container profile-name">
-        <InputSelect id="midi-profile" TValue="MidiControllerProfile" @bind-Value="selectedProfile">
+        <InputSelect id="midi-profile" @bind-Value="SelectedProfileName">
             @foreach(var profile in MidiProfiles) {
-                <option Value="@profile">@profile.Name</option>
+                <option Value="@profile.Name">@profile.Name</option>
             }
         </InputSelect>
         @if(isEditingName) {
-            <InputText @bind-Value="SelectedProfileName"
-                       @onblur="@(() => isEditingName = false)" />
+            <InputText
+                @bind-Value="SelectedProfileName"
+                @onblur="@(() => isEditingName = false)"
+                onfocus="this.select()"/>
         }
     </div>
     <button class="button-add-profile" onclick="@AddProfile"><i class="fa-solid fa-circle-plus"></i></button>
@@ -57,6 +59,32 @@
                                 </button>
                             }
                             <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.General) ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.General) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.General))">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="keyboard">
+            <h4>Keyboard</h4>
+            <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
+                @foreach(var p in typeof(MidiControllerProfile.KeyboardMapping).GetProperties()) {
+                    <div class="mapping-container">
+                        <div class="mapping-name">
+                            <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.Keyboard)" />
+                            <label class="@(!isListening && detectedProperty == $"keyboard{p.Name}" ? "highlight" : "")">@PrettyName(p.Name)</label>
+                        </div>
+                        <div class="buttons-container">
+                            @if(isListening && detectedProperty == $"keyboard{p.Name}") {
+                                <button class="button-listening" onclick="@StopListening"><i class="fa-solid fa-spinner"></i></button>
+                            } else {
+                                <button class="button-listen @(isListening ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.Keyboard) ? "not-configured" : "")" onclick="@(() => ListenForMidiEvent(p.Name, selectedProfile.Keyboard, "keyboard"))">
+                                    <i class="fa-solid fa-gear"></i>
+                                </button>
+                            }
+                            <button class="button-delete @(isListening || !HasMapping(p.Name, selectedProfile.Keyboard) ? "disabled" : "") @(!HasMapping(p.Name, selectedProfile.Keyboard) ? "not-configured" : "")" onclick="@(() => DeleteMapping(p.Name, selectedProfile.Keyboard))">
                                 <i class="fa-solid fa-circle-xmark"></i>
                             </button>
                         </div>
@@ -100,6 +128,7 @@
 @code {
     private MidiControllerProfile selectedProfile = default!;
     private bool isListening = false;
+    private object listeningSection = null!;
     private string listeningProperty = string.Empty;
     private string detectedProperty = string.Empty;
     private MidiControllerProfile.MidiMapping mapping = new();
@@ -108,7 +137,13 @@
     private BASS_MIDI_DEVICEINFO[] MidiDevices => BassMidi.BASS_MIDI_InGetGeviceInfos();
     private string SelectedProfileName {
         get => selectedProfile?.Name ?? string.Empty;
-        set => selectedProfile.Name = value;
+        set {
+            if(isEditingName) {
+                selectedProfile.Name = value;
+            } else {
+                selectedProfile = MidiProfiles.FirstOrDefault(p => p.Name == value) ?? default!;
+            }
+        }
     }
 
     [Parameter]
@@ -136,11 +171,13 @@
     }
 
     private void AddProfile() {
+        int count = MidiProfiles.Count(p => p.Name.StartsWith("New Profile"));
         var newProfile = new MidiControllerProfile {
-            Name = "New Profile"
+            Name = $"New Profile{(count == 0 ? "" : " " + (count + 1).ToString())}"
         };
         MidiProfiles.Add(newProfile);
         selectedProfile = newProfile;
+        EditMode();
     }
 
     private void DeleteProfile() {
@@ -153,11 +190,12 @@
     private void ListenForMidiEvent(string propertyName, object section, string sectionName) {
         isListening = true;
         listeningProperty = propertyName;
+        listeningSection = section;
         detectedProperty = $"{sectionName}{propertyName}";
         InvokeAsync(StateHasChanged);
     }
 
-    private void MidiEventsHandler(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
+    private void MidiEventsHandler(string propertyName, string sectionName, MidiControllerProfile.MidiMapping fromMapping, BASS_MIDI_EVENT midiEvent) {
         mapping = new MidiControllerProfile.MidiMapping {
             EventType = midiEvent.eventtype,
             Parameter = midiEvent.param,
@@ -167,15 +205,15 @@
             Controller = midiEvent.param & 0xFF
         };
 
-        string newDetectedProperty = $"{section}{propertyName}";
+        string newDetectedProperty = $"{sectionName}{propertyName}";
         if(detectedProperty == newDetectedProperty) {
             detectedProperty = string.Empty;
             InvokeAsync(StateHasChanged);
         }
         detectedProperty = newDetectedProperty;
 
-        if(listeningProperty == propertyName) {
-            RecordMapping(section);
+        if(listeningProperty == propertyName || (isListening && propertyName == "unknown")) {
+            RecordMapping(listeningSection);
         } else {
             InvokeAsync(StateHasChanged);
         }

@@ -52,6 +52,12 @@ namespace Diyokee {
             public MidiMapping JogWheelBackward { get; set; } = new();
         }
 
+        public class KeyboardMapping {
+            public MidiMapping Volume { get; set; } = new();
+            public MidiMapping Modulation { get; set; } = new();
+            public MidiMapping Pitch { get; set; } = new();
+        }
+
         public string Name { get; set; } = string.Empty;
         public bool Enabled { get; set; } = true;
         public GeneralMapping General { get; set; } = new();
@@ -59,6 +65,7 @@ namespace Diyokee {
             new() { Index = 0 },
             new() { Index = 1 },
         ];
+        public KeyboardMapping Keyboard { get; set; } = new();
 
         public static async Task<List<MidiControllerProfile>> LoadAll() {
             string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
@@ -90,6 +97,10 @@ namespace Diyokee {
             string profilesPath = Path.Combine(workingDirectory, "controllers");
             if(!Directory.Exists(profilesPath)) Directory.CreateDirectory(profilesPath);
             return Path.Combine(profilesPath, fileName + ".json");
+        }
+
+        public override string ToString() {
+            return Name;
         }
 
         public object Clone() {
