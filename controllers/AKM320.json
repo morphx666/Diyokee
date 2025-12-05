@@ -1,0 +1,504 @@
+{
+  "Name": "AKM320",
+  "Enabled": true,
+  "General": {
+    "FoldersFilesToggle": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "BrowseUp": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "BrowseDown": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "ExpandFolder": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "LoadSelectedFileToPlayer0": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "LoadSelectedFileToPlayer1": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "Gain": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "Crossfader": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    }
+  },
+  "Players": [
+    {
+      "Index": 0,
+      "PlayPause": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Stop": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Cue": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "SnapToBeatMarker": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoadSelectedFile": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "BpmMatch": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Volume": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Tempo": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqHi": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqMid": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqLow": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Color": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoUp": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoDown": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopJumpLockToggle": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopToggle": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopSizeIncrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopSizeDecrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpSizeIncrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpSizeDecrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      }
+    },
+    {
+      "Index": 1,
+      "PlayPause": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Stop": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Cue": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "SnapToBeatMarker": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoadSelectedFile": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "BpmMatch": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Volume": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Tempo": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqHi": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqMid": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "EqLow": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "Color": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoUp": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "TempoDown": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopJumpLockToggle": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopToggle": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopSizeIncrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "LoopSizeDecrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpSizeIncrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpSizeDecrease": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JumpBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelForward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      },
+      "JogWheelBackward": {
+        "EventType": 0,
+        "Note": -1,
+        "Channel": -1,
+        "Velocity": -1,
+        "Parameter": -1,
+        "Controller": -1
+      }
+    }
+  ],
+  "Keyboard": {
+    "Volume": {
+      "EventType": 12,
+      "Note": 119,
+      "Channel": 0,
+      "Velocity": 0,
+      "Parameter": 119,
+      "Controller": 119
+    },
+    "Pitch": {
+      "EventType": 4,
+      "Note": 64,
+      "Channel": 0,
+      "Velocity": 33,
+      "Parameter": 8512,
+      "Controller": 64
+    },
+    "FirstKey": {
+      "EventType": 1,
+      "Note": 53,
+      "Channel": 0,
+      "Velocity": 99,
+      "Parameter": 25397,
+      "Controller": 53
+    },
+    "LastKey": {
+      "EventType": 1,
+      "Note": 84,
+      "Channel": 0,
+      "Velocity": 97,
+      "Parameter": 24916,
+      "Controller": 84
+    },
+    "TargetPlayer": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    }
+  }
+}
