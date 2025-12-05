@@ -568,16 +568,18 @@
             }
 
             if(section == "keyboard") {
-                if(player1 == null || player1.File == null)  return;
-
                 double pitch = 0;
 
                 switch(propertyName) {
                     case "Volume":
+                        if(player1 == null) return;
+
                         double volume = midiEvent.param / 127.0;
                         InvokeAsync(() => player1.SetVolume(volume));
                         return;
                     case "Pitch":
+                        if(player1 == null) return;
+
                         pitch = (midiEvent.param - 8192) / 8192.0 * 12.0; // +/- 12 semitones
                         player1.SetPitch(pitch);
                         player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
@@ -587,6 +589,8 @@
                         return;
                     default:
                         if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
+                            if(player1 == null || player1.File == null) return;
+
                             int keyNumber = midiEvent.param & 0xFF;
                             int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
 

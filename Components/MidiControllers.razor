@@ -44,7 +44,7 @@
         <div class="general">
             <h4>General</h4>
             <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
-                @foreach(var p in typeof(MidiControllerProfile.GeneralMapping).GetProperties()) {
+                @foreach(var p in GetProperties(typeof(MidiControllerProfile.GeneralMapping))) {
                     <div class="mapping-container">
                         <div class="mapping-name">
                             <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.General)" />
@@ -70,7 +70,7 @@
         <div class="keyboard">
             <h4>Keyboard</h4>
             <div class="mappings @(MidiDevices.Length == 0 ? "disabled" : "")">
-                @foreach(var p in typeof(MidiControllerProfile.KeyboardMapping).GetProperties()) {
+                @foreach(var p in GetProperties(typeof(MidiControllerProfile.KeyboardMapping))) {
                     <div class="mapping-container">
                         <div class="mapping-name">
                             <input type="checkbox" disabled="@true" checked="@HasMapping(p.Name, selectedProfile.Keyboard)" />
@@ -125,7 +125,7 @@
     </div>
 }
 
-@code {
+    @code {
     private MidiControllerProfile selectedProfile = default!;
     private bool isListening = false;
     private object listeningSection = null!;
@@ -185,6 +185,10 @@
             MidiProfiles.Remove(selectedProfile);
             selectedProfile = MidiProfiles.FirstOrDefault() ?? default!;
         }
+    }
+
+    private IEnumerable<System.Reflection.PropertyInfo> GetProperties(Type fromType) {
+        return fromType.GetProperties().Where(p => p.GetCustomAttributes(typeof(MidiControllerProfile.DoNotRender), false).Count() == 0);
     }
 
     private void ListenForMidiEvent(string propertyName, object section, string sectionName) {

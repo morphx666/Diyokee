@@ -4,6 +4,9 @@ using Un4seen.Bass.AddOn.Midi;
 
 namespace Diyokee {
     public class MidiControllerProfile : ICloneable {
+        [AttributeUsage(AttributeTargets.Property)]
+        public class DoNotRender : Attribute { }
+
         public class MidiMapping {
             public BASSMIDIEvent EventType { get; set; } = BASSMIDIEvent.MIDI_EVENT_NONE;
             public int Note { get; set; } = -1;
@@ -57,6 +60,7 @@ namespace Diyokee {
             public MidiMapping Pitch { get; set; } = new();
             public MidiMapping FirstKey { get; set; } = new();
             public MidiMapping LastKey { get; set; } = new();
+            [DoNotRender] public MidiMapping TargetPlayer { get; set; } = new(); // TODO: Add UI controls to select target player for keyboard
         }
 
         public string Name { get; set; } = string.Empty;
