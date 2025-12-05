@@ -1,4 +1,5 @@
-﻿using Un4seen.Bass;
+﻿using System.Security.Cryptography;
+using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Midi;
 
 namespace Diyokee {
@@ -108,10 +109,14 @@ namespace Diyokee {
                                     break;
                                 case BASSMIDIEvent.MIDI_EVENT_NOTE:
                                     if(mapping.EventType == midiEvent.eventtype &&
-                                        mapping.Parameter == midiEvent.param &&
                                         mapping.Channel == midiEvent.chan) {
-                                        handled = true;
-                                        OnMidiEvent?.Invoke(prop.Name, "keyboard", mapping, midiEvent);
+                                        int keyNumber = midiEvent.param & 0xFF;
+                                        int firstKey = Program.MidiControllersProfiles[0].Keyboard.FirstKey.Note;
+                                        int lastKey = Program.MidiControllersProfiles[0].Keyboard.LastKey.Note;
+                                        if(keyNumber >= firstKey && keyNumber <= lastKey) {
+                                            handled = true;
+                                            OnMidiEvent?.Invoke(prop.Name, "keyboard", mapping, midiEvent);
+                                        }
                                     }
                                     break;
                                 case BASSMIDIEvent.MIDI_EVENT_PITCH:

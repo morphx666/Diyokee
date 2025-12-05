@@ -568,46 +568,56 @@
             }
 
             if(section == "keyboard") {
-                switch(propertyName) {
-                    case "Volume":
-                        double gainValue = midiEvent.param / 127.0;
-                        InvokeAsync(() => mainGain!.SetValue(gainValue, true));
-                        return;
-                }
-            }
-
-            if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
-                if(player1 == null) return;
+                if(player1 == null || player1.File == null)  return;
 
                 double pitch = 0;
-                int keyNumber = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? midiEvent.param & 0xFF : -1;
-                int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
 
-                if(keyVelocity > 0) {
-                    string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
-                    double trackKeyNumber = keyTools.ToMidiNote(player1.File.Key ?? key);
-                    pitch = keyNumber - trackKeyNumber;
+                switch(propertyName) {
+                    case "Volume":
+                        double volume = midiEvent.param / 127.0;
+                        InvokeAsync(() => player1.SetVolume(volume));
+                        return;
+                    case "Pitch":
+                        pitch = (midiEvent.param - 8192) / 8192.0 * 12.0; // +/- 12 semitones
+                        player1.SetPitch(pitch);
+                        player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
+                        InvokeAsync(player1.FilterControls.UpdateKnobs);
+                        shouldRender = true;
+                        InvokeAsync(StateHasChanged);
+                        return;
+                    default:
+                        if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
+                            int keyNumber = midiEvent.param & 0xFF;
+                            int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
 
-                    if(player1.IsPlaying) player1.Stop(true); // Force no polyphony
+                            if(keyVelocity > 0) {
+                                string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
+                                double trackKeyNumber = keyTools.ToMidiNote(player1.File.Key ?? key);
+                                pitch = keyNumber - trackKeyNumber;
 
-                    player1.SetPitch(pitch);
-                    player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
-                    player1.Play(false);
+                                if(player1.IsPlaying) player1.Stop(true); // Force no polyphony
 
-                    pressedKeys.Add(keyNumber);
-                } else {
-                    int lastIndex = pressedKeys.LastIndexOf(keyNumber);
-                    if(lastIndex >= 0) pressedKeys.RemoveAt(lastIndex);
-                    if(pressedKeys.Count == 0) {
-                        player1.FilterControls.FiltersValues.Key = 0.5;
-                        player1.Stop(true);
-                    }
-                }
+                                player1.SetPitch(pitch);
+                                player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
+                                player1.Play(false);
 
-                InvokeAsync(player1.FilterControls.UpdateKnobs);
-                if(pitch == 0) {
-                    shouldRender = true;
-                    InvokeAsync(StateHasChanged);
+                                pressedKeys.Add(keyNumber);
+                            } else {
+                                int lastIndex = pressedKeys.LastIndexOf(keyNumber);
+                                if(lastIndex >= 0) pressedKeys.RemoveAt(lastIndex);
+                                if(pressedKeys.Count == 0) {
+                                    player1.FilterControls.FiltersValues.Key = 0.5;
+                                    player1.Stop(true);
+                                }
+                            }
+
+                            InvokeAsync(player1.FilterControls.UpdateKnobs);
+                            if(pitch == 0) {
+                                shouldRender = true;
+                                InvokeAsync(StateHasChanged);
+                            }
+                        }
+                        return;
                 }
             }
         };

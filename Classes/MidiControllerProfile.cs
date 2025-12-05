@@ -54,8 +54,9 @@ namespace Diyokee {
 
         public class KeyboardMapping {
             public MidiMapping Volume { get; set; } = new();
-            public MidiMapping Modulation { get; set; } = new();
             public MidiMapping Pitch { get; set; } = new();
+            public MidiMapping FirstKey { get; set; } = new();
+            public MidiMapping LastKey { get; set; } = new();
         }
 
         public string Name { get; set; } = string.Empty;
