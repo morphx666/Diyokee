@@ -416,6 +416,7 @@
     private void MidiMonitor() {
         bool navigateFolders = true;
         KeyTools keyTools = new();
+        List<int> pressedKeys = [];
 
         Program.MidiTools.OnMidiEvent += (string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) => {
             if(!enableMidiEvents) return;
@@ -582,21 +583,27 @@
                 int keyNumber = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? midiEvent.param & 0xFF : -1;
                 int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
 
-                string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
-
                 if(keyVelocity > 0) {
+                    string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
                     double trackKeyNumber = keyTools.ToMidiNote(player1.File.Key ?? key);
-
                     pitch = keyNumber - trackKeyNumber;
+
+                    if(player1.IsPlaying) player1.Stop(true); // Force no polyphony
+
                     player1.SetPitch(pitch);
                     player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
                     player1.Play(false);
+
+                    pressedKeys.Add(keyNumber);
                 } else {
-                    player1.FilterControls.FiltersValues.Key = 0.5;
-                    player1.Stop(true);
+                    int lastIndex = pressedKeys.LastIndexOf(keyNumber);
+                    if(lastIndex >= 0) pressedKeys.RemoveAt(lastIndex);
+                    if(pressedKeys.Count == 0) {
+                        player1.FilterControls.FiltersValues.Key = 0.5;
+                        player1.Stop(true);
+                    }
                 }
 
-                // FIXME: This should be improved -- too many "forced" updates/redraws
                 InvokeAsync(player1.FilterControls.UpdateKnobs);
                 if(pitch == 0) {
                     shouldRender = true;
