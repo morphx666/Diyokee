@@ -1159,7 +1159,11 @@
     }
 
     private void SavePlayerState() {
-        session.Set($"Player-{Settings.Name}", JsonConvert.SerializeObject(this));
+        try {
+            session.Set($"Player-{Settings.Name}", JsonConvert.SerializeObject(this));
+        } catch(Exception ex) {
+            Program.Logger.LogError($"Error saving player state: {ex.Message}");
+        }
     }
 
     private void RestorePlayerState() {

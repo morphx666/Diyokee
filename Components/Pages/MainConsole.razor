@@ -615,11 +615,10 @@
                                 }
                             }
 
+                            // FIXME: This looks like will cause way too many re-renders
                             InvokeAsync(player1.FilterControls.UpdateKnobs);
-                            if(pitch == 0) {
-                                shouldRender = true;
-                                InvokeAsync(StateHasChanged);
-                            }
+                            shouldRender = true;
+                            InvokeAsync(StateHasChanged);
                         }
                         return;
                 }
