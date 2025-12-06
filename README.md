@@ -41,8 +41,8 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - A fancy screen for remote connections to the stream
 - Searching is quite limited and a bit buggy
 - Audio routing is partially implemented but not fully usable
-- Key recognition/matching/adjustments are not yet supported
-- State preservation is only partially implemented
+- Key recognition is not _yet_ supported
+- State preservation is only partially implemented and the way it works sucks
 - ...and many more
 
 ## Common issues
