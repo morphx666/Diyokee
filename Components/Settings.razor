@@ -8,6 +8,20 @@
     @if(settings == null) return;
 
     <div class="header">
+        <h3>General</h3>
+        <div class="field">
+            <label for="key-notation">Key Notation</label>
+            <div class="select-container">
+                <InputSelect id="key-notation" class="key-notation-select-container" @bind-value="settings.KeyNotation">
+                    @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
+                        <option value="@notation">@notation</option>
+                    }
+                </InputSelect>
+            </div>
+        </div>
+    </div>
+
+    <div class="header">
         <h3>Audio</h3>
         <AudioMatrix Settings="settings" />
     </div>
@@ -117,12 +131,6 @@
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
-    public void Open() {
-        settings = (Diyokee.Settings)Program.Settings.Clone();
-        midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
-        dialog.Open();
-    }
-
     public void Close() {
         dialog.Close();
 
@@ -154,5 +162,15 @@
                 RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
             };
         settings.MediaProviders.Add(newProvider);
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            settings = (Diyokee.Settings)Program.Settings.Clone();
+            midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
+            dialog.Open();
+        }
+
+        base.OnAfterRender(firstRender);
     }
 }

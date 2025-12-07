@@ -1,6 +1,5 @@
 ﻿@using Diyokee.Data
 @using Microsoft.EntityFrameworkCore
-@using System.Diagnostics
 @using static Diyokee.Settings
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 @inject IJSRuntime JS
@@ -13,12 +12,12 @@
     Movable=true>
     <div class="field">
         <label for="artist">Artist</label>
-        <InputText id="artist" @bind-value="file.Artist" />
+        <InputText id="artist" @bind-value="File.Artist" />
     </div>
 
     <div class="field">
         <label for="title">Title</label>
-        <InputText id="title" @bind-value="file.Title" />
+        <InputText id="title" @bind-value="File.Title" />
     </div>
 
     <div class="row">
@@ -30,7 +29,7 @@
             })">
             <label for="album">Album</label>
             <InputText id="album"
-                @bind-value="file.Album"
+                @bind-value="File.Album"
                 @onclick="@(async (e) => {
                                 albumsAcVisible = true;
                                 player?.EnableMouseEvents = false;
@@ -38,9 +37,9 @@
                             })" />
             <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                 @foreach(var album in albums) {
-                    <div class="item @(album == file.Album ? "selected" : "")"
+                    <div class="item @(album == File.Album ? "selected" : "")"
                         @onclick="@(async () => {
-                                file.Album = album;
+                                File.Album = album;
                                 albumsAcVisible = false;
                                 player?.EnableMouseEvents = true;
                             })">
@@ -58,7 +57,7 @@
             })">
             <label for="genre">Genre</label>
             <InputText id="genre"
-                @bind-value="file.Genre"
+                @bind-value="File.Genre"
                 @onclick="@(async () => {
                                 genresAcVisible = true;
                                 player?.EnableMouseEvents = false;
@@ -66,9 +65,9 @@
                             })" />
             <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                 @foreach(var genre in genres) {
-                    <div class="item @(genre == file.Genre ? "selected" : "")"
+                    <div class="item @(genre == File.Genre ? "selected" : "")"
                         @onclick="@(async () => {
-                                file.Genre = genre;
+                                File.Genre = genre;
                                 genresAcVisible = false;
                                 player?.EnableMouseEvents = true;
                             })">
@@ -80,7 +79,7 @@
 
         <div class="field year">
             <label for="year">Year</label>
-            <InputNumber id="year" @bind-value="file.Year" />
+            <InputNumber id="year" @bind-value="File.Year" />
         </div>
     </div>
 
@@ -126,9 +125,9 @@
                                     })" />
                     <div class="autocomplete scroller @(keysAcVisible ? "show" : "")">
                         @foreach(var key in KeyTools.NotationToKeysMap[selectedNotation]) {
-                            <div class="item @(key == keyTools.ConvertTo(file.Key, selectedNotation) ? "selected" : "")"
+                            <div class="item @(key == keyTools.ConvertTo(File.Key, selectedNotation) ? "selected" : "")"
                                 @onclick="@(async () => {
-                                        file.Key = key;
+                                        File.Key = key;
                                         keysAcVisible = false;
                                         player?.EnableMouseEvents = true;
                                     })">
@@ -169,19 +168,17 @@
             </div>
         </div>
 
-        @if(playerVisible) {
-            <Player
-                File="@playerFile"
-                Settings="@(new() {
-                            Name="Preview",
-                            Color="#82871f"
-                        })"
-                MinimalMode="true"
+        <Player
+            File="@File"
+            Settings="@(new() {
+                Name = "Preview",
+                Color = "#82871f"
+            })"
+            MinimalMode="true"
             @ref="player" />
-        }
     </div>
 
-    <div class="filename ellipsis">@file.Filename</div>
+    <div class="filename ellipsis">@File.Filename</div>
 </ModalDialog>
 
 <script>
@@ -204,10 +201,7 @@
 
 @code {
     private ModalDialog dialog = default!;
-    private DFile file = new();
-    private DFile playerFile = default!;
     private Player? player = default!;
-    private bool playerVisible = false;
 
     private bool genresAcVisible = false;
     private bool albumsAcVisible = false;
@@ -219,7 +213,7 @@
     private List<string> keys = [];
 
     private KeyTools keyTools = new();
-    private KeyTools.Notations selectedNotation = KeyTools.Notations.CamelotKey;
+    private KeyTools.Notations selectedNotation = Program.Settings.KeyNotation;
 
     private int lastHrValue;
     private int lastMinValue;
@@ -232,37 +226,13 @@
     [Parameter]
     public EventCallback OnClose { get; set; } = default!;
 
+    [Parameter]
+    public DFile File { get; set; } = default!;
+
     public bool IsOpen { get => dialog.IsOpen; }
 
-    public void Open(DFile? file) {
-        if(file == null) return;
-        this.file = (DFile)file.Clone();
-
-        lastHrValue = -1;
-        lastMinValue = -1;
-        lastSecValue = -1;
-        lastMsValue = -1;
-
-        playerVisible = true;
-        InvokeAsync(StateHasChanged);
-
-        Task.Run(async () => {
-            CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-            genres = cache.Files.Select(f => f.Genre).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
-            albums = cache.Files.Select(f => f.Album).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
-
-            while(player == null) { // FIXME: Why? I'm sure there must be a better way to do this
-                await Task.Delay(10);
-            }
-
-            player.WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
-            playerFile = this.file;
-            dialog.Open();
-        });
-    }
-
     private async Task Save() {
-        await FilesComponent.UpdateFile(file);
+        await FilesComponent.UpdateFile(File);
         Close();
     }
 
@@ -271,71 +241,70 @@
         player!.EnableMouseEvents = true;
         genresAcVisible = false;
         albumsAcVisible = false;
-        playerVisible = true;
 
         OnClose.InvokeAsync();
     }
 
     private int DownbeatAtHours {
-        get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[0]);
+        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[0]);
         set {
             if(lastHrValue == value) return;
             lastHrValue = value;
-            file.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMilliSeconds);
+            File.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtMinutes {
-        get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[1]);
+        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[1]);
         set {
             if(lastMinValue == value) return;
             lastMinValue = value;
-            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMilliSeconds);
+            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtSeconds {
-        get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[2].Split('.')[0]);
+        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[2].Split('.')[0]);
         set {
             if(lastSecValue == value) return;
             lastSecValue = value;
-            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMilliSeconds);
+            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtMilliSeconds {
-        get => int.Parse(DFile.FormatTime(file.DownbeatAt, true).Split(':')[2].Split('.')[1]);
+        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[2].Split('.')[1]);
         set {
             if(lastMsValue == value) return;
             lastMsValue = value;
-            file.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, DownbeatAtSeconds, value);
+            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, DownbeatAtSeconds, value);
             player!.SetParameters();
         }
     }
 
     private float BPM {
-        get => file.BPM;
+        get => File.BPM;
         set {
-            file.BPM = value;
+            File.BPM = value;
             player!.SetParameters();
         }
     }
 
     private async void ReCalcBpm() {
-        BPM = FilesComponent.CalcBpm(file);
+        BPM = FilesComponent.CalcBpm(File);
         await InvokeAsync(StateHasChanged);
     }
 
     private async void ReCalcDownbeat() {
-        file.DownbeatAt = FilesComponent.CalcDownbeat(file);
+        File.DownbeatAt = FilesComponent.CalcDownbeat(File);
         await InvokeAsync(StateHasChanged);
     }
 
     private void ReSetDownbeat() {
-        file.DownbeatAt = player!.PlaybackHead / 100.0;
+        File.DownbeatAt = player!.PlaybackHead / 100.0;
         player!.SetParameters();
     }
 
@@ -353,7 +322,29 @@
     }
 
     private string FileKeyInSelectedNotation {
-        get => keyTools.ConvertTo(file.Key, selectedNotation);
-        set => file.Key = value;
+        get => keyTools.ConvertTo(File.Key, selectedNotation);
+        set => File.Key = value;
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            lastHrValue = -1;
+            lastMinValue = -1;
+            lastSecValue = -1;
+            lastMsValue = -1;
+
+            Task.Run(async () => {
+                CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
+                genres = cache.Files.Select(f => f.Genre).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
+                albums = cache.Files.Select(f => f.Album).Where(f => f != "").Distinct().OrderBy(f => f).ToList();
+
+                while(player == null) await Task.Delay(60);
+
+                player.WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
+                dialog.Open();
+            });
+        }
+
+        base.OnAfterRender(firstRender);
     }
 }

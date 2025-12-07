@@ -71,11 +71,12 @@ namespace Diyokee {
         [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = true;
         [JsonProperty("midi-device-name")] public string MidiDeviceName { get; set; } = "";
         [JsonProperty("midi-profile-name")] public string MidiProfileName { get; set; } = "";
+        [JsonProperty("key-notation")] public KeyTools.Notations KeyNotation { get; set; } = KeyTools.Notations.CamelotKey;
 
         public List<EqualizerProfile> EqualizerProfiles { get; } = [];
 
         public async static Task<Settings> Load() {
-            Settings settings = default!;
+            Settings settings;
             string workingDirectory = AppDomain.CurrentDomain.RelativeSearchPath ?? AppDomain.CurrentDomain.BaseDirectory;
 
             if(File.Exists(Path.Combine(workingDirectory, "settings.json"))) {

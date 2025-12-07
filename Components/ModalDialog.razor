@@ -1,4 +1,5 @@
-﻿@inject IJSRuntime JS
+﻿@using System.Threading.Tasks
+@inject IJSRuntime JS
 
 <div class="dialog-background @(IsOpen ? "show" : "")">
     <div class="dialog-container @(IsOpen ? "show" : "")" @ref="dialogElement">
@@ -33,7 +34,7 @@
     public string Title { get; set; } = "";
 
     [Parameter]
-    public bool Movable { get; set; } = false;
+    public bool Movable { get; set; } = false; // FIXME: This breaks mouse support on all the controls inside the dialog
 
     [Parameter]
     public RenderFragment ChildContent { get; set; } = null!;
@@ -68,11 +69,8 @@
 
     public void Open() {
         if(!IsOpen) {
-            if(dialogBounds != null) dialogBounds.Width = 0; // Force recalculation of bounds
-
             IsOpen = true;
             OnOpen.InvokeAsync();
-
             InvokeAsync(StateHasChanged);
         }
     }
@@ -81,8 +79,6 @@
         if(IsOpen) {
             IsOpen = false;
             OnClose.InvokeAsync();
-
-            InvokeAsync(StateHasChanged);
         }
     }
 
@@ -98,6 +94,7 @@
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
+        return; // Disable movable dialogs for now
         if(!Movable) return;
 
         if(firstRender) {

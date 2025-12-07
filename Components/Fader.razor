@@ -108,7 +108,13 @@
             }
 
             await OnResize();
-            if(faderBounds?.Width == 0 || faderBounds?.Height == 0) return;
+            if(faderBounds?.Width == 0 || faderBounds?.Height == 0) {
+                await Task.Run(async () => { // FIXME: Hacky way to wait for proper rendering (this only applies when using thre player inside a ModalDialog)
+                    await Task.Delay(500);
+                    await OnAfterRenderAsync(true);
+                });
+                return;
+            }
 
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);

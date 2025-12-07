@@ -1,5 +1,4 @@
-﻿@using System.Diagnostics
-@using Diyokee
+﻿@using Diyokee
 @using Diyokee.MediaProviders
 @using Newtonsoft.Json
 @using Un4seen.Bass
@@ -27,11 +26,12 @@
     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
-                <Player Settings="Program.Settings.Playback.Players[0]"
-                        File="@player1File"
-                        RequestedFileCue="() => LoadSelectedFile(player1)"
-                        OtherPlayer="@player2"
-                        @ref="player1" />
+                <Player
+                    Settings="Program.Settings.Playback.Players[0]"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
             </div>
 
             <div class="global-controls">
@@ -40,11 +40,12 @@
             </div>
 
             <div class="player">
-                <Player Settings="Program.Settings.Playback.Players[1]"
-                        File="@player2File"
-                        RequestedFileCue="() => LoadSelectedFile(player2)"
-                        OtherPlayer="@player1"
-                        @ref="player2" />
+                <Player
+                    Settings="Program.Settings.Playback.Players[1]"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
             </div>
         </div>
 
@@ -61,12 +62,13 @@
             </div>
         </div>
 
-        <PanelResize Orientation="PanelResize.Orientations.Vertical"
-                     ResizeElement="playersPanel"
-                     ElementsBetween="new() { mixerPanel }"
-                     Name="main-resize-vertical"
-                     OnResizeEnd="HandleDividerResize"
-                     Constrains="playersConstrains" />
+        <PanelResize
+            Orientation="PanelResize.Orientations.Vertical"
+            ResizeElement="playersPanel"
+            ElementsBetween="new() { mixerPanel }"
+            Name="main-resize-vertical"
+            OnResizeEnd="HandleDividerResize"
+            Constrains="playersConstrains" />
 
         <div class="media">
             <div class="media-providers" @ref="mediaProviderPanel">
@@ -86,32 +88,34 @@
                 </div>
 
                 <div class="sources panel">
-                    <MediaProviderContainer Provider="@selectedMediaProvider"
-                                            SelectedFolderChanged="SelectedFolderChanged"
-                                            @ref="mediaProviderContainerUI" />
+                    <MediaProviderContainer
+                        Provider="@selectedMediaProvider"
+                        SelectedFolderChanged="SelectedFolderChanged"
+                        @ref="mediaProviderContainerUI" />
                 </div>
             </div>
 
-            <PanelResize Orientation="PanelResize.Orientations.Horizontal"
-                         ResizeElement="mediaProviderPanel"
-                         Name="main-resize-horizontal"
-                         OnResizeEnd="HandleDividerResize"
-                         Constrains="mediaProviderConstrains" />
+            <PanelResize
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize"
+                Constrains="mediaProviderConstrains" />
 
-            <Files Provider="@selectedMediaProvider"
-                   RelativePath="@selectedFolder"
-                   SelectedFileChanged="SelectedFileChanged"
-                   TrackSettingsDialogOpen="() => SetPlayersMouseCapturing(false)"
-                   TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
-                   @ref="filesComponent" />
+            <Files
+                Provider="@selectedMediaProvider"
+                RelativePath="@selectedFolder"
+                SelectedFileChanged="SelectedFileChanged"
+                TrackSettingsDialogOpened="() => SetPlayersMouseCapturing(false)"
+                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
+                @ref="filesComponent" />
         </div>
 
-        <Settings OnSave="UpdateApp"
-                  OnClose="() => {
-                      SetPlayersMouseCapturing(true);
-                      enableMidiEvents = true;
-                  }"
-                  @ref="settingsComponent" />
+        @if(showSettingsDialog) {
+            <Settings
+                OnSave="() => CloseSettingsDialog(true)"
+                OnClose="() => CloseSettingsDialog(false)" />
+        }
     </CascadingValue>
 </div>
 
@@ -130,7 +134,7 @@
     private Player? player1;
     private Player? player2;
 
-    private Components.Settings settingsComponent = null!;
+    private bool showSettingsDialog = false;
 
     private Fader? crossFader;
 
@@ -213,7 +217,10 @@
     private void OpenSettingsDialog() {
         SetPlayersMouseCapturing(false);
         enableMidiEvents = false;
-        settingsComponent.Open();
+        showSettingsDialog = true;
+
+        shouldRender = true;
+        InvokeAsync(StateHasChanged);
     }
 
     private void HandleMouseDown(MouseEventArgs e) {
@@ -307,17 +314,23 @@
         }
     }
 
-    private async void UpdateApp() {
-        EqualizerProfile equalizerProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
-        player1!.EqControls.EqProfile = equalizerProfile;
-        player1!.SetTempoRange(Program.Settings.Playback.TempoRange);
+    private async void CloseSettingsDialog(bool update) {
+        if(update) {
+            EqualizerProfile equalizerProfile = Program.Settings.EqualizerProfiles.FirstOrDefault(p => p.Name == Program.Settings.Playback.EqProfile) ?? Program.Settings.EqualizerProfiles[0];
+            player1!.EqControls.EqProfile = equalizerProfile;
+            player1!.SetTempoRange(Program.Settings.Playback.TempoRange);
 
-        player2!.EqControls.EqProfile = equalizerProfile;
-        player2!.SetTempoRange(Program.Settings.Playback.TempoRange);
+            player2!.EqControls.EqProfile = equalizerProfile;
+            player2!.SetTempoRange(Program.Settings.Playback.TempoRange);
 
-        SetMediaProviders();
+            SetMediaProviders();
 
-        await JS.InvokeVoidAsync("forceRefresh");
+            await JS.InvokeVoidAsync("forceRefresh");
+        }
+
+        SetPlayersMouseCapturing(true);
+        enableMidiEvents = false;
+        showSettingsDialog = false;
 
         shouldRender = true;
         await InvokeAsync(StateHasChanged);

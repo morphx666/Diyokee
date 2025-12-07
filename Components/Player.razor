@@ -1,5 +1,4 @@
-﻿@using System.Diagnostics
-@using System.Drawing
+﻿@using System.Drawing
 @using Blazor.Extensions
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
@@ -236,7 +235,7 @@
     public bool MinimalMode { get; set; } = false;
 
     public long PlaybackHead {
-        get => waveform!.PlaybackHead;
+        get => waveform?.PlaybackHead ?? 0;
     }
 
     [CascadingParameter]
@@ -423,15 +422,16 @@
     private string GetKeyAdjustment() {
         if(File == null || File.Key == string.Empty) return "&nbsp;";
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
-        if(semitones == 0) return keyTools.ConvertTo(File.Key, KeyTools.Notations.CamelotKey);
+        string fromKey = keyTools.ConvertTo(File.Key, Program.Settings.KeyNotation);
+        if(semitones == 0) return fromKey;
         int keyNumber = keyTools.ToMidiNote(File.Key);
-        string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), KeyTools.Notations.CamelotKey);
+        string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), Program.Settings.KeyNotation);
 
         string keyChange;
         if(semitones > 0) {
-            keyChange = $"<span>{File.Key,3}</span><i class=\"fa-solid fa-arrow-right small-arrow\"></i><span>{newKey,3}</span>";
+            keyChange = $"<span>{fromKey,3}</span><i class=\"fa-solid fa-arrow-right small-arrow\"></i><span>{newKey,3}</span>";
         } else {
-            keyChange = $"<span>{newKey,3}</span><i class=\"fa-solid fa-arrow-left small-arrow\"></i><span>{File.Key,3}</span>";
+            keyChange = $"<span>{newKey,3}</span><i class=\"fa-solid fa-arrow-left small-arrow\"></i><span>{fromKey,3}</span>";
         }
 
         return keyChange;

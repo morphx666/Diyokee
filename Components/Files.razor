@@ -1,5 +1,4 @@
-﻿@using System.Diagnostics
-@using System.Text
+﻿@using System.Text
 @using Diyokee.Data
 @using Diyokee.MediaProviders
 @using Microsoft.EntityFrameworkCore
@@ -15,14 +14,14 @@
     </div>
     <div class="files-scrollable scroller" tabindex="1">
         <div class="files-list-container">
-            <div class="column cell" @onclick="() => SetSortingIndex(0)">Artist<i class="fa-solid @(sortIndex == 0 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(1)">Title<i class="fa-solid @(sortIndex == 1 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(2)">Genre<i class="fa-solid @(sortIndex == 2 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(3)">Album<i class="fa-solid @(sortIndex == 3 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(4)">BPM<i class="fa-solid @(sortIndex == 4 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(5)">Key<i class="fa-solid @(sortIndex == 5 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(6)">Gain<i class="fa-solid @(sortIndex == 6 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
-            <div class="column cell" @onclick="() => SetSortingIndex(7)">Duration<i class="fa-solid @(sortIndex == 7 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "" )"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(0)">Artist<i class="fa-solid @(sortIndex == 0 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(1)">Title<i class="fa-solid @(sortIndex == 1 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(2)">Genre<i class="fa-solid @(sortIndex == 2 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(3)">Album<i class="fa-solid @(sortIndex == 3 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(4)">BPM<i class="fa-solid @(sortIndex == 4 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(5)">Key<i class="fa-solid @(sortIndex == 5 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(6)">Gain<i class="fa-solid @(sortIndex == 6 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
+            <div class="column cell" @onclick="() => SetSortingIndex(7)">Duration<i class="fa-solid @(sortIndex == 7 ? (sortAscending ? "fa-caret-up" : "fa-caret-down") : "")"></i></div>
 
             @foreach(DFile file in files) {
                 @if(file.Artist == "...") {
@@ -32,12 +31,12 @@
                 } else {
                     <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Artist</div>
                 }
-                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
-                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
-                <div class="@(GetFileClasses(file))"            @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Album</div>
+                <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Title</div>
+                <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
+                <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Album</div>
                 <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.BPM.ToString("N2")</div>
-                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@keyTools.ConvertTo(file.Key, KeyTools.Notations.CamelotKey)</div>
-                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@(file.HasReplayGain ? @file.ReplayGain.ToString("N2") : "")</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@keyTools.ConvertTo(file.Key, Program.Settings.KeyNotation)</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@(file.HasReplayGain? @file.ReplayGain.ToString("N2") : "")</div>
                 <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@DFile.FormatTime(file.Duration)</div>
             }
         </div>
@@ -52,10 +51,17 @@
     </div>
 </div>
 
-<TrackProperties 
-    FilesComponent="this"
-    OnClose="TrackSettingsDialogClosed"
-    @ref="trackProperties" />
+@if(showTrackProperties) {
+    <TrackProperties
+        FilesComponent="this"
+        File="files.FirstOrDefault(f => f.Filename == selectedFile)"
+        OnClose="() => {
+            showTrackProperties = false;
+            trackProperties = null;
+            TrackSettingsDialogClosed.InvokeAsync();
+        }"
+        @ref="trackProperties" />
+}
 
 <script>
     scrollFilesViewTop = () => document.querySelector(".files-scrollable").scrollTo({ top: 0 });
@@ -76,6 +82,7 @@
     private int analyzedFilesCount = 0;
 
     private TrackProperties? trackProperties = null;
+    private bool showTrackProperties = false;
 
     private int sortIndex = 0;
     private bool sortAscending = true;
@@ -89,7 +96,7 @@
     public EventCallback<DFile> SelectedFileChanged { get; set; }
 
     [Parameter]
-    public EventCallback TrackSettingsDialogOpen { get; set; }
+    public EventCallback TrackSettingsDialogOpened { get; set; }
 
     [Parameter]
     public EventCallback TrackSettingsDialogClosed { get; set; }
@@ -142,9 +149,9 @@
             Provider?.Search(RelativePath, searchText, true).ForEach(file => {
                 string fullFileName = Path.Combine(Provider.RootPath, RelativePath, file);
                 files.Add(new DFile {
-                        Artist = "...",
-                        Filename = fullFileName
-                    });
+                    Artist = "...",
+                    Filename = fullFileName
+                });
             });
         } else {
             Provider?.Files(RelativePath).ForEach(file => {
@@ -401,11 +408,12 @@
 
     private async Task OpenTrackProperties() {
         await Task.Run(async () => {
+            showTrackProperties = true;
+
             while(trackProperties == null) {
                 await Task.Delay(250);
             }
-            trackProperties!.Open(files.FirstOrDefault(f => f.Filename == selectedFile));
-            await TrackSettingsDialogOpen.InvokeAsync();
+            await TrackSettingsDialogOpened.InvokeAsync();
         });
     }
 
@@ -449,4 +457,5 @@
         if(componentCanRender) JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".files-list-container .selected");
     }
     #endregion
+
 }
