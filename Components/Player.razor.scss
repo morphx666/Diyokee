@@ -1,7 +1,6 @@
 ﻿.player-container {
     display: flex;
     flex-direction: column;
-    /*flex: 1;*/
     height: 100%;
     width: 100%;
 
@@ -60,6 +59,10 @@
                 justify-content: flex-end;
                 gap: 0.5em;
                 padding-right: 1rem;
+
+                ::deep i {
+                    color: var(--ctrl-highlight-soft);
+                }
             }
         }
 

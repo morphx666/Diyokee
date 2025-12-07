@@ -427,6 +427,7 @@
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
         string fromKey = keyTools.ConvertTo(File.Key, Program.Settings.KeyNotation);
         if(semitones == 0) return fromKey;
+
         int keyNumber = keyTools.ToMidiNote(File.Key);
         string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), Program.Settings.KeyNotation);
 
