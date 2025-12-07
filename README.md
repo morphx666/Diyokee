@@ -41,7 +41,7 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - A fancy screen for remote connections to the stream
 - The settings dialog does not yet support streaming configuration
 - Searching is quite limited and a bit buggy
-- Audio routing is partially implemented but not fully usable (ability to route a player's output is being worked on the output-routing branch)
+- Audio routing is partially implemented but not fully usable (ability to route a player's output is being worked on the [output-routing](https://github.com/morphx666/Diyokee/tree/output-routing) branch)
 - Key recognition is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
 - Making changes to MIDI profiles or changing the MIDI controller requires restarting the application
