@@ -95,7 +95,6 @@
         flex-direction: row;
         gap: 1px;
         flex: 1;
-        /*overflow: hidden;*/
         
         min-height: 150px;
         max-height: 150px;
@@ -118,6 +117,24 @@
 
         & ::deep > * {
             background-color: var(--panel-background-color-dark) !important;
+        }
+
+        ::deep .volume-monitor-container {
+            display: flex;
+            flex-direction: column;
+
+            .fader-container {
+                flex: 1;
+            }
+
+            .button-3d {
+                text-align: center;
+                margin: 0 3px 3px;
+
+                &.active {
+                    background-color: rgb(var(--secondary));
+                }
+            }
         }
     }
 

@@ -74,7 +74,12 @@
                   @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
-        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
+        <div class="volume-monitor-container">
+            <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
+            <div class="button-3d @(sendToMonitor ? "active" : "")" @onclick="ToggleSendToMonitor">
+                <i class="fa-solid fa-headphones-simple"></i>
+            </div>
+        </div>
 
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
@@ -176,6 +181,7 @@
     [JsonProperty] private double trackGain = 1;
     [JsonProperty] private double crossFaderVolume = 1;
     [JsonProperty] private bool isMono = false;
+    [JsonProperty] private bool sendToMonitor = false;
 
     private Fader? faderVolume;
     private Fader? faderTempo;
@@ -988,6 +994,16 @@
                 }
             }
         });
+    }
+
+    private void ToggleSendToMonitor(MouseEventArgs e) {
+        if(e.Button == 0) {
+            sendToMonitor = !sendToMonitor;
+            splitterStreams.ForEach(h => {
+                float[,] matrix = GetSpeakersMatrix(sendToMonitor ? 1 : 0);
+                BassMix.BASS_Mixer_ChannelSetMatrix(h, matrix);
+            });
+        }
     }
 
     private DSPPROC dspResonantFilter = null!;
