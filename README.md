@@ -34,8 +34,6 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Since 2025/11/19 Diyokee supports MIDI controllers. Click the Settings button and scroll down to the MIDI section to select the MIDI device and create a profile for your controller.
   ![image](https://github.com/user-attachments/assets/7c2dbdbd-50ed-4b91-b639-5a5c2206ab96)
 
-
-
 ## Notable missing features
 
 - A fancy screen for remote connections to the stream
@@ -44,14 +42,6 @@ Some settings cannot be yet configured by the Settings dialog, but you can edit 
 - Key recognition is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
 - ...and many more
-
-## Common issues
-- If you run the program for the first time you may receive BASS-related errors.  
-Just restart the server and try again. It may take several attempts.  
-This is supposedly fixed in version 2025.11.10
-- ~~The mouse handling is horrendous and sometimes controls may stop responding to mouse events.~~  
-~~Resize the browser window to force a full refresh.~~  
-It's still pretty bad, but hopefully improved in version 2025.11.11
 
 ## Nightly Releases
 
