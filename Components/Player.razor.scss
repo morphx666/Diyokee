@@ -27,27 +27,39 @@
             }
         }
 
-        .time, .bpm-key {
+        .time-bpm-key {
             display: flex;
             flex-direction: column;
-            text-align: right;
+            align-items: flex-end;
             font-family: var(--mono-font-family);
-        }
 
-        .time {
-            padding-left: 1rem;
-        }
+            .time-bpm {
+                display: flex;
+                flex-direction: row;
 
-        .bpm-key {
-            min-width: 10ch;
-            padding-right: 1rem;
+                .time, .bpm {
+                    display: flex;
+                    flex-direction: column;
+                    text-align: right;
+                }
 
-            .track-key {
+                .time {
+                    padding-left: 1rem;
+                }
+
+                .bpm {
+                    min-width: 10ch;
+                    padding-right: 1rem;
+                }
+            }
+
+            .key {
                 display: flex;
                 flex-direction: row;
                 align-items: center;
                 justify-content: flex-end;
                 gap: 0.5em;
+                padding-right: 1rem;
             }
         }
 

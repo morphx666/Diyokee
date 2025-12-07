@@ -28,15 +28,18 @@
                 <span class="ellipsis">@File?.Artist</span>
                 <span class="ellipsis">@File?.Album</span>
             </div>
-            <div class="time">
-                <span>@DFile.FormatTime(playbackPosition)</span>
-                <span>-@DFile.FormatTime(GetRemainingTime())</span>
-                <span>&nbsp;</span>
-            </div>
-            <div class="bpm-key">
-                <span>@CalcBpm()</span>
-                <span>@GetBpmAdjustment()</span>
-                <span class="track-key">@((MarkupString)GetKeyAdjustment())</span>
+            <div class="time-bpm-key">
+                <div class="time-bpm">
+                    <div class="time">
+                        <span>@DFile.FormatTime(playbackPosition)</span>
+                        <span>-@DFile.FormatTime(GetRemainingTime())</span>
+                    </div>
+                    <div class="bpm">
+                        <span>@CalcBpm()</span>
+                        <span>@GetBpmAdjustment()</span>
+                    </div>
+                </div>
+                <span class="key">@((MarkupString)GetKeyAdjustment())</span>
             </div>
             <div class="player-name" style="background-color: @Settings.Color">
                 @Settings.Name
@@ -533,6 +536,8 @@
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);
             queueAutoSnap = !IsPlaying;
+
+            await InvokeAsync(StateHasChanged);
         });
     }
 
