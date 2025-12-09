@@ -190,6 +190,7 @@
     private VuMeter? vuMeter;
     [JsonProperty] public Eq EqControls = null!;
     [JsonProperty] public Filters FilterControls = null!;
+    public double monitorOutputVolume = 1.0;
 
     [JsonProperty] private int waveformWidth = 0;
     [JsonProperty] private long waveformStepLength = 0;
@@ -605,7 +606,7 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
         }
-        SetMonitorOutputVolume(1.0);
+        SetMonitorOutputVolume(monitorOutputVolume);
         masterSplitterHandle = splitterStreams[0];
 
         gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
@@ -1000,27 +1001,29 @@
     private void ToggleSendToMonitor(MouseEventArgs e) {
         if(e.Button == 0) {
             sendToMonitor = !sendToMonitor;
-            SetMonitorOutputVolume(1.0);
+            SetMonitorOutputVolume(monitorOutputVolume);
         }
     }
 
-    private void SetMonitorOutputVolume(double volume) {
+    public void SetMonitorOutputVolume(double value) {
+        monitorOutputVolume = value;
+        if(File == null) return;
+
         int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
         var monitorDevices = Program.Settings.Audio.MonitorDevice.ToArray();
         for(int monitorDeviceIndex = 0; monitorDeviceIndex < monitorDevices.Length; monitorDeviceIndex++) {
             var speakersMatrix = GetSpeakersMatrix(mainOutputDevicesCount + monitorDeviceIndex);
 
-            if(!sendToMonitor) {
-                for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
-                    for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
-                        speakersMatrix[i, j] = 0;
-                    }
+            for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
+                for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
+                    speakersMatrix[i, j] = sendToMonitor ? (float)value : 0;
                 }
             }
 
             var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];
             BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
         }
+
     }
 
     private DSPPROC dspResonantFilter = null!;

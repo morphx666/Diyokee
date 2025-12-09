@@ -57,7 +57,7 @@
             </div>
             <div class="monitor-controls">
                 <i class="fa-solid fa-volume-high"></i>
-                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" Enabled="false" />
+                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
                 <i class="fa-solid fa-headphones-simple"></i>
             </div>
         </div>
@@ -137,6 +137,7 @@
     private bool showSettingsDialog = false;
 
     private Fader? crossFader;
+    private double monitorOutputVolume = 1.0;
 
     private MouseState mouseState = new();
 
@@ -253,7 +254,9 @@
     }
 
     private void ApplyMonitorMix(double value) {
-
+        double monitorOutputVolume = value >= 0.5 ? 1.0 : value * 2.0;
+        player1?.SetMonitorOutputVolume(monitorOutputVolume);
+        player2?.SetMonitorOutputVolume(monitorOutputVolume);
     }
 
     private void ApplyMainGain(double value) {
