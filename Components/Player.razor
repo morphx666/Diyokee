@@ -605,6 +605,7 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
         }
+        SetMonitorOutputVolume(1.0);
         masterSplitterHandle = splitterStreams[0];
 
         gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
@@ -999,10 +1000,26 @@
     private void ToggleSendToMonitor(MouseEventArgs e) {
         if(e.Button == 0) {
             sendToMonitor = !sendToMonitor;
-            splitterStreams.ForEach(h => {
-                float[,] matrix = GetSpeakersMatrix(sendToMonitor ? 1 : 0);
-                BassMix.BASS_Mixer_ChannelSetMatrix(h, matrix);
-            });
+            SetMonitorOutputVolume(1.0);
+        }
+    }
+
+    private void SetMonitorOutputVolume(double volume) {
+        int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
+        var monitorDevices = Program.Settings.Audio.MonitorDevice.ToArray();
+        for(int monitorDeviceIndex = 0; monitorDeviceIndex < monitorDevices.Length; monitorDeviceIndex++) {
+            var speakersMatrix = GetSpeakersMatrix(mainOutputDevicesCount + monitorDeviceIndex);
+
+            if(!sendToMonitor) {
+                for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
+                    for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
+                        speakersMatrix[i, j] = 0;
+                    }
+                }
+            }
+
+            var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];
+            BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
         }
     }
 
