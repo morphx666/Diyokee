@@ -254,9 +254,8 @@
     }
 
     private void ApplyMonitorMix(double value) {
-        double monitorOutputVolume = value >= 0.5 ? 1.0 : value * 2.0;
-        player1?.SetMonitorOutputVolume(monitorOutputVolume);
-        player2?.SetMonitorOutputVolume(monitorOutputVolume);
+        player1?.SetMonitorVolume(value);
+        player2?.SetMonitorVolume(value);
     }
 
     private void ApplyMainGain(double value) {
@@ -542,7 +541,7 @@
                         return;
                     case "Volume":
                         double volume = value;
-                        InvokeAsync(() => targetPlayer.SetVolume(volume));
+                        InvokeAsync(() => targetPlayer.SetTrackVolume(volume));
                         return;
                     case "EqHi":
                         InvokeAsync(() => {
@@ -591,7 +590,7 @@
                         if(player1 == null) return;
 
                         double volume = midiEvent.param / 127.0;
-                        InvokeAsync(() => player1.SetVolume(volume));
+                        InvokeAsync(() => player1.SetTrackVolume(volume));
                         return;
                     case "Pitch":
                         if(player1 == null) return;
