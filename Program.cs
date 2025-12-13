@@ -254,8 +254,10 @@ internal class Program {
 
             Bass.BASS_GetDeviceInfo(i, deviceInfo);
             if(devices.Any(d => d.Name == deviceInfo.name)) {
-                deviceIsSet = Bass.BASS_Init(i, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
-                if(!deviceIsSet) Logger.LogError($"Failed to initialize BASS device '{deviceInfo.name}': {Bass.BASS_ErrorGetCode()}");
+                if(!deviceInfo.IsInitialized) {
+                    deviceIsSet = Bass.BASS_Init(i, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
+                    if(!deviceIsSet) Logger.LogError($"Failed to initialize BASS device '{deviceInfo.name}': {Bass.BASS_ErrorGetCode()}");
+                }
             }
         }
 

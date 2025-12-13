@@ -74,7 +74,12 @@
                   @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
-        <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
+        <div class="volume-monitor-container">
+            <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTrackVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
+            <div class="button-3d @(sendToMonitor ? "active" : "")" @onclick="ToggleSendToMonitor">
+                <i class="fa-solid fa-headphones-simple"></i>
+            </div>
+        </div>
 
         @if(!MinimalMode) {
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTempo" Name="<i class='fa-solid fa-music'></i>" DefaultValue="0.5" @ref="faderTempo" />
@@ -174,8 +179,11 @@
     private SYNCPROC loopSyncProc = null!;
 
     [JsonProperty] private double trackGain = 1;
+    [JsonProperty] public double trackVolume = 1.0;
+    [JsonProperty] public double monitorVolume = 1.0;
     [JsonProperty] private double crossFaderVolume = 1;
     [JsonProperty] private bool isMono = false;
+    [JsonProperty] private bool sendToMonitor = false;
 
     private Fader? faderVolume;
     private Fader? faderTempo;
@@ -277,11 +285,6 @@
         // ApplyTempo();
     }
 
-    public void SetCrossFaderVolume(double value) {
-        crossFaderVolume = value;
-        ApplyVolume(faderVolume?.Value ?? 0);
-    }
-
     private void HandlePlayClick(MouseEventArgs e) {
         if(e.Button == 0) Play(SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
     }
@@ -324,7 +327,7 @@
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
 
-                            Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                            //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                             splitterStreams.ForEach(h => {
                                 BassMix.BASS_Mixer_ChannelSetPosition(h, p + offset);
                                 BassMix.BASS_Mixer_ChannelPlay(h);
@@ -336,7 +339,7 @@
                     }
                 });
             } else {
-                Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                 splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
@@ -356,13 +359,23 @@
         SavePlayerState();
     }
 
-    public async Task SetVolume(double value) {
-        await faderVolume!.SetValue(value, true);
+    public async Task SetTrackVolume(double value) {
+        await faderVolume!.SetValue(value, true); // FIXME: Does this call ApplyTrackVolume?
     }
 
-    private void ApplyVolume(double value) {
-        if(masterSplitterHandle == 0) return;
-        splitterStreams.ForEach(h => Bass.BASS_ChannelSetAttribute(h, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume)));
+    public void SetMonitorVolume(double value) {
+        monitorVolume = value;
+        SetMatrixVolume();
+    }
+
+    public void SetCrossFaderVolume(double value) {
+        crossFaderVolume = value;
+        SetMatrixVolume();
+    }
+
+    private void ApplyTrackVolume(double value) {
+        trackVolume = value;
+        SetMatrixVolume();
     }
 
     public async Task SetTempo(double value) {
@@ -427,6 +440,7 @@
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
         string fromKey = keyTools.ConvertTo(File.Key, Program.Settings.KeyNotation);
         if(semitones == 0) return fromKey;
+
         int keyNumber = keyTools.ToMidiNote(File.Key);
         string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), Program.Settings.KeyNotation);
 
@@ -524,7 +538,7 @@
         }
 
         trackGain = Math.Pow(10, (File.HasReplayGain ? File.ReplayGain : -2) / 20.0);
-        ApplyVolume(faderVolume!.Value);
+        ApplyTrackVolume(faderVolume!.Value);
         SetGain(gain.fVolume);
         SetupEQ();
         faderTempo?.SetValue(0.5);
@@ -576,7 +590,6 @@
         }
 
         splitterStreams.Clear();
-        masterSplitterHandle = 0;
         foreach(var mixHandle in Program.BassMixHandles) {
             int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
@@ -610,6 +623,8 @@
         pitch.fPitchShift = 0;
         pitch.fSemitones = 0;
         pitch.lOsamp = 64;
+
+        SetMatrixVolume();
 
         return (BASSError.BASS_OK, "");
     }
@@ -989,6 +1004,43 @@
         });
     }
 
+    private void ToggleSendToMonitor(MouseEventArgs e) {
+        if(e.Button == 0) {
+            sendToMonitor = !sendToMonitor;
+            SetMatrixVolume();
+        }
+    }
+
+    private void SetMatrixVolume() {
+        if(File == null) return;
+
+        int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
+
+        // Main output devices
+        for(int mainDeviceIndex = 0; mainDeviceIndex < mainOutputDevicesCount; mainDeviceIndex++) {
+            var speakersMatrix = GetSpeakersMatrix(mainDeviceIndex);
+            for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
+                for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
+                    speakersMatrix[i, j] *= (float)(trackVolume * crossFaderVolume);
+                }
+            }
+            var splitterStream = splitterStreams[mainDeviceIndex];
+            BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+        }
+
+        // Monitor devices
+        for(int monitorDeviceIndex = 0; monitorDeviceIndex < Program.Settings.Audio.MonitorDevice.Count; monitorDeviceIndex++) {
+            var speakersMatrix = GetSpeakersMatrix(mainOutputDevicesCount + monitorDeviceIndex);
+            for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
+                for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
+                    speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorVolume) : (1.0 - monitorVolume) * trackVolume * crossFaderVolume);
+                }
+            }
+            var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];
+            BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+        }
+    }
+
     private DSPPROC dspResonantFilter = null!;
     private void InitResonantFilter() {
         // Cascaded resonant lp/hp filter
@@ -1065,8 +1117,7 @@
                 if(++interval > 30) {
                     if(IsPlaying) {
                         float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                        float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
-                        vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], InBeatIndex);
+                        vuMeter?.SetLevel(levelsReal[0], levelsReal[0] * trackVolume * crossFaderVolume, InBeatIndex);
                     } else {
                         vuMeter?.SetLevel(0, 0, InBeatIndex);
                     }

@@ -57,7 +57,7 @@
             </div>
             <div class="monitor-controls">
                 <i class="fa-solid fa-volume-high"></i>
-                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" Enabled="false" />
+                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
                 <i class="fa-solid fa-headphones-simple"></i>
             </div>
         </div>
@@ -137,6 +137,7 @@
     private bool showSettingsDialog = false;
 
     private Fader? crossFader;
+    private double monitorOutputVolume = 1.0;
 
     private MouseState mouseState = new();
 
@@ -151,10 +152,6 @@
 
     private bool shouldRender = true;
     private bool enableMidiEvents = true;
-
-    public MainConsole() {
-        SetMediaProviders();
-    }
 
     private void LoadSelectedFile(Player? player) {
         if(player!.IsPlaying && Program.Settings.Playback.LockOnPlay) return;
@@ -253,7 +250,8 @@
     }
 
     private void ApplyMonitorMix(double value) {
-
+        player1?.SetMonitorVolume(value);
+        player2?.SetMonitorVolume(value);
     }
 
     private void ApplyMainGain(double value) {
@@ -539,7 +537,7 @@
                         return;
                     case "Volume":
                         double volume = value;
-                        InvokeAsync(() => targetPlayer.SetVolume(volume));
+                        InvokeAsync(() => targetPlayer.SetTrackVolume(volume));
                         return;
                     case "EqHi":
                         InvokeAsync(() => {
@@ -588,7 +586,7 @@
                         if(player1 == null) return;
 
                         double volume = midiEvent.param / 127.0;
-                        InvokeAsync(() => player1.SetVolume(volume));
+                        InvokeAsync(() => player1.SetTrackVolume(volume));
                         return;
                     case "Pitch":
                         if(player1 == null) return;
@@ -639,5 +637,24 @@
         };
 
         Program.MidiTools.Start();
+    }
+
+    protected override void OnInitialized() {
+        SetMediaProviders();
+
+        Task.Run(async () => { // FIXME: Find a better way to do this
+            while(true) {
+                await Task.Delay(250);
+
+                if(player1 != null && player2 != null) {
+                    ApplyMonitorMix(0.5);
+                    ApplyMainGain(0.5);
+
+                    break;
+                }
+            }
+        });
+
+        base.OnInitialized();
     }
 }
