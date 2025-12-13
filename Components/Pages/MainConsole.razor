@@ -153,10 +153,6 @@
     private bool shouldRender = true;
     private bool enableMidiEvents = true;
 
-    public MainConsole() {
-        SetMediaProviders();
-    }
-
     private void LoadSelectedFile(Player? player) {
         if(player!.IsPlaying && Program.Settings.Playback.LockOnPlay) return;
 
@@ -641,5 +637,24 @@
         };
 
         Program.MidiTools.Start();
+    }
+
+    protected override void OnInitialized() {
+        SetMediaProviders();
+
+        Task.Run(async () => { // FIXME: Find a better way to do this
+            while(true) {
+                await Task.Delay(250);
+
+                if(player1 != null && player2 != null) {
+                    ApplyMonitorMix(0.5);
+                    ApplyMainGain(0.5);
+
+                    break;
+                }
+            }
+        });
+
+        base.OnInitialized();
     }
 }
