@@ -203,10 +203,10 @@
 
             &.primary {
                 border: 1px solid var(--primary-light);
-                background-color: rgba(var(--primary), 0.5);
+                background-color: color-mix(in srgb, var(--primary), transparent 50%);
 
                 &:hover {
-                    background-color: rgb(var(--primary));
+                    background-color: var(--primary);
                 }
 
                 &:active {
@@ -216,15 +216,33 @@
 
             &.secondary {
                 border: 1px solid var(--secondary-light);
-                background-color: rgba(var(--secondary), 0.5);
+                background-color: color-mix(in srgb, var(--secondary), transparent 50%);
 
                 &:hover {
-                    background-color: rgb(var(--secondary));
+                    background-color: var(--secondary);
                 }
 
                 &:active {
                     background-color: var(--secondary-light);
                 }
+            }
+
+            &.tertiary {
+                border: 1px solid var(--help);
+                background-color: color-mix(in srgb, var(--help), transparent 50%);
+
+                &:hover {
+                    color: var(--panel-background-color-dark-dark);
+                    background-color: var(--help);
+                }
+
+                &:active {
+                    background-color: var(--help);
+                }
+            }
+
+            &.float-left {
+                margin-right: auto;
             }
         }
     }

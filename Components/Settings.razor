@@ -1,9 +1,12 @@
-﻿@using Un4seen.Bass
+﻿@using Diyokee.Data
+@using Microsoft.EntityFrameworkCore
+@using Un4seen.Bass
+@inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 
-<ModalDialog Title="Settings"
-             OnSave="Save"
-             OnClose="Close"
-             @ref="dialog">
+<ModalDialog
+    Title="Settings"
+    Buttons = "dlgButtons"
+    @ref="dialog">
 
     @if(settings == null) return;
 
@@ -128,6 +131,23 @@
     private Diyokee.Settings settings = default!;
     private List<MidiControllerProfile> midiProfiles = default!;
     private MidiControllers midiControllersComponent = default!;
+    private ModalDialog.Button[] dlgButtons => new ModalDialog.Button[] {
+        new ModalDialog.Button() {
+            Text = "Cleanup Database",
+            Class = "tertiary float-left",
+            Click = EventCallback.Factory.Create(this, CleanupDatabase)
+        },
+        new ModalDialog.Button() {
+            Text = "Save",
+            Class = "primary",
+            Click = EventCallback.Factory.Create(this, Save)
+        },
+        new ModalDialog.Button() {
+            Text = "Close",
+            Class = "secondary",
+            Click = EventCallback.Factory.Create(this, Close)
+        }
+    };
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
@@ -162,6 +182,28 @@
                 RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
             };
         settings.MediaProviders.Add(newProvider);
+    }
+
+    private async Task CleanupDatabase() { // TODO: Add feedback to let the user know this process is running. Also report how many files were deleted
+        int filesDeleted = 0;
+
+        using(CacheDbContext? context = await CacheDbContextFactory.CreateDbContextAsync()) {
+            context?.Files
+               .AsEnumerable()
+               .Where(f => !File.Exists(f.Filename))
+               .ToList()
+               .ForEach(f => {
+                   context.Files.Remove(f);
+                   filesDeleted++;
+               });
+
+            if(filesDeleted > 0) {
+                //Logger.LogInformation($"Deleted {filesDeleted} orphaned file{(filesDeleted == 1 ? "" : "s")} from the database");
+
+                context?.Database.ExecuteSqlRaw("VACUUM");
+                context?.SaveChanges();
+            }
+        }
     }
 
     protected override void OnAfterRender(bool firstRender) {

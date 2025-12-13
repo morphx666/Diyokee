@@ -48,7 +48,6 @@
     [Parameter]
     public EventCallback OnSave { get; set; }
 
-    // FIX: Move initialization to OnInitialized to ensure 'this' is available
     [Parameter]
     public Button[] Buttons { get; set; } = Array.Empty<Button>();
 

@@ -77,25 +77,7 @@ internal class Program {
                     if(context?.Database.GetPendingMigrations().Any() ?? false) {
                         context.Database.Migrate();
                     }
-                }
-
-                // TODO: Add this cleanup code to the global settings dialog
-                //int filesDeleted = 0;
-                //context?.Files
-                //    .AsEnumerable()
-                //    .Where(f => !File.Exists(f.Filename))
-                //    .ToList()
-                //    .ForEach(f => {
-                //        context.Files.Remove(f);
-                //        filesDeleted++;
-                //    });
-
-                //if(filesDeleted > 0) {
-                //    app.Logger.LogInformation($"Deleted {filesDeleted} orphaned file{(filesDeleted == 1 ? "" : "s")} from the database");
-
-                //    context?.Database.ExecuteSqlRaw("VACUUM");
-                //    context?.SaveChanges();
-                //}
+                }                
             }
         }
 
