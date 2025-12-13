@@ -327,7 +327,7 @@
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
 
-                            Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                            //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                             splitterStreams.ForEach(h => {
                                 BassMix.BASS_Mixer_ChannelSetPosition(h, p + offset);
                                 BassMix.BASS_Mixer_ChannelPlay(h);
@@ -339,7 +339,7 @@
                     }
                 });
             } else {
-                Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
+                //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                 splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
@@ -376,8 +376,6 @@
     private void ApplyTrackVolume(double value) {
         trackVolume = value;
         SetMatrixVolume();
-        // if(masterSplitterHandle == 0) return;
-        // splitterStreams.ForEach(h => Bass.BASS_ChannelSetAttribute(h, BASSAttribute.BASS_ATTRIB_VOL, (float)(trackGain * value * crossFaderVolume)));
     }
 
     public async Task SetTempo(double value) {
@@ -1017,12 +1015,14 @@
 
         int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
 
+        Console.WriteLine(crossFaderVolume);
+
         // Main output devices
         for(int mainDeviceIndex = 0; mainDeviceIndex < mainOutputDevicesCount; mainDeviceIndex++) {
             var speakersMatrix = GetSpeakersMatrix(mainDeviceIndex);
             for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
                 for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
-                    speakersMatrix[i, j] = (float)(trackVolume * crossFaderVolume);
+                    speakersMatrix[i, j] *= (float)(trackVolume * crossFaderVolume);
                 }
             }
             var splitterStream = splitterStreams[mainDeviceIndex];
@@ -1030,16 +1030,13 @@
         }
 
         // Monitor devices
-        var monitorDevices = Program.Settings.Audio.MonitorDevice.ToArray();
-        for(int monitorDeviceIndex = 0; monitorDeviceIndex < monitorDevices.Length; monitorDeviceIndex++) {
+        for(int monitorDeviceIndex = 0; monitorDeviceIndex < Program.Settings.Audio.MonitorDevice.Count; monitorDeviceIndex++) {
             var speakersMatrix = GetSpeakersMatrix(mainOutputDevicesCount + monitorDeviceIndex);
-
             for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
                 for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
-                    speakersMatrix[i, j] = (float)(sendToMonitor ? (trackVolume * monitorVolume) : 1.0 - monitorVolume);
+                    speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorVolume) : 0);
                 }
             }
-
             var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];
             BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
         }
@@ -1121,8 +1118,7 @@
                 if(++interval > 30) {
                     if(IsPlaying) {
                         float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                        float[] levelsMonitor = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO | BASSLevel.BASS_LEVEL_VOLPAN);
-                        vuMeter?.SetLevel(levelsReal[0], levelsMonitor[0], InBeatIndex);
+                        vuMeter?.SetLevel(levelsReal[0], levelsReal[0] * trackVolume * crossFaderVolume, InBeatIndex);
                     } else {
                         vuMeter?.SetLevel(0, 0, InBeatIndex);
                     }
@@ -1268,27 +1264,6 @@
                 isMono = p.isMono;
             }
         }
-    }
-
-    // 🎧 Playful & Scene-Specific
-    // • 	Track Jackers – implies they’re trying to steal your vibe.
-    // • 	Playlist Pirates – sneaky folks raiding your setlist.
-    // • 	Cue Creepers – always hovering near your decks.
-    // • 	Shazam Shadows – the human version of Shazam lurking behind you.
-    // 👀 Visual & Humorous
-    // • 	Shoulder Surfers – classic term for people peeking at your screen.
-    // • 	Name Nappers – they’re just waiting to snatch that track ID.
-    // • 	Setlist Snakes – slithering in to steal your secrets.
-    // • 	Beat Peekers – simple, cheeky, and easy to say.
-    // 🔥 A Bit More Cutting
-    // • 	ID Thieves – because DJs often ask for “track IDs,” and these folks want them without asking.
-    // • 	Originality Leeches – feeding off your creativity.
-    // • 	Sneak Selectors – pretending to be curators but just copying.
-    protected virtual RenderFragment AntiShoulderSurfers(string text) {
-        // Blur stuff between parentheses to prevent shoulder surfers from easily reading track versions/remixes
-        return
-            @<>
-            </>;
     }
 
     protected override void OnInitialized() {
