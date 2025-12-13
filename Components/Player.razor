@@ -178,10 +178,11 @@
     [JsonProperty] private BASS_BFX_PITCHSHIFT pitch = new();
     private SYNCPROC loopSyncProc = null!;
 
-    [JsonProperty] private double trackGain = 1;
+    [JsonProperty] private double trackGain = 1.0;
     [JsonProperty] public double trackVolume = 1.0;
-    [JsonProperty] public double monitorVolume = 1.0;
-    [JsonProperty] private double crossFaderVolume = 1;
+    [JsonProperty] public double monitorMix = 1.0;
+    [JsonProperty] public double monitorVolume = 0.0;
+    [JsonProperty] private double crossFaderVolume = 1.0;
     [JsonProperty] private bool isMono = false;
     [JsonProperty] private bool sendToMonitor = false;
 
@@ -365,6 +366,11 @@
 
     public void SetMonitorVolume(double value) {
         monitorVolume = value;
+        SetMatrixVolume();
+    }
+
+    public void SetMonitorMix(double value) {
+        monitorMix = value;
         SetMatrixVolume();
     }
 
@@ -1033,7 +1039,7 @@
             var speakersMatrix = GetSpeakersMatrix(mainOutputDevicesCount + monitorDeviceIndex);
             for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
                 for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
-                    speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorVolume) : (1.0 - monitorVolume) * trackVolume * crossFaderVolume);
+                    speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorMix) : (1.0 - monitorMix) * trackVolume * crossFaderVolume * monitorVolume);
                 }
             }
             var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];

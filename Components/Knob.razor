@@ -36,10 +36,10 @@
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
-    public bool EnableMouseEvents { get; set; } = true;
-
     [Parameter]
     public bool Enabled { get; set; } = true;
+
+    public bool EnableMouseEvents { get; set; } = true;
 
     private ElementReference knobElement;
     private Bounds? knobBounds;

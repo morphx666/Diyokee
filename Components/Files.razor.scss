@@ -72,7 +72,7 @@
                 cursor: pointer;
 
                 &.invalid {
-                    background-color: rgb(var(--secondary));
+                    background-color: var(--secondary);
                 }
 
                 &.selected {

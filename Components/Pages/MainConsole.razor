@@ -56,6 +56,7 @@
                 <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><i class="fa-solid fa-caret-right"></i></div>
             </div>
             <div class="monitor-controls">
+                <Knob Name="MonVolume" @ref="monitorVolume" ValueChanged="ApplyMonitorVolume" />
                 <i class="fa-solid fa-volume-high"></i>
                 <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
                 <i class="fa-solid fa-headphones-simple"></i>
@@ -148,6 +149,7 @@
     private Dictionary<PanelResize.ConstrainKeys, string> mediaProviderConstrains = new() { { PanelResize.ConstrainKeys.Min, "250" } };
 
     private Knob? monitorMix = null!;
+    private Knob? monitorVolume = null!;
     private Knob? mainGain = null!;
 
     private bool shouldRender = true;
@@ -249,12 +251,20 @@
         }
     }
 
-    private void ApplyMonitorMix(double value) {
+    private void ApplyMonitorVolume(double value) {
+        monitorVolume?.SetValue(value);
         player1?.SetMonitorVolume(value);
         player2?.SetMonitorVolume(value);
     }
 
+    private void ApplyMonitorMix(double value) {
+        monitorMix?.SetValue(value);
+        player1?.SetMonitorMix(value);
+        player2?.SetMonitorMix(value);
+    }
+
     private void ApplyMainGain(double value) {
+        mainGain?.SetValue(value);
         value *= 2; // 0-1 to 0-2 range
         player1?.SetGain((float)value);
         player2?.SetGain((float)value);
@@ -647,6 +657,7 @@
                 await Task.Delay(250);
 
                 if(player1 != null && player2 != null) {
+                    ApplyMonitorVolume(0.0);
                     ApplyMonitorMix(0.5);
                     ApplyMainGain(0.5);
 
