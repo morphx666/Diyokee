@@ -161,9 +161,20 @@ internal class Program {
 
     private static void SetupBASS() {
         int index = 0;
-        foreach(var device in Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice)) {
+        var devices = Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice).ToList();
+        for(int i = 0; i < devices.Count; i++) {
+            AudioDevice device = devices[i];
             int bassDeviceIndex = Program.GetDeviceIndexByName(device.Name);
-            Bass.BASS_SetDevice(bassDeviceIndex);
+            bool r = Bass.BASS_SetDevice(bassDeviceIndex);
+            if(!r || Bass.BASS_ErrorGetCode() != BASSError.BASS_OK) {
+                Logger.LogError($"Failed to set BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");
+                if(i < Settings.Audio.MainOutputDevice.Count) {
+                    Settings.Audio.MainOutputDevice.RemoveAt(i);
+                } else {
+                    Settings.Audio.MonitorDevice.RemoveAt(i - Settings.Audio.MainOutputDevice.Count);
+                }
+                continue;
+            }
 
             int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 8, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
             Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
