@@ -35,7 +35,7 @@
             </div>
 
             <div class="global-controls">
-                <Knob Name="GAIN" @ref="mainGain" ValueChanged="ApplyMainGain" />
+                <Knob Name="GAIN" @ref="mainGain" RangeFromCenter="false" ValueChanged="ApplyMainGain" />
                 <div class="button-thin" @onclick="OpenSettingsDialog"><i class="fa-solid fa-gear"></i></div>
             </div>
 
@@ -56,7 +56,7 @@
                 <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><i class="fa-solid fa-caret-right"></i></div>
             </div>
             <div class="monitor-controls">
-                <Knob Name="MonVolume" @ref="monitorVolume" ValueChanged="ApplyMonitorVolume" />
+                <Knob Name="Volume" @ref="monitorVolume" RangeFromCenter="false" ValueChanged="ApplyMonitorVolume" />
                 <i class="fa-solid fa-volume-high"></i>
                 <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
                 <i class="fa-solid fa-headphones-simple"></i>

@@ -15,9 +15,8 @@
     .knob-container {
         position: relative;
 
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
+        width: 2.6em;
+        height: 2.6em;
 
         &.disabled {
             pointer-events: none;
@@ -29,81 +28,23 @@
 
         .knob {
             position: absolute;
-            top: calc(var(--arc-width) / 2);
-            left: calc(var(--arc-width) / 2);
-            width: calc(100% - var(--arc-width));
-            height: calc(100% - var(--arc-width));
+            inset: var(--arc-width);
 
-            border: calc(var(--arc-width) / 2) solid var(--app-background-color);
             border-radius: 50%;
             background-color: var(--panel-background-color-dark);
 
-            .highlight-container {
-                position: relative;
-                display: inline-block;
+            .range {
+                position: absolute;
+                inset: calc(-1 * var(--arc-width) + var(--knob-margin));
+                border-radius: 50%;
+                background: conic-gradient(var(--ctrl-highlight-soft) 50%, var(--app-background-color) 50%);
 
-                left: calc(-1 * var(--arc-width) / 2);
-                top: calc(-1 * var(--arc-width) / 2);
-                width: calc(100% + calc(var(--arc-width) / 2) + 3px);
-                height: calc(100% + calc(var(--arc-width) / 2) + 3px);
-
-                opacity: 0.75;
-
-                .arc {
-                    position: relative;
-                    width: 100%;
-                    height: 100%;
-                    background: transparent;
-                    border-radius: 50%;
-                    overflow: hidden;
-
-                    .segment {
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        width: 100vw;
-                        height: 100vw;
-                        background: var(--ctrl-highlight-soft);
-                        transform-origin: 0 0;
-                    }
-
-                    .cap-start,
-                    .cap-end {
-                        position: absolute;
-
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-
-                        background-color: transparent;
-
-                        &::after {
-                            content: '';
-                            position: absolute;
-                            top: calc(var(--arc-width) / 4);
-                            left: 50%;
-                            width: calc(var(--arc-width) / 2);
-                            height: calc(var(--arc-width) / 2);
-                            background-color: var(--ctrl-highlight-soft);
-                            border-radius: 50%;
-                            transform: translateX(-50%) translateY(-50%);
-                        }
-                    }
-                }
-
-                .inner-circle {
+                &::after {
+                    content: "";
                     position: absolute;
-                    left: 50%;
-                    top: 50%;
-                    width: calc(100% - var(--arc-width));
-                    height: calc(100% - var(--arc-width));
-                    transform: translateX(-50%) translateY(-50%);
-                    background-color: var(--panel-background-color-dark);
+                    inset: calc(var(--arc-width) / 2);
                     border-radius: 50%;
-                    /* h-offset v-offset blur spread color inset */
-                    box-shadow: 0  1px 2px 0px #ccc4 inset,
-                                0 -2px 2px 0px #0004 inset
+                    background-color: var(--panel-background-color-dark);
                 }
             }
 
@@ -125,7 +66,7 @@
                     width: 2px;
                     height: 50%;
 
-                    background-color: #fff8;
+                    background-color: color-mix(in srgb, var(--text-white), transparent 30%);
                     transform: translate(-50%, -50%);
                 }
             }

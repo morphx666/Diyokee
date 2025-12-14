@@ -4,19 +4,7 @@
 <div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
     <div class="knob-container @(Enabled ? "" : "disabled")">
         <div class="knob">
-            <div class="highlight-container">
-                <div class="arc" style="@GetArcCss()">
-                    <div id="segment1" class="segment" style="@GetSegmentCss(1)"></div>
-                    <div id="segment2" class="segment" style="@GetSegmentCss(2)"></div>
-                    <div id="segment3" class="segment" style="@GetSegmentCss(3)"></div>
-                    <div id="segment4" class="segment" style="@GetSegmentCss(4)"></div>
-
-                    <div class="cap-start" style="@GetCapStartCss()"></div>
-                    <div class="cap-end" style="@GetCapEndCss()"></div>
-                </div>
-                <div class="inner-circle"></div>
-            </div>
-
+            <div class="range" style="@GetRangeCss()"></div>
             <div class="pointer" style="@GetPointerCss()"></div>
         </div>
     </div>
@@ -39,79 +27,54 @@
     [Parameter]
     public bool Enabled { get; set; } = true;
 
+    [Parameter]
+    public bool RangeFromCenter { get; set; } = true;
+
     public bool EnableMouseEvents { get; set; } = true;
 
     private ElementReference knobElement;
     private Bounds? knobBounds;
     private double knobSize = 0;
     private double initialValue = 0.5;
-    private double fromAngle = 0; // We should allow this to be configurable in the future
     private const double minAngle = 1.08;
+    private double angleRange = 135.0; // Degrees from center to min/max
 
     public void SetInitialValue(double value) {
         Value = value;
         initialValue = value;
-        UpdateRange();
     }
 
     public async Task SetValue(double newValue, bool updateState = false) {
         if(Value == newValue) return;
         Value = newValue;
-        UpdateRange();
         await ValueChanged.InvokeAsync(newValue);
 
         if(updateState) await InvokeAsync(StateHasChanged);
     }
 
-    private void UpdateRange() {
-        // if(Value >= 0.5) {
-        //     rangeTop = (1 - Value) * faderSize + gutterOffset;
-        //     rangeHeight = (Value - 0.5) * faderSize;
-        // } else {
-        //     rangeTop = faderSize / 2 + gutterOffset;
-        //     rangeHeight = (0.5 - Value) * faderSize;
-        // }
-    }
-
-    public string GetArcCss() {
-        // target_value = (source_value - source_min) * (target_max - target_min) / (source_max - source_min) + target_min
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        int scale = angle < 0 ? -1 : 1;
-        return $"transform: rotate({fromAngle}deg) scaleX({scale})";
-    }
-
-    public string GetSegmentCss(int index) {
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        angle = Math.Abs(angle);
-
-        switch(index) {
-            case 1:
-                return angle >= minAngle ? $"transform: rotate(-90deg) skew({90 - Math.Min(angle, 90)}deg" : "display: none";
-            case 2:
-                return angle >= 90 ? $"transform: rotate(0deg) skew({180 - Math.Min(angle, 180)}deg" : "display: none";
-            case 3:
-                return angle >= 180 ? $"transform: rotate(90deg) skew({270 - Math.Min(angle, 270)}deg" : "display: none";
-            case 4:
-                return angle >= 270 ? $"transform: rotate(180deg) skew({360 - Math.Min(angle, 360)}deg" : "display: none";
-            default:
-                return "";
-        }
-    }
-
     public string GetPointerCss() {
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        return $"transform: rotate({angle + fromAngle}deg)";
+        double angle = (Value - 0) * (angleRange - (-angleRange)) / (1 - 0) + (-angleRange);
+        return $"transform: rotate({angle}deg)";
     }
 
-    private string GetCapStartCss() {
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        return angle <= minAngle ? "display: none" : "";
-    }
-
-    private string GetCapEndCss() {
-        double angle = (Value - 0) * (135 - (-135)) / (1 - 0) + (-135);
-        angle = Math.Abs(angle);
-        return angle <= minAngle ? "display: none" : $"transform: rotate({angle}deg)";
+    public string GetRangeCss() {
+        double angle = (Value - 0) * (angleRange - (-angleRange)) / (1 - 0) + (-angleRange);
+        if(RangeFromCenter) {
+            if(angle < 0) {
+                angle += 360;
+                return $"background: conic-gradient(var(--app-background-color) 0deg {angle}deg, var(--ctrl-highlight-soft) {angle}deg);";
+            } else {
+                return $"background: conic-gradient(var(--ctrl-highlight-soft) 0deg {angle}deg, var(--app-background-color) {angle}deg);";
+            }
+        } else {
+            double rangeStart = 360.0 - angleRange;
+            if(angle < 0) {
+                angle += 360;
+                return $"background: conic-gradient(var(--app-background-color) 0deg {rangeStart}deg, var(--ctrl-highlight-soft) {rangeStart}deg {angle}deg, var(--app-background-color) {angle}deg);";
+            } else {
+                return $"background: conic-gradient(var(--ctrl-highlight-soft) 0 {angle}deg, var(--app-background-color) {angle}deg {rangeStart}deg, var(--ctrl-highlight-soft) {rangeStart}deg 0deg);";
+            }
+        }
     }
 
     [JSInvokable]
@@ -127,9 +90,6 @@
 
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
-
-            UpdateRange();
-            await InvokeAsync(StateHasChanged);
 
             await Task.Run(async () => {
                 bool isValid = false;
@@ -172,6 +132,8 @@
                     }
                 }
             });
+
+            await InvokeAsync(StateHasChanged);
         }
     }
 }
