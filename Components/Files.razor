@@ -71,10 +71,10 @@
     private List<DFile> files = [];
     private string lastRelativePath = "-";
     private string selectedFile = "";
-    private Task? analyzingTask = null;
+    private Task analyzingTask = default!;
     private KeyTools keyTools = new();
     private string searchText = "";
-    private CancellationTokenSource? cancellationTokenSource = null;
+    private CancellationTokenSource cancellationTokenSource = default!;
     private bool isSearching = false;
     private bool providerIsBusy = false;
     private string searchButtonIcon = "fa-magnifying-glass";
@@ -133,14 +133,14 @@
             StateHasChanged();
         });
 
-        if(cancellationTokenSource == null) {
-            cancellationTokenSource = new CancellationTokenSource();
-        } else {
-            cancellationTokenSource.Cancel();
-            analyzingTask?.Wait();
+        if(cancellationTokenSource != null) {
+            await cancellationTokenSource.CancelAsync();
+            while(analyzingTask == null || analyzedFilesCount > 0) await Task.Delay(10); // Sometimes AnalyzeFiles() gets called before analyzingTask is assigned; so we wait for it...
+            // TODO: Why not use analyzingTask.Wait()? Because that would cause a deadlock in Blazor...
+
             cancellationTokenSource.Dispose();
-            cancellationTokenSource = new CancellationTokenSource();
         }
+        cancellationTokenSource = new CancellationTokenSource();
 
         files.Clear();
         if(doSearch) {
@@ -182,16 +182,8 @@
                     if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
                     await InvokeAsync(StateHasChanged);
                 });
-            } catch(InvalidOperationException) {
-                // Ignore collection was modified
-            } catch(TaskCanceledException) {
-                // Ignore cancellation exception
             } catch(Exception ex) {
-                if(ex is InvalidOperationException) {
-                    // Ignore collection was modified
-                } else {
-                    Program.Logger.LogError($"Error analyzing files: {ex.Message}");
-                }
+                Program.Logger.LogError($"Error analyzing files: {ex.Message}");
             }
         }, cancellationTokenSource.Token).ContinueWith(async _ => {
             isSearching = false;
@@ -201,8 +193,10 @@
             SortFilesList();
 
             await InvokeAsync(StateHasChanged);
-            await cache!.SaveChangesAsync();
-            await cache.DisposeAsync();
+            if(cache != null) {
+                await cache.SaveChangesAsync();
+                await cache.DisposeAsync();
+            }
         });
 
         if(files.Count > 0 && selectedFile == "") {
