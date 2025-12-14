@@ -45,6 +45,13 @@
     --secondary: #721d1d;
     --secondary-light: #ff5600;
     --help: #b9c73f;
+
+    --led-green: #83fa1b;
+    --led-cyan: var(--ctrl-highlight);
+    --led-red: #f00;
+
+    --cue-point-color: #f92;
+    --black: #000;
 }
 
 * {
@@ -69,7 +76,7 @@ body, html {
 }
 
 .button-3d {
-    border: 1px solid #000;
+    border: 1px solid var(--black);
     background-color: var(--panel-background-color-dark-dark);
     border-radius: 4px;
     outline: none;
@@ -81,7 +88,7 @@ body, html {
 }
 
 .button-thin {
-    border: 1px solid #000;
+    border: 1px solid var(--black);
     background-color: var(--panel-background-color-dark-dark);
     border-radius: 4px;
     text-align: center;
@@ -107,15 +114,15 @@ body, html {
     }
 
     &.green::after {
-        background-color: #83fa1b;
+        background-color: var(--led-green);
     }
 
     &.cyan::after {
-        background-color: var(--ctrl-highlight);
+        background-color: var(--led-cyan);
     }
 
     &.red::after {
-        background-color: #f00;
+        background-color: var(--led-red);
     }
 }
 

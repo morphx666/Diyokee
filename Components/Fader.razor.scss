@@ -46,7 +46,7 @@
                 right: 16px;
                 bottom: 50%;
                 height: 1px;
-                background-color: #fff6;
+                background-color: var(--panel-background-color-light-light);
                 transform: translateY(50%);
             }
 
@@ -83,7 +83,7 @@
                 top: 16px;
                 bottom: 8px;
                 width: 1px;
-                background-color: #fff6;
+                background-color: var(--panel-background-color-light-light);
                 transform: translateX(-50%);
             }
 

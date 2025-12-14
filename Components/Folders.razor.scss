@@ -49,13 +49,9 @@
 }
 
 .error {
-    color: #fff;
-    background-color: #f00;
+    color: var(--text-white);
+    background-color: var(--led-red);
     text-align: center;
     font-weight: 600;
     padding: 0.5rem;
 }
-
-/*.subfolders {
-    padding-left: 2rem;
-}*/
