@@ -1186,8 +1186,9 @@
                 Stop(false);
                 CreateStreams();
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
-
             }
+
+            if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 

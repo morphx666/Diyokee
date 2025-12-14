@@ -78,6 +78,12 @@
     [Parameter]
     public EventCallback<string> SelectedFolderChanged { get; set; }
 
+    private bool canCallJSFunctions = false;
+    protected override Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) canCallJSFunctions = true;
+        return base.OnAfterRenderAsync(firstRender);
+    }
+
     protected override void OnParametersSet() {
         base.OnParametersSet();
 
@@ -111,7 +117,7 @@
                         await InvokeAsync(() => ChangeSelectedFolder(f.RelativePath));
                     }
                 }
-                await JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected", "end");
+                if(canCallJSFunctions) await JS.InvokeVoidAsync("scrollSelectedItemIntoView", ".folder.selected", "end");
             }
             await InvokeAsync(StateHasChanged);
         });

@@ -182,6 +182,8 @@
                     if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
                     await InvokeAsync(StateHasChanged);
                 });
+            } catch(InvalidOperationException) {
+                // Ignore collection was modified
             } catch(TaskCanceledException) {
                 // Ignore cancellation exception
             } catch(Exception ex) {
