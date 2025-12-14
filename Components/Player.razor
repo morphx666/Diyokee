@@ -328,7 +328,6 @@
                             long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
                             long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
 
-                            //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                             splitterStreams.ForEach(h => {
                                 BassMix.BASS_Mixer_ChannelSetPosition(h, p + offset);
                                 BassMix.BASS_Mixer_ChannelPlay(h);
@@ -340,7 +339,6 @@
                     }
                 });
             } else {
-                //Program.BassMixHandles.ForEach(h => BassMix.BASS_Split_StreamReset(h.Handle));
                 splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
@@ -588,6 +586,13 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
 
+        pitchHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
+        pitch.fPitchShift = 0;
+        pitch.fSemitones = 0;
+        pitch.lOsamp = 64;
+
         if(!MinimalMode) {
             InitResonantFilter();
             int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspResonantFilter, IntPtr.Zero, 0);
@@ -622,13 +627,6 @@
         gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
-
-        pitchHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
-        pitch.fPitchShift = 0;
-        pitch.fSemitones = 0;
-        pitch.lOsamp = 64;
 
         SetMatrixVolume();
 

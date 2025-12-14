@@ -158,6 +158,10 @@ internal class Program {
                 continue;
             }
 
+            BASS_INFO basInfo = new();
+            Bass.BASS_GetInfo(basInfo);
+            BassLatencyMs = Math.Max(BassLatencyMs, basInfo.latency);
+
             int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 8, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
             Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
             Bass.BASS_ChannelPlay(handle, true);
@@ -230,10 +234,6 @@ internal class Program {
         
         SetupDevice(Settings.Audio.MainOutputDevice);
         SetupDevice(Settings.Audio.MonitorDevice, false);
-
-        BASS_INFO basInfo = new();
-        Bass.BASS_GetInfo(basInfo);
-        BassLatencyMs = basInfo.latency;
 
         return true;
     }
