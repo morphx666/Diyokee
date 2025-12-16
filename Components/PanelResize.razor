@@ -78,12 +78,14 @@
         if(Orientation == Orientations.Vertical) {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, -1, resizeElementBounds!.Height
-    });
+        });
         } else {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, resizeElementBounds!.Width, -1
-    });
+        });
         }
+
+        await JS.InvokeVoidAsync("forceRefresh");
     }
 
     [JSInvokable]
@@ -109,7 +111,7 @@
 
             await OnResize();
             if(resizeElementBounds?.Width == 0 || resizeElementBounds?.Height == 0) return;
-            
+
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
@@ -137,9 +139,7 @@
                         && dividerBounds != null
                         && (!mouseState?.IsCaptured ?? false)
                         && mouseState?.ButtonsDown == 1
-                        && dividerBounds.Contains(mouseState.X - (Orientation == Orientations.Horizontal ? elementsBetweenOffset : 0),
-                                                  mouseState.Y - (Orientation == Orientations.Vertical ? elementsBetweenOffset : 0),
-                                                  2)) {
+                        && dividerBounds.Contains(mouseState.X, mouseState.Y, 2)) {
                         mouseState.IsCaptured = true;
                         isValid = true;
                     }

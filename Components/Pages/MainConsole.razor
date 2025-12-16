@@ -666,14 +666,4 @@
 
         base.OnInitialized();
     }
-
-    protected override void OnAfterRender(bool firstRender) {
-        if(firstRender) {
-            Task.Run(async () => {  // FIXME: Find a better way to do this
-                await Task.Delay(1000);
-                await JS.InvokeVoidAsync("forceRefresh");
-            });
-        }
-        base.OnAfterRender(firstRender);
-    }
 }
