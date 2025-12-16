@@ -134,12 +134,9 @@
 
     private Player? player1;
     private Player? player2;
+    private Fader? crossFader;
 
     private bool showSettingsDialog = false;
-
-    private Fader? crossFader;
-    private double monitorOutputVolume = 1.0;
-
     private MouseState mouseState = new();
 
     private ElementReference playersPanel;
@@ -668,5 +665,15 @@
         });
 
         base.OnInitialized();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            Task.Run(async () => {  // FIXME: Find a better way to do this
+                await Task.Delay(1000);
+                await JS.InvokeVoidAsync("forceRefresh");
+            });
+        }
+        base.OnAfterRender(firstRender);
     }
 }

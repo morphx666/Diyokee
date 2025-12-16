@@ -28,8 +28,8 @@
             color: var(--primary-light);
             background: var(--panel-background-color-dark);
             border: none;
-            border-left: 1px solid var(--panel-background-color-dark-dark);
-            padding: 0.28em 0.5em;
+            border-left: 3px solid var(--panel-background-color-dark-dark);
+            height: 1.7em;
             cursor: pointer;
 
             color: rgb(from var(--primary-light) r g b / 70%);

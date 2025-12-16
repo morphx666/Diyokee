@@ -20,13 +20,10 @@
     }
 
     .downbeat {
-        display: flex;
-        flex-direction: row;
-        justify-content: space-between;
         gap: 2px;
 
         ::deep input {
-            width: 2.5rem;
+            width: 3ch;
         }
     }
 
@@ -65,7 +62,7 @@
     }
 
     .player-container {
-        width: 100%;
+        width: 95%;
         height: 256px;
 
         background-color: var(--panel-background-color-light);

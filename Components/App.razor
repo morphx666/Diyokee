@@ -92,6 +92,7 @@
 
         var notifyHandler = 0;
         window.onresize = () => {
+            console.log("Window resized");
             clearTimeout(notifyHandler);
             notifyHandler = setTimeout(() => {
                 dotNetListeners.forEach(dotNetObjReference => {
