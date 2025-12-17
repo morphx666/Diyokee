@@ -43,6 +43,15 @@
         }
     }
 
+    .beatmatching {
+        display: flex;
+        flex-direction: column;
+
+        ::deep .waveform-container {
+            height: 32px;
+        }
+    }
+
     .mixer {
         position: relative;
         width: 100%;

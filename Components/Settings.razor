@@ -45,6 +45,11 @@
         <h3>Playback</h3>
 
         <div class="field">
+            <label for="beatmatching-display">Beatmatching Display</label>
+            <InputCheckbox id="beatmatching-display" @bind-value="settings.Playback.BeatmatchingDisplay" />
+        </div>
+
+        <div class="field">
             <label for="lock-onplay">Lock players while playing</label>
             <InputCheckbox id="lock-onplay" @bind-value="settings.Playback.LockOnPlay" />
         </div>

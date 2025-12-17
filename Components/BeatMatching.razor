@@ -1,0 +1,66 @@
+﻿@using static Diyokee.Settings
+
+<Waveform CssColor="@player1?.Settings.Color"
+          Mode="Waveform.Modes.AudioSynced"
+          BeatMarkers="@player1?.BeatMarkers"
+          DownbeatAt="@(player1?.File?.DownbeatAt ?? -1)"
+          MaxPeak="@(player1?.MaxPeak ?? 0)"
+          Peaks="@player1?.Peaks"
+          SecondsToPosX="@(player1?.SecondsToPosX ?? 0)"
+          WaveformWidth="@(player1?.WaveformWidth ?? 0)"
+          Loop="player1?.Loop"
+          Player="player1"
+          @ref="waveform1" />
+
+<Waveform CssColor="@player2?.Settings.Color"
+          Mode="Waveform.Modes.AudioSynced"
+          BeatMarkers="@player2?.BeatMarkers"
+          DownbeatAt="@(player2?.File?.DownbeatAt ?? -1)"
+          MaxPeak="@(player2?.MaxPeak ?? 0)"
+          Peaks="@player2?.Peaks"
+          SecondsToPosX="@(player2?.SecondsToPosX ?? 0)"
+          WaveformWidth="@(player2?.WaveformWidth ?? 0)"
+          Loop="player2?.Loop"
+          Player="player2"
+          @ref="waveform2" />
+
+@code {
+    [Parameter]
+    public Player? player1 { get; set; } = default!;
+
+    [Parameter]
+    public Player? player2 { get; set; } = default!;
+
+    private Waveform? waveform1;
+    private Waveform? waveform2;
+
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            int delay = 15;
+            Task.Run(async () => {
+                while(true) {
+                    await Task.Delay(delay);
+
+                    if(waveform1 != null && player1 != null && waveform1.PlaybackHead != player1.PlaybackHead) {
+                        waveform1.PlaybackHead = player1.PlaybackHead;
+                        await waveform1.Refresh();
+                    }
+                    if(waveform2 != null && player2 != null && waveform2.PlaybackHead != player2.PlaybackHead) {
+                        waveform2.PlaybackHead = player2.PlaybackHead;
+                        await waveform2.Refresh();
+                    }
+                }
+            });
+        }
+        base.OnAfterRender(firstRender);
+    }
+
+    protected override async Task OnParametersSetAsync() {
+        await Task.Run(async () => { // FIXME: Why is this needed??
+            await Task.Delay(150);
+            await InvokeAsync(StateHasChanged);
+        });
+
+        await base.OnParametersSetAsync();
+    }
+}

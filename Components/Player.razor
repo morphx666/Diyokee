@@ -51,12 +51,12 @@
         <Waveform 
             CssColor="@Settings.Color"
             Mode="Waveform.Modes.Full"
-            BeatMarkers="@beatMarkers"
+            BeatMarkers="@BeatMarkers"
             DownbeatAt="@(File?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
+            MaxPeak="@MaxPeak"
+            Peaks="@Peaks"
+            SecondsToPosX="@SecondsToPosX"
+            WaveformWidth="@WaveformWidth"
             Player="this"
             @ref="waveformFull" />
     </div>
@@ -65,13 +65,13 @@
         <Waveform
             CssColor="@Settings.Color"
             Mode="Waveform.Modes.AudioSynced"
-            BeatMarkers="@beatMarkers"
+            BeatMarkers="@BeatMarkers"
             DownbeatAt="@(File?.DownbeatAt ?? -1)"
-            MaxPeak="@maxPeak"
-            Peaks="@peaks"
-            SecondsToPosX="@secondsToPosX"
-            WaveformWidth="@waveformWidth"
-            Loop="loop"
+            MaxPeak="@MaxPeak"
+            Peaks="@Peaks"
+            SecondsToPosX="@SecondsToPosX"
+            WaveformWidth="@WaveformWidth"
+            Loop="Loop"
             Player="this"
             @ref="waveform" />
 
@@ -123,7 +123,7 @@
         <div class="ljc-container">
             <div class="loop-jump-cuepoints">
                 <div class="loop-container @(selectedTab == 0 ? "" : "hidden")">
-                    <div class="button-thin led @(loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
+                    <div class="button-thin led @(Loop.Enabled ? "green" : "")" @onclick="ToggleLoop">Loop</div>
                     <div class="loop-size-container">
                         @foreach(var size in loopSizes) {
                             <div class="button @(loopSize == size.Item2 ? "selected" : "")"
@@ -196,22 +196,22 @@
     [JsonProperty] public Eq EqControls = null!;
     [JsonProperty] public Filters FilterControls = null!;
 
-    [JsonProperty] private int waveformWidth = 0;
+    [JsonProperty] internal int WaveformWidth { get; set; } = 0;
     [JsonProperty] private long waveformStepLength = 0;
     [JsonProperty] private long trackLengthBytes = 0;
     private double playbackPosition = 0;
     private bool queueAutoSnap = false;
-    [JsonProperty] private double[] peaks = [];
-    [JsonProperty] private double maxPeak = 1.0;
+    [JsonProperty] internal double[] Peaks { get; set; } = [];
+    [JsonProperty] internal double MaxPeak { get; set; } = 1.0;
     [JsonProperty] private double beatsPerSecond;
     [JsonProperty] private double secondsPerBeat;
-    [JsonProperty] private double secondsToPosX;
+    [JsonProperty] internal double SecondsToPosX { get; set; } = 0.0;
     [JsonProperty] private double currentTempoValue;
     private double tempoRange;
     private double tempoMin = +0.10;
     private double tempoMax = -0.10;
 
-    [JsonProperty] private Loop loop = new();
+    [JsonProperty] internal Loop Loop { get; set; } = new();
     private (string, double)[] loopSizes = {
         ("¼", 0.25),
         ("½", 0.50),
@@ -226,7 +226,7 @@
     private double jumpSize = 8.0;
     private bool loopJumpLock = true;
 
-    [JsonProperty] private List<(double X, double Seconds)> beatMarkers = new();
+    [JsonProperty] internal List<(double X, double Seconds)> BeatMarkers = new();
     [JsonProperty] private double cuePoint = 0;
 
     private KeyTools keyTools = new();
@@ -548,7 +548,7 @@
         SetGain(gain.fVolume);
         SetupEQ();
         faderTempo?.SetValue(0.5);
-        if(loop.Enabled) ToggleLoop();
+        if(Loop.Enabled) ToggleLoop();
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, Files.TimeSlice);
@@ -793,19 +793,19 @@
     }
 
     public bool SetParameters() {
-        peaks = [];
-        beatMarkers.Clear();
+        Peaks = [];
+        BeatMarkers.Clear();
         waveformFull?.UpdateFullWaveform();
 
         if(File == null || !File.WaveformUnZipped.Contains('|')) return false;
 
-        peaks = File.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
-        maxPeak = peaks.Max();
+        Peaks = File.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
+        MaxPeak = Peaks.Max();
 
-        waveformWidth = peaks.Length * WaveformBarWidth;
+        WaveformWidth = Peaks.Length * WaveformBarWidth;
         beatsPerSecond = File!.BPM / 60.0;
         secondsPerBeat = 1.0 / beatsPerSecond;
-        secondsToPosX = 1.0 / (File.Duration == 0 ? 1 : File.Duration) * waveformWidth;
+        SecondsToPosX = 1.0 / (File.Duration == 0 ? 1 : File.Duration) * WaveformWidth;
 
         // x = s / file.Duration * waveformWidth
         // s = x / waveformWidth * file.Duration
@@ -823,11 +823,11 @@
         double t2 = t1 - secondsPerBeat;
         while(t1 < File!.Duration || t2 >= 0) {
             if(t1 < File.Duration) {
-                beatMarkers.Add((t1 * secondsToPosX, t1));
+                BeatMarkers.Add((t1 * SecondsToPosX, t1));
                 t1 += secondsPerBeat;
             }
             if(t2 >= 0) {
-                beatMarkers.Insert(0, (t2 * secondsToPosX, t2));
+                BeatMarkers.Insert(0, (t2 * SecondsToPosX, t2));
                 t2 -= secondsPerBeat;
             }
         }
@@ -840,10 +840,10 @@
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
     }
 
-    public bool SnapToBeatMarkers => beatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
+    public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
 
     public void SnapToClosestBeatMarker() {
-        if(beatMarkers.Count == 0) return;
+        if(BeatMarkers.Count == 0) return;
         long position = GetClosestBeatMarker();
 
         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position));
@@ -855,14 +855,14 @@
         if(SnapToBeatMarkers) {
             int closestIndex = 0;
             double closestDistance = float.MaxValue;
-            for(int i = 0; i < beatMarkers.Count; i++) {
-                double distance = Math.Abs(beatMarkers[i].Seconds - playbackPositionSeconds);
+            for(int i = 0; i < BeatMarkers.Count; i++) {
+                double distance = Math.Abs(BeatMarkers[i].Seconds - playbackPositionSeconds);
                 if(distance < closestDistance) {
                     closestDistance = distance;
                     closestIndex = i;
                 }
             }
-            playbackPositionSeconds = beatMarkers[closestIndex].Seconds;
+            playbackPositionSeconds = BeatMarkers[closestIndex].Seconds;
         }
 
         cuePoint = playbackPositionSeconds;
@@ -871,7 +871,7 @@
 
     public void ToggleLoop() {
         if(File == null) return;
-        loop.Enabled = !loop.Enabled;
+        Loop.Enabled = !Loop.Enabled;
         SetLoopSize(loopSize, true);
     }
 
@@ -919,36 +919,36 @@
 
         if(File != null) {
             double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
-            if(resetStart) loop.Start = position;
-            loop.End = loop.Start + loopSize / beatsPerSecond;
+            if(resetStart) Loop.Start = position;
+            Loop.End = Loop.Start + loopSize / beatsPerSecond;
 
-            if(loop.BASSHandle != 0 && resetStart) {
-                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
-                loop.BASSHandle = 0;
+            if(Loop.BASSHandle != 0 && resetStart) {
+                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
+                Loop.BASSHandle = 0;
             }
 
-            if(loop.Enabled) {
-                bool resetLoop = position <= loop.End && loopSize > 1;
-                loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.Start);
-                loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, loop.End);
+            if(Loop.Enabled) {
+                bool resetLoop = position <= Loop.End && loopSize > 1;
+                Loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.Start);
+                Loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.End);
 
-                if(loop.EndBytes > trackLengthBytes) {
-                    loop.Enabled = false;
+                if(Loop.EndBytes > trackLengthBytes) {
+                    Loop.Enabled = false;
                     return;
                 }
 
                 if(resetStart || resetLoop) {
-                    loop.Reset = false;
+                    Loop.Reset = false;
 
                     Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                    if(loop.BASSHandle != 0) {
-                        Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
-                        loop.BASSHandle = 0;
+                    if(Loop.BASSHandle != 0) {
+                        Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
+                        Loop.BASSHandle = 0;
                     }
-                    loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                    Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
                     Bass.BASS_ChannelLock(masterSplitterHandle, false);
                 } else {
-                    loop.Reset = true;
+                    Loop.Reset = true;
                 }
             }
         }
@@ -979,15 +979,15 @@
     }
 
     private void DoLoop(int handle, int channel, int data, IntPtr user) {
-        if(loop.Enabled) {
-            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, loop.StartBytes));
+        if(Loop.Enabled) {
+            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, Loop.StartBytes));
 
-            if(loop.Reset) {
-                loop.Reset = false;
+            if(Loop.Reset) {
+                Loop.Reset = false;
 
                 Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, loop.BASSHandle);
-                loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
+                Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
                 Bass.BASS_ChannelLock(masterSplitterHandle, false);
             }
         }
@@ -1112,8 +1112,8 @@
                 playbackPosition = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
 
                 InBeat = false;
-                for(int i = 0; i < beatMarkers.Count; i++) {
-                    if(Math.Abs(beatMarkers[i].Seconds - playbackPosition) < threshold) {
+                for(int i = 0; i < BeatMarkers.Count; i++) {
+                    if(Math.Abs(BeatMarkers[i].Seconds - playbackPosition) < threshold) {
                         InBeatIndex = i % 2 + 1;
                         InBeat = true;
                         break;
@@ -1142,7 +1142,7 @@
         bool isPaused = false;
 
         while(true) {
-            await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 4 : 1));
+            await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 2 : 1));
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
                 if(isPaused && IsPlaying) {
@@ -1255,16 +1255,16 @@
                 FilterControls = p.FilterControls;
 
                 crossFaderVolume = p.crossFaderVolume;
-                loop = p.loop;
-                waveformWidth = p.waveformWidth;
+                Loop = p.Loop;
+                WaveformWidth = p.WaveformWidth;
                 trackLengthBytes = p.trackLengthBytes;
                 waveformStepLength = p.waveformStepLength;
-                peaks = p.peaks;
-                maxPeak = p.maxPeak;
+                Peaks = p.Peaks;
+                MaxPeak = p.MaxPeak;
                 beatsPerSecond = p.beatsPerSecond;
                 secondsPerBeat = p.secondsPerBeat;
-                secondsToPosX = p.secondsToPosX;
-                beatMarkers = p.beatMarkers;
+                SecondsToPosX = p.SecondsToPosX;
+                BeatMarkers = p.BeatMarkers;
                 cuePoint = p.cuePoint;
                 IsPlaying = p.IsPlaying;
                 isMono = p.isMono;
