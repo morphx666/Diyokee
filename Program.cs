@@ -121,7 +121,7 @@ internal class Program {
                     $"""
 
                     {line}
-                        You may now open your browser and navigate to: {Settings.WebHostUrl}");
+                        You may now open your browser and navigate to: {Settings.WebHostUrl}
                     {line}
 
                     """);
