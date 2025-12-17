@@ -49,6 +49,15 @@
             </div>
         </div>
 
+        @if(Program.Settings.Playback.BeatmatchingDisplay) {
+            <div class="beatmatching">
+                <BeatMatching
+                Player1="player1"
+                Player2="player2"
+                />
+            </div>
+        }
+
         <div class="mixer" @ref="mixerPanel">
             <div class="crossfade-controls">
                 <div class="button-3d" @onclick="() => HandleAutoCrossFade(-1)"><i class="fa-solid fa-caret-left"></i></div>
