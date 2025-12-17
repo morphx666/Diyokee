@@ -1,4 +1,6 @@
 ﻿.waveform-container {
+    --cursor-width: 3px;
+
     position: relative;
     width: 100%;
 
@@ -13,8 +15,8 @@
     .cursor {
         position: absolute;
         top: 0;
-        left: 50%;
-        width: 1px;
+        left: calc(50% - var(--cursor-width) / 2);
+        width: 3px;
         height: 100%;
         background-color: color-mix(in srgb, var(--led-red), transparent 40%);        
     }

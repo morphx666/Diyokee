@@ -203,17 +203,28 @@
 
         await ctx.SetFillStyleAsync(CssColor);
 
+        // Render waveform
         double lastX = -1;
         double step = cw / Peaks.Length;
-        double w = step < 1 ? 1 : step - 1;
+        double barWidth = step < 1 ? 1 : step - 1;
         for(int i = 0; i < Peaks.Length; i++) {
             double x = i * step;
             if(lastX == x) continue;
             lastX = x;
             if(x < 0 || x >= cw) continue;
             double y = ch2 - Peaks[i] / MaxPeak * ch2;
-            await ctx.FillRectAsync(x, y, w, ch - y * 2);
+            await ctx.FillRectAsync(x, y, barWidth, ch - y * 2);
         }
+
+        // Render Cue Points
+        await ctx.SetStrokeStyleAsync("#f92");
+        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
+            double x = cp.Position * ((1 / step) / 10); // TODO: What does ((1 / step) / 10) mean here? It works though...
+
+            await ctx.MoveToAsync(x, 0);
+            await ctx.LineToAsync(x, ch);
+        }
+        await ctx.StrokeAsync();
 
         await ctx.EndBatchAsync();
     }
@@ -260,6 +271,7 @@
             });
             await ctx.StrokeAsync();
 
+            // Render downbeat marker
             await ctx.BeginPathAsync();
             await ctx.SetStrokeStyleAsync("#2ef");
             await ctx.MoveToAsync(DownbeatAt * SecondsToPosX + cw2 - PlaybackHead, 0);
@@ -278,6 +290,7 @@
             }
         }
 
+        // Render Cue Points
         const int heightHack = 12;
         await ctx.SetStrokeStyleAsync("#f92");
         foreach(CuePoint cp in Player.File?.CuePoints ?? []) {

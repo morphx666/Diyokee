@@ -48,30 +48,32 @@
     }
 
     <div class="waveform-full">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.Full"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@(File?.DownbeatAt ?? -1)"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Player="this"
-                  @ref="waveformFull" />
+        <Waveform 
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.Full"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(File?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.AudioSynced"
-                  BeatMarkers="@beatMarkers"
-                  DownbeatAt="@(File?.DownbeatAt ?? -1)"
-                  MaxPeak="@maxPeak"
-                  Peaks="@peaks"
-                  SecondsToPosX="@secondsToPosX"
-                  WaveformWidth="@waveformWidth"
-                  Loop="loop"
-                  Player="this"
-                  @ref="waveform" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.AudioSynced"
+            BeatMarkers="@beatMarkers"
+            DownbeatAt="@(File?.DownbeatAt ?? -1)"
+            MaxPeak="@maxPeak"
+            Peaks="@peaks"
+            SecondsToPosX="@secondsToPosX"
+            WaveformWidth="@waveformWidth"
+            Loop="loop"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <div class="volume-monitor-container">
