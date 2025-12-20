@@ -40,7 +40,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - ...and many more
 
 ## Kown issues
-- Making changes to a file with the Track Properties dialog can cause duplicates on the database, which will creash the program
+- Making changes to a file with the Track Properties dialog can cause duplicates on the database, which will crash the program
 - When syncing a track's key, the key will be matched against the other track's key, not the one set through the Key knob
 - Mouse support (scrolling/dragging) still needs to be improved
   
