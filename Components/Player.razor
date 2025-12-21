@@ -284,8 +284,6 @@
         tempoMin = range / 100.0;
         tempoMax = -range / 100.0;
         tempoRange = tempoMax - tempoMin;
-        // faderTempo?.SetValue(0.5);
-        // ApplyTempo();
     }
 
     private void HandlePlayClick(MouseEventArgs e) {
@@ -405,7 +403,7 @@
         double otherPlayerBPM = OtherPlayer?.AdjustedBPM ?? 0;
         double factor = (1.0 - otherPlayerBPM / File.BPM) * 1.0 / Math.Abs(tempoRange);
         double faderValue = factor + 0.5;
-        await faderTempo!.SetValue(faderValue);
+        await faderTempo!.SetValue(faderValue, true);
     }
 
     private async void SyncKeyToOtherPlayer() {
@@ -414,6 +412,9 @@
         var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.AdjustedKey);
         var thisPlayerKey = keyTools.ToMidiNote(File.Key);
         SetPitch(otherPlayerKey - thisPlayerKey);
+        
+        SetFiltersValues(-1, (otherPlayerKey - thisPlayerKey) / 12.0 + 0.5);
+        await FilterControls.UpdateKnobs();
     }
 
     private double ReScaleTempoFader() {
@@ -1197,7 +1198,7 @@
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
             }
 
-            if(++intervals % 12 == 0) await InvokeAsync(StateHasChanged);
+            if(++intervals % 24 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 
