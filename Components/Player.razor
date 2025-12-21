@@ -411,12 +411,9 @@
     private async void SyncKeyToOtherPlayer() {
         if(OtherPlayer?.File == null || File.Key == string.Empty || OtherPlayer.File.Key == string.Empty) return;
 
-        var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.File.Key);
+        var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.AdjustedKey);
         var thisPlayerKey = keyTools.ToMidiNote(File.Key);
         SetPitch(otherPlayerKey - thisPlayerKey);
-
-        FilterControls.FiltersValues.Key = (otherPlayerKey - thisPlayerKey) / 12.0 + 0.5;
-        await InvokeAsync(FilterControls.UpdateKnobs);
     }
 
     private double ReScaleTempoFader() {
@@ -464,22 +461,32 @@
         get => (File?.BPM ?? 0) * (1.0 + ReScaleTempoFader());
     }
 
+    private string AdjustedKey {
+        get {
+            if(File == null || File.Key == string.Empty) return string.Empty;
+            int semitones = (int)Math.Ceiling(pitch.fSemitones);
+            if(semitones == 0) return File.Key;
+            int keyNumber = keyTools.ToMidiNote(File.Key);
+            return keyTools.FromMidiNote((int)(keyNumber + semitones), Program.Settings.KeyNotation);
+        }
+    }
+
     private void SlowDown(MouseEventArgs e) {
         if(e.Button == 0) {
             currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value + 0.1);
+            faderTempo?.SetValue(faderTempo.Value + 0.1, true);
         }
     }
 
     private void SpeedUp(MouseEventArgs e) {
         if(e.Button == 0) {
             currentTempoValue = faderTempo!.Value;
-            faderTempo?.SetValue(faderTempo.Value - 0.1);
+            faderTempo?.SetValue(faderTempo.Value - 0.1, true);
         }
     }
 
     private void ResetTempo(MouseEventArgs e) {
-        if(e.Button == 0) faderTempo?.SetValue(currentTempoValue);
+        if(e.Button == 0) faderTempo?.SetValue(currentTempoValue, true);
     }
 
     private void ApplyEqValues(Eq.EqValues eqValues) {
@@ -593,7 +600,7 @@
         if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
         pitch.fPitchShift = 0;
         pitch.fSemitones = 0;
-        pitch.lOsamp = 64;
+        pitch.lOsamp = 32;
 
         if(!MinimalMode) {
             InitResonantFilter();

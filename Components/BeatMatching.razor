@@ -1,4 +1,5 @@
 ﻿@using static Diyokee.Settings
+@inject IJSRuntime JS
 
 <Waveform CssColor="@player1?.Settings.Color"
           Mode="Waveform.Modes.AudioSynced"
@@ -34,10 +35,20 @@
     private Waveform? waveform1;
     private Waveform? waveform2;
 
-    protected override void OnAfterRender(bool firstRender) {
+    [JSInvokable]
+    public async Task OnResize() {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
             int delay = 15;
-            Task.Run(async () => {
+            await OnResize();
+
+            var dotNetReference = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+
+            await Task.Run(async () => {
                 while(true) {
                     await Task.Delay(delay);
 
@@ -53,14 +64,5 @@
             });
         }
         base.OnAfterRender(firstRender);
-    }
-
-    protected override async Task OnParametersSetAsync() {
-        await Task.Run(async () => { // FIXME: Why is this needed??
-            await Task.Delay(150);
-            await InvokeAsync(StateHasChanged);
-        });
-
-        await base.OnParametersSetAsync();
     }
 }

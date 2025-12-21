@@ -36,7 +36,7 @@
                 width: 12px;
                 height: calc(100% - 10px);
                 transform: translateY(-50%);
-                z-index: 1;
+                z-index: 2;
             }
 
             &::after { /* gutter */
@@ -59,6 +59,7 @@
                 background-color: var(--ctrl-highlight-soft);
                 pointer-events: none;
                 transform: translateY(-50%);
+                z-index: 1;
             }
         }
 
@@ -73,7 +74,7 @@
                 width: calc(100% - 10px);
                 height: 12px;
                 transform: translateX(-50%);
-                z-index: 1;
+                z-index: 2;
             }
 
             &::after { /* gutter */
@@ -96,6 +97,7 @@
                 background-color: var(--ctrl-highlight-soft);
                 pointer-events: none;
                 transform: translateX(-50%);
+                z-index: 1;
             }
         }
     }
