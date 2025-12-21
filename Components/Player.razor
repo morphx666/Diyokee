@@ -35,11 +35,11 @@
                         <span>-@DFile.FormatTime(GetRemainingTime())</span>
                     </div>
                     <div class="bpm">
-                        <span>@CalcBpm()</span>
-                        <span>@GetBpmAdjustment()</span>
+                        <span>@cacheBpm</span>
+                        <span>@cacheBpmAdjustment</span>
                     </div>
                 </div>
-                <span class="key">@((MarkupString)GetKeyAdjustment())</span>
+                <span class="key">@((MarkupString)cacheKeyAdjustment)</span>
             </div>
             <div class="player-name" style="background-color: @Settings.Color">
                 @Settings.Name
@@ -210,6 +210,10 @@
     private double tempoRange;
     private double tempoMin = +0.10;
     private double tempoMax = -0.10;
+
+    private string cacheBpm = "";
+    private string cacheBpmAdjustment = "";
+    private string cacheKeyAdjustment = "";
 
     [JsonProperty] internal Loop Loop { get; set; } = new();
     private (string, double)[] loopSizes = {
@@ -395,6 +399,8 @@
             // FIXME: Implement necessary checks to avoid infinite recursion
             //OtherPlayer?.SyncBPMToOtherPlayer();
         }
+
+        CacheBpmStrings();
     }
 
     public async void SyncBPMToOtherPlayer() {
@@ -412,7 +418,7 @@
         var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.AdjustedKey);
         var thisPlayerKey = keyTools.ToMidiNote(File.Key);
         SetPitch(otherPlayerKey - thisPlayerKey);
-        
+
         SetFiltersValues(-1, (otherPlayerKey - thisPlayerKey) / 12.0 + 0.5);
         await FilterControls.UpdateKnobs();
     }
@@ -429,33 +435,33 @@
         return (((value - oldMin) * (newMax - newMin)) / (oldMax - oldMin)) + newMin;
     }
 
-    private string CalcBpm() {
+    private void CacheBpmStrings() {
         double bpm = (File?.BPM ?? 0) * (1.0 + ReScaleTempoFader());
-        return bpm.ToString("N2");
-    }
-
-    private string GetBpmAdjustment() {
+        cacheBpm = bpm.ToString("N2");
         double adjustment = ReScaleTempoFader() * 100;
-        return $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
+        cacheBpmAdjustment = $"{(adjustment > 0 ? "+" : "")}{adjustment:N2}%";
     }
 
-    private string GetKeyAdjustment() {
-        if(File == null || File.Key == string.Empty) return "&nbsp;";
+    private void CacheKeyAdjustment() {
+        if(File == null || File.Key == string.Empty) {
+            cacheKeyAdjustment = "&nbsp;";
+            return;
+        }
         int semitones = (int)Math.Ceiling(pitch.fSemitones);
         string fromKey = keyTools.ConvertTo(File.Key, Program.Settings.KeyNotation);
-        if(semitones == 0) return fromKey;
+        if(semitones == 0) {
+            cacheKeyAdjustment = fromKey;
+            return;
+        }
 
         int keyNumber = keyTools.ToMidiNote(File.Key);
         string newKey = keyTools.FromMidiNote((int)(keyNumber + semitones), Program.Settings.KeyNotation);
 
-        string keyChange;
         if(semitones > 0) {
-            keyChange = $"<span>{fromKey,3}</span><i class=\"fa-solid fa-arrow-right small-arrow\"></i><span>{newKey,3}</span>";
+            cacheKeyAdjustment = $"<span>{fromKey,3}</span><i class=\"fa-solid fa-arrow-right small-arrow\"></i><span>{newKey,3}</span>";
         } else {
-            keyChange = $"<span>{newKey,3}</span><i class=\"fa-solid fa-arrow-left small-arrow\"></i><span>{fromKey,3}</span>";
+            cacheKeyAdjustment = $"<span>{newKey,3}</span><i class=\"fa-solid fa-arrow-left small-arrow\"></i><span>{fromKey,3}</span>";
         }
-
-        return keyChange;
     }
 
     private double AdjustedBPM {
@@ -522,6 +528,7 @@
 
     private void ApplyFilterValues(Filters.FilterKeyValues filterValues) {
         SetPitch((filterValues.Key - 0.5) * 12);
+        CacheKeyAdjustment();
     }
 
     private double GetRemainingTime() {
@@ -820,6 +827,8 @@
 
         GenerateBeatMarkers();
         waveformFull?.UpdateFullWaveform();
+        CacheBpmStrings();
+        CacheKeyAdjustment();
 
         return true;
     }
