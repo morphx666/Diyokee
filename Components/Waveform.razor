@@ -204,7 +204,7 @@
         // Render Cue Points
         await ctx.SetStrokeStyleAsync("#f92");
         foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
-            double x = cp.Position * Player.SecondsToPosX * step / 5; // FIXME: Why /5 ???
+            double x = cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
 
             await ctx.MoveToAsync(x, 0);
             await ctx.LineToAsync(x, ch);
