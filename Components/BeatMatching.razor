@@ -3,12 +3,6 @@
 
 <Waveform CssColor="@player1?.Settings.Color"
           Mode="Waveform.Modes.AudioSynced"
-          BeatMarkers="@player1?.BeatMarkers"
-          DownbeatAt="@(player1?.File?.DownbeatAt ?? -1)"
-          MaxPeak="@(player1?.MaxPeak ?? 0)"
-          Peaks="@player1?.Peaks"
-          SecondsToPosX="@(player1?.SecondsToPosX ?? 0)"
-          WaveformWidth="@(player1?.WaveformWidth ?? 0)"
           Player="player1"
           BpmAwareScale="true"
           EnableZoomControls="false"
@@ -16,12 +10,6 @@
 
 <Waveform CssColor="@player2?.Settings.Color"
           Mode="Waveform.Modes.AudioSynced"
-          BeatMarkers="@player2?.BeatMarkers"
-          DownbeatAt="@(player2?.File?.DownbeatAt ?? -1)"
-          MaxPeak="@(player2?.MaxPeak ?? 0)"
-          Peaks="@player2?.Peaks"
-          SecondsToPosX="@(player2?.SecondsToPosX ?? 0)"
-          WaveformWidth="@(player2?.WaveformWidth ?? 0)"
           Player="player2"
           BpmAwareScale="true"
           EnableZoomControls="false"
@@ -44,7 +32,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            int delay = 60;
+            int delay = 30;
             await OnResize();
 
             var dotNetReference = DotNetObjectReference.Create(this);

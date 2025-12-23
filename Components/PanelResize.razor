@@ -78,13 +78,14 @@
         if(Orientation == Orientations.Vertical) {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, -1, resizeElementBounds!.Height
-        });
+    });
         } else {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, resizeElementBounds!.Width, -1
-        });
+    });
         }
 
+        await Task.Delay(250);
         await JS.InvokeVoidAsync("forceRefresh");
     }
 

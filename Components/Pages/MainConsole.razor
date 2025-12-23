@@ -365,25 +365,6 @@
 
     private bool IsPlaying => player1!.IsPlaying || player2!.IsPlaying;
 
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender) {
-            await Task.Delay(500);
-
-            string? folder = session.Get<string>(nameof(selectedFolder));
-            if(folder != null && folder != "") {
-                SelectedFolderChanged(folder);
-                await InvokeAsync(StateHasChanged);
-            }
-
-            DFile? file = session.Get<DFile>(nameof(selectedFile));
-            if(file != null) filesComponent?.ChangeSelectedFile(file);
-
-            MidiMonitor();
-        }
-
-        await InvokeAsync(StateHasChanged); // This updates the SYNC->PLAYER buttons
-    }
-
     private void MidiMonitor() {
         bool navigateFolders = true;
         KeyTools keyTools = new();
@@ -599,10 +580,21 @@
         Program.MidiTools.Start();
     }
 
-    protected override void OnInitialized() {
-        SetMediaProviders();
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if(firstRender) {
+            SetMediaProviders();
 
-        Task.Run(async () => { // FIXME: Find a better way to do this
+            await Task.Delay(500);
+
+            string? folder = session.Get<string>(nameof(selectedFolder));
+            if(folder != null && folder != "") {
+                SelectedFolderChanged(folder);
+                await InvokeAsync(StateHasChanged);
+            }
+
+            DFile? file = session.Get<DFile>(nameof(selectedFile));
+            if(file != null) filesComponent?.ChangeSelectedFile(file);
+
             while(true) {
                 await Task.Delay(250);
 
@@ -615,8 +607,10 @@
                     break;
                 }
             }
-        });
 
-        base.OnInitialized();
+            MidiMonitor();
+        }
+
+        await InvokeAsync(StateHasChanged); // This updates the SYNC->PLAYER buttons
     }
 }

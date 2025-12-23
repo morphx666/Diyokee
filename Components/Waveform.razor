@@ -40,25 +40,7 @@
     [Parameter]
     public string CssColor { get; set; } = "#444";
 
-    [Parameter]
-    public double[] Peaks { get; set; } = [];
-
-    [Parameter]
-    public double MaxPeak { get; set; }
-
     public long PlaybackHead { get; set; }
-
-    [Parameter]
-    public double SecondsToPosX { get; set; }
-
-    [Parameter]
-    public double WaveformWidth { get; set; }
-
-    [Parameter]
-    public double DownbeatAt { get; set; }
-
-    [Parameter]
-    public List<(double X, double Seconds)> BeatMarkers { get; set; } = [];
 
     [Parameter]
     public Modes Mode { get; set; } = Modes.AudioSynced;
@@ -140,7 +122,7 @@
                                     lastMousePosX = mouseState.X;
                                     break;
                                 case Modes.Full:
-                                    PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * WaveformWidth / canvasWidth);
+                                    PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
                                     break;
                             }
                         } else {
@@ -176,8 +158,8 @@
         if(Mode == Modes.AudioSynced) {
             return "";
         } else {
-            if(WaveformWidth == 0) return "display: none;";
-            return $"left: {PlaybackHead / WaveformWidth * canvasWidth}px;";
+            if(Player.WaveformWidth == 0) return "display: none;";
+            return $"left: {(double)PlaybackHead / Player.WaveformWidth * canvasWidth}px;";
         }
     }
 
@@ -208,21 +190,21 @@
 
         // Render waveform
         double lastX = -1;
-        double step = cw / Peaks.Length;
+        double step = cw / Player.Peaks.Length;
         double barWidth = step < 1 ? 1 : step - 1;
-        for(int i = 0; i < Peaks.Length; i++) {
+        for(int i = 0; i < Player.Peaks.Length; i++) {
             double x = i * step;
             if(lastX == x) continue;
             lastX = x;
             if(x < 0 || x >= cw) continue;
-            double y = ch2 - Peaks[i] / MaxPeak * ch2;
+            double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
             await ctx.FillRectAsync(x, y, barWidth, ch - y * 2);
         }
 
         // Render Cue Points
         await ctx.SetStrokeStyleAsync("#f92");
         foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
-            double x = cp.Position * ((1 / step) / 10); // TODO: What does ((1 / step) / 10) mean here? It works though...
+            double x = cp.Position * Player.SecondsToPosX * step / 5; // FIXME: Why /5 ???
 
             await ctx.MoveToAsync(x, 0);
             await ctx.LineToAsync(x, ch);
@@ -233,8 +215,10 @@
     }
 
     private async Task RenderWaveform() {
-        double tempoFactor = BpmAwareScale ? (Player?.ReScaleTempoFader() ?? 0.0) + 1.0 : 1.0;
-        double wfw = (Player?.WaveformBarWidth ?? Program.Settings.Playback.WaveformZoom) / tempoFactor;
+        if(Player is null) return;
+
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double wfw = Player.WaveformBarWidth / tempoFactor;
         double pbh = PlaybackHead / tempoFactor;
 
         double cw = canvasWidth / canvasRatio;
@@ -259,18 +243,18 @@
 
         // Render waveform
         await ctx.SetFillStyleAsync(CssColor);
-        for(int i = (int)Math.Max(0, (pbh - cw2) / wfw - 1); i < Peaks.Length; i++) {
+        for(int i = (int)Math.Max(0, (pbh - cw2) / wfw - 1); i < Player.Peaks.Length; i++) {
             double x = i * wfw + cw2 - pbh;
             if(x >= cw) break;
-            double y = ch2 - Peaks[i] / MaxPeak * ch2;
+            double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
             await ctx.FillRectAsync(x, y, wfw - 1, ch - y * 2);
         }
 
         // Render beat markers
-        if(DownbeatAt != -1) {
+        if(Player.File != null) {
             await ctx.BeginPathAsync();
             await ctx.SetStrokeStyleAsync("#888");
-            BeatMarkers.ForEach(async beatMarker => {
+            Player.BeatMarkers.ForEach(async beatMarker => {
                 double x = beatMarker.X / tempoFactor + cw2 - pbh;
                 if(x >= 0 && x < cw) {
                     await ctx.MoveToAsync(x, 0);
@@ -282,15 +266,15 @@
             // Render downbeat marker
             await ctx.BeginPathAsync();
             await ctx.SetStrokeStyleAsync("#2ef");
-            await ctx.MoveToAsync(DownbeatAt * SecondsToPosX + cw2 - pbh, 0);
-            await ctx.LineToAsync(DownbeatAt * SecondsToPosX + cw2 - pbh, ch);
+            await ctx.MoveToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, 0);
+            await ctx.LineToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, ch);
             await ctx.StrokeAsync();
         }
 
         // Render loop
-        if(Player?.Loop.Enabled ?? false) {
-            double x1 = Player.Loop.Start * SecondsToPosX / tempoFactor + cw2 - pbh;
-            double x2 = Player.Loop.End * SecondsToPosX / tempoFactor + cw2 - pbh;
+        if(Player.Loop.Enabled) {
+            double x1 = Player.Loop.Start * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+            double x2 = Player.Loop.End * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
 
             if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
                 await ctx.SetFillStyleAsync(CssColor + "55");
@@ -301,9 +285,9 @@
         // Render Cue Points
         const int heightHack = 12;
         await ctx.SetStrokeStyleAsync("#f92");
-        foreach(CuePoint cp in Player?.File?.CuePoints ?? []) {
+        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
             double p = 2; // Padding
-            double x = cp.Position * SecondsToPosX / tempoFactor + cw2 - pbh + 0.5; // FIXME: Again with +0.5 ??? Why?
+            double x = cp.Position * Player.SecondsToPosX / tempoFactor + cw2 - pbh + 0.5; // FIXME: Again with +0.5 ??? Why?
 
             var textMetrics = await ctx.MeasureTextAsync(cp.Name);
             if(x >= -textMetrics.Width && x < cw) {
