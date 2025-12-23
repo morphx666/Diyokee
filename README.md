@@ -35,23 +35,23 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - Searching is quite limited and a bit buggy
 - Song Key detection is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
-- Making changes to MIDI profiles or changing the MIDI controller requires restarting the application
-- Movable dialogs are now disabled as they break support for mouse sensitive UI controls (such as waveform displays, faders, knobs, etc...)
+- Making changes to the Audio Matrix, the MIDI profiles or changing the MIDI controller requires restarting the application
+- Movable dialogs are now disabled as they break support for mouse sensitive UI controls (see Known Issues regarding mouse support)
 - ...and many more
 
-## Kown issues
-- Making changes to a file with the Track Properties dialog can cause duplicates on the database, which will crash the program
-- In beatmatching mode, the waveforms do not compensate for tempo changes so they only get visually synced at the playhead position
+## Known issues
+- Making changes to a file with the Track Properties dialog can cause duplicates in the database, which will crash the program
 - Mouse support (scrolling/dragging) still needs to be improved
+- The code needs to be cleaned up before adding new features, especially in the Player component
   
 ## Nightly Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-12-20
-Linux|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-12-20
-Linux|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2025-12-20
-MacOS|x64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-12-20
-MacOS|Arm64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2025-12-20
+Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2025-12-22
+Linux|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2025-12-22
+Linux|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2025-12-22
+MacOS|x64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2025-12-22
+MacOS|Arm64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2025-12-22
 
 ## Acknowledgments
 
