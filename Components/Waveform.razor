@@ -8,7 +8,7 @@
 <div class="waveform-container">
     <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
     <div class="cursor" style="@GetCursorCss()"></div>
-    @if(Mode == Modes.AudioSynced) {
+    @if(EnableZoomControls && Mode == Modes.AudioSynced) {
         <div class="zoom-controls">
             <div @onclick="() => Zoom(+1)"><i class="fa-solid fa-plus"></i></div>
             <div @onclick="() => Zoom(-1)"><i class="fa-solid fa-minus"></i></div>
@@ -64,10 +64,13 @@
     public Modes Mode { get; set; } = Modes.AudioSynced;
 
     [Parameter]
-    public Loop Loop { get; set; } = new();
+    public Player Player { get; set; } = null!;
 
     [Parameter]
-    public Player Player { get; set; } = null!;
+    public bool BpmAwareScale { get; set; } = false;
+
+    [Parameter]
+    public bool EnableZoomControls { get; set; } = true;
 
     public bool EnableMouseEvents { get; set; } = true;
 
@@ -95,7 +98,7 @@
             canvasBounds.Y,
             25,
             46
-        });
+    });
         if(Mode == Modes.Full) forceRenderWaveformFull = true;
     }
 
@@ -230,6 +233,10 @@
     }
 
     private async Task RenderWaveform() {
+        double tempoFactor = BpmAwareScale ? (Player?.ReScaleTempoFader() ?? 0.0) + 1.0 : 1.0;
+        double wfw = (Player?.WaveformBarWidth ?? Program.Settings.Playback.WaveformZoom) / tempoFactor;
+        double pbh = PlaybackHead / tempoFactor;
+
         double cw = canvasWidth / canvasRatio;
         double ch = canvasHeight / canvasRatio;
         double cw2 = canvasWidth / (canvasRatio * 2);
@@ -249,13 +256,14 @@
         await ctx.LineToAsync(cw, ch2);
         await ctx.StrokeAsync();
 
+
         // Render waveform
         await ctx.SetFillStyleAsync(CssColor);
-        for(int i = (int)Math.Max(0, (PlaybackHead - cw2) / Player.WaveformBarWidth - 1); i < Peaks.Length; i++) {
-            double x = i * Player.WaveformBarWidth + cw2 - PlaybackHead;
+        for(int i = (int)Math.Max(0, (pbh - cw2) / wfw - 1); i < Peaks.Length; i++) {
+            double x = i * wfw + cw2 - pbh;
             if(x >= cw) break;
             double y = ch2 - Peaks[i] / MaxPeak * ch2;
-            await ctx.FillRectAsync(x, y, Player.WaveformBarWidth - 1, ch - y * 2);
+            await ctx.FillRectAsync(x, y, wfw - 1, ch - y * 2);
         }
 
         // Render beat markers
@@ -263,7 +271,7 @@
             await ctx.BeginPathAsync();
             await ctx.SetStrokeStyleAsync("#888");
             BeatMarkers.ForEach(async beatMarker => {
-                double x = beatMarker.X + cw2 - PlaybackHead;
+                double x = beatMarker.X / tempoFactor + cw2 - pbh;
                 if(x >= 0 && x < cw) {
                     await ctx.MoveToAsync(x, 0);
                     await ctx.LineToAsync(x, ch);
@@ -274,15 +282,15 @@
             // Render downbeat marker
             await ctx.BeginPathAsync();
             await ctx.SetStrokeStyleAsync("#2ef");
-            await ctx.MoveToAsync(DownbeatAt * SecondsToPosX + cw2 - PlaybackHead, 0);
-            await ctx.LineToAsync(DownbeatAt * SecondsToPosX + cw2 - PlaybackHead, ch);
+            await ctx.MoveToAsync(DownbeatAt * SecondsToPosX + cw2 - pbh, 0);
+            await ctx.LineToAsync(DownbeatAt * SecondsToPosX + cw2 - pbh, ch);
             await ctx.StrokeAsync();
         }
 
         // Render loop
-        if(Loop.Enabled) {
-            double x1 = Loop.Start * SecondsToPosX + cw2 - PlaybackHead;
-            double x2 = Loop.End * SecondsToPosX + cw2 - PlaybackHead;
+        if(Player?.Loop.Enabled ?? false) {
+            double x1 = Player.Loop.Start * SecondsToPosX / tempoFactor + cw2 - pbh;
+            double x2 = Player.Loop.End * SecondsToPosX / tempoFactor + cw2 - pbh;
 
             if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
                 await ctx.SetFillStyleAsync(CssColor + "55");
@@ -293,9 +301,9 @@
         // Render Cue Points
         const int heightHack = 12;
         await ctx.SetStrokeStyleAsync("#f92");
-        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
+        foreach(CuePoint cp in Player?.File?.CuePoints ?? []) {
             double p = 2; // Padding
-            double x = cp.Position * SecondsToPosX + cw2 - PlaybackHead + 0.5; // FIXME: Again with +0.5 ??? Why?
+            double x = cp.Position * SecondsToPosX / tempoFactor + cw2 - pbh + 0.5; // FIXME: Again with +0.5 ??? Why?
 
             var textMetrics = await ctx.MeasureTextAsync(cp.Name);
             if(x >= -textMetrics.Width && x < cw) {

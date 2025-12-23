@@ -9,8 +9,9 @@
           Peaks="@player1?.Peaks"
           SecondsToPosX="@(player1?.SecondsToPosX ?? 0)"
           WaveformWidth="@(player1?.WaveformWidth ?? 0)"
-          Loop="player1?.Loop"
           Player="player1"
+          BpmAwareScale="true"
+          EnableZoomControls="false"
           @ref="waveform1" />
 
 <Waveform CssColor="@player2?.Settings.Color"
@@ -21,8 +22,9 @@
           Peaks="@player2?.Peaks"
           SecondsToPosX="@(player2?.SecondsToPosX ?? 0)"
           WaveformWidth="@(player2?.WaveformWidth ?? 0)"
-          Loop="player2?.Loop"
           Player="player2"
+          BpmAwareScale="true"
+          EnableZoomControls="false"
           @ref="waveform2" />
 
 @code {
@@ -42,7 +44,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender) {
-            int delay = 15;
+            int delay = 60;
             await OnResize();
 
             var dotNetReference = DotNetObjectReference.Create(this);
@@ -52,11 +54,11 @@
                 while(true) {
                     await Task.Delay(delay);
 
-                    if(waveform1 != null && player1 != null && waveform1.PlaybackHead != player1.PlaybackHead) {
+                    if(waveform1 != null && player1 != null) {
                         waveform1.PlaybackHead = player1.PlaybackHead;
                         await waveform1.Refresh();
                     }
-                    if(waveform2 != null && player2 != null && waveform2.PlaybackHead != player2.PlaybackHead) {
+                    if(waveform2 != null && player2 != null) {
                         waveform2.PlaybackHead = player2.PlaybackHead;
                         await waveform2.Refresh();
                     }

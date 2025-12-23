@@ -182,7 +182,7 @@
                     if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
                     await InvokeAsync(StateHasChanged);
                 });
-            } catch(InvalidOperationException ex) {
+            } catch (InvalidOperationException) {
                 // Ignore if collection was modified during enumeration
             } catch(Exception ex) {
                 Program.Logger.LogError($"Error analyzing files: {ex.Message}");

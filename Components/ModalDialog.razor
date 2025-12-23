@@ -58,10 +58,10 @@
 
     private Bounds? topBarBounds = default!;
     private ElementReference topBarElement;
-    private double lastMousePosX = -1;
-    private double lastMousePosY = -1;
-    private double dx = 0;
-    private double dy = 0;
+    // private double lastMousePosX = -1;
+    // private double lastMousePosY = -1;
+    // private double dx = 0;
+    // private double dy = 0;
 
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
@@ -94,62 +94,62 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         return; // Disable movable dialogs for now
-        if(!Movable) return;
+        // if(!Movable) return;
 
-        if(firstRender) {
-            var dotNetReference = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+        // if(firstRender) {
+        //     var dotNetReference = DotNetObjectReference.Create(this);
+        //     await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
 
-            await Task.Run(async () => {
-                bool isValid = false;
-                int delay = 60;
-                while(true) {
-                    await Task.Delay(delay);
-                    if(!IsOpen) continue;
+        //     await Task.Run(async () => {
+        //         bool isValid = false;
+        //         int delay = 60;
+        //         while(true) {
+        //             await Task.Delay(delay);
+        //             if(!IsOpen) continue;
 
-                    if(dialogBounds == null || dialogBounds?.Width == 0 || dialogBounds?.Height == 0) {
-                        await OnResize();
-                    }
+        //             if(dialogBounds == null || dialogBounds?.Width == 0 || dialogBounds?.Height == 0) {
+        //                 await OnResize();
+        //             }
 
-                    if(!isValid
-                        && dialogBounds != null
-                        && topBarBounds != null
-                        && (!mouseState?.IsCaptured ?? false)
-                        && mouseState?.ButtonsDown == 1
-                        && topBarBounds.Contains(mouseState.X, mouseState.Y)) {
+        //             if(!isValid
+        //                 && dialogBounds != null
+        //                 && topBarBounds != null
+        //                 && (!mouseState?.IsCaptured ?? false)
+        //                 && mouseState?.ButtonsDown == 1
+        //                 && topBarBounds.Contains(mouseState.X, mouseState.Y)) {
 
-                        mouseState.IsCaptured = true;
-                        isValid = true;
-                    }
+        //                 mouseState.IsCaptured = true;
+        //                 isValid = true;
+        //             }
 
-                    if(isValid) {
-                        if(mouseState!.ButtonsDown == 1) {
-                            if(lastMousePosX == -1) {
-                                lastMousePosX = mouseState.X;
-                                lastMousePosY = mouseState.Y;
-                                continue;
-                            }
+        //             if(isValid) {
+        //                 if(mouseState!.ButtonsDown == 1) {
+        //                     if(lastMousePosX == -1) {
+        //                         lastMousePosX = mouseState.X;
+        //                         lastMousePosY = mouseState.Y;
+        //                         continue;
+        //                     }
 
-                            dx += mouseState.X - lastMousePosX;
-                            dy += mouseState.Y - lastMousePosY;
+        //                     dx += mouseState.X - lastMousePosX;
+        //                     dy += mouseState.Y - lastMousePosY;
 
-                            await JS.InvokeVoidAsync("setElementBounds", dialogElement, new string[] {
-                                $"calc(50% + {dx}px)", $"calc(50% + {dy}px)", "-1", "-1", ""
-                            });
+        //                     await JS.InvokeVoidAsync("setElementBounds", dialogElement, new string[] {
+        //                         $"calc(50% + {dx}px)", $"calc(50% + {dy}px)", "-1", "-1", ""
+        //                     });
 
-                            lastMousePosX = mouseState.X;
-                            lastMousePosY = mouseState.Y;
-                        } else {
-                            mouseState!.IsCaptured = false;
-                            isValid = false;
+        //                     lastMousePosX = mouseState.X;
+        //                     lastMousePosY = mouseState.Y;
+        //                 } else {
+        //                     mouseState!.IsCaptured = false;
+        //                     isValid = false;
 
-                            lastMousePosX = -1;
-                            lastMousePosY = -1;
-                        }
-                    }
-                }
-            });
-        }
+        //                     lastMousePosX = -1;
+        //                     lastMousePosY = -1;
+        //                 }
+        //             }
+        //         }
+        //     });
+        // }
     }
 
     protected override void OnInitialized() {

@@ -71,7 +71,6 @@
             Peaks="@Peaks"
             SecondsToPosX="@SecondsToPosX"
             WaveformWidth="@WaveformWidth"
-            Loop="Loop"
             Player="this"
             @ref="waveform" />
 
@@ -423,7 +422,7 @@
         await FilterControls.UpdateKnobs();
     }
 
-    private double ReScaleTempoFader() {
+    public double ReScaleTempoFader() {
         return ReScaleTempoValue((faderTempo?.Value ?? 0.5) - 0.5);
     }
 
