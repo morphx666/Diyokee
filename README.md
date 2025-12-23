@@ -39,9 +39,8 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - Movable dialogs are now disabled as they break support for mouse sensitive UI controls (such as waveform displays, faders, knobs, etc...)
 - ...and many more
 
-## Kown issues
+## Known issues
 - Making changes to a file with the Track Properties dialog can cause duplicates on the database, which will crash the program
-- In beatmatching mode, the waveforms do not compensate for tempo changes so they only get visually synced at the playhead position
 - Mouse support (scrolling/dragging) still needs to be improved
   
 ## Nightly Releases
