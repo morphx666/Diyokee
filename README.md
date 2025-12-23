@@ -40,7 +40,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - ...and many more
 
 ## Known issues
-- Making changes to a file with the Track Properties dialog can cause duplicates on the database, which will crash the program
+- Making changes to a file with the Track Properties dialog can cause duplicates in the database, which will crash the program
 - Mouse support (scrolling/dragging) still needs to be improved
   
 ## Nightly Releases
