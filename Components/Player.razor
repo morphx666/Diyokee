@@ -49,19 +49,17 @@
     }
 
     <div class="waveform-full">
-        <Waveform 
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.Full"
-            Player="this"
-            @ref="waveformFull" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.Full"
+                  Player="this"
+                  @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.AudioSynced"
-            Player="this"
-            @ref="waveform" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.AudioSynced"
+                  Player="this"
+                  @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <div class="volume-monitor-container">
@@ -922,39 +920,39 @@
         loopSize = size;
         if(loopJumpLock) jumpSize = loopSize;
 
-        if(File != null) {
-            double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
-            if(resetStart) Loop.Start = position;
-            Loop.End = Loop.Start + loopSize / beatsPerSecond;
+        if(File == null) return;
 
-            if(Loop.BASSHandle != 0 && resetStart) {
-                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
-                Loop.BASSHandle = 0;
+        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
+        if(resetStart) Loop.Start = position;
+        Loop.End = Loop.Start + loopSize / beatsPerSecond;
+
+        if(Loop.BASSHandle != 0 && resetStart) {
+            Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
+            Loop.BASSHandle = 0;
+        }
+
+        if(Loop.Enabled) {
+            bool resetLoop = position <= Loop.End && loopSize > 1;
+            Loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.Start);
+            Loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.End);
+
+            if(Loop.EndBytes > trackLengthBytes) {
+                Loop.Enabled = false;
+                return;
             }
 
-            if(Loop.Enabled) {
-                bool resetLoop = position <= Loop.End && loopSize > 1;
-                Loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.Start);
-                Loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.End);
+            if(resetStart || resetLoop) {
+                Loop.Reset = false;
 
-                if(Loop.EndBytes > trackLengthBytes) {
-                    Loop.Enabled = false;
-                    return;
+                Bass.BASS_ChannelLock(masterSplitterHandle, true);
+                if(Loop.BASSHandle != 0) {
+                    Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
+                    Loop.BASSHandle = 0;
                 }
-
-                if(resetStart || resetLoop) {
-                    Loop.Reset = false;
-
-                    Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                    if(Loop.BASSHandle != 0) {
-                        Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
-                        Loop.BASSHandle = 0;
-                    }
-                    Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                    Bass.BASS_ChannelLock(masterSplitterHandle, false);
-                } else {
-                    Loop.Reset = true;
-                }
+                Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
+                Bass.BASS_ChannelLock(masterSplitterHandle, false);
+            } else {
+                Loop.Reset = true;
             }
         }
 

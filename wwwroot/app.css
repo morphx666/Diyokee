@@ -19,6 +19,8 @@
 }
 
 :root {
+    --mono-font-family: "JetBrains Mono";
+
     --app-background-color: #111;
 
     --text-white: #ccc;
@@ -33,8 +35,6 @@
     --pale-blue-hover: #0056b3;
 
     --header-background-color: #563283;
-
-    --mono-font-family: "JetBrains Mono";
 
     --ctrl-highlight: #81bcb7;
     --ctrl-highlight-soft: #4be7fabb; /* #81bcb7; */
