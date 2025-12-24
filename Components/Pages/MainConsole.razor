@@ -162,7 +162,7 @@
     private bool shouldRender = true;
     private bool enableMidiEvents = true;
 
-    private Dictionary<string, string> CssVariables = [];
+    private Dictionary<string, string> cssVariables = [];
 
     private void LoadSelectedFile(Player? player) {
         if(player!.IsPlaying && Program.Settings.Playback.LockOnPlay) return;
@@ -612,23 +612,23 @@
             }
 
             // TODO: Not sure what to do with this yet... maybe implement a theme editor?
-            using(HttpClient client = new()) {
-                string appCss = await client.GetStringAsync($"{Program.Settings.WebHostUrl}/{Assets["app.css"]}");
-                string[] lines = appCss.Split('\n');
+            // using(HttpClient client = new()) {
+            //     string appCss = await client.GetStringAsync($"{Program.Settings.WebHostUrl}/{Assets["app.css"]}");
+            //     string[] lines = appCss.Split('\n');
 
-                for(int i = 0; i < lines.Length; i++) {
-                    string line = lines[i].Trim();
-                    if(line.StartsWith("--")) {
-                        int colonIndex = line.IndexOf(':');
-                        if(colonIndex > 0) {
-                            string key = line.Substring(0, colonIndex).Trim();
-                            string value = line.Substring(colonIndex + 1).Trim().TrimEnd(';');
-                            if(value.Contains(";")) value = value.Split(';')[0].Trim();
-                            CssVariables[key] = value;
-                        }
-                    }
-                }
-            }
+            //     for(int i = 0; i < lines.Length; i++) {
+            //         string line = lines[i].Trim();
+            //         if(line.StartsWith("--")) {
+            //             int colonIndex = line.IndexOf(':');
+            //             if(colonIndex > 0) {
+            //                 string key = line.Substring(0, colonIndex).Trim();
+            //                 string value = line.Substring(colonIndex + 1).Trim().TrimEnd(';');
+            //                 if(value.Contains(";")) value = value.Split(';')[0].Trim();
+            //                 cssVariables[key] = value;
+            //             }
+            //         }
+            //     }
+            // }
 
             MidiMonitor();
         }
