@@ -11,7 +11,7 @@ namespace Diyokee {
         private int midiStream = -1;
 
         public void Start() {
-            var profile = Program.MidiControllersProfiles.FirstOrDefault();
+            var profile = Program.MidiControllersProfiles.FirstOrDefault(p => p.Name == Program.Settings.MidiProfileName) ?? Program.MidiControllersProfiles[0];
             if(profile == null) profile = new();
             if(midiStream != -1) Stop();
 

@@ -142,6 +142,7 @@
             } else {
                 selectedProfile = MidiProfiles.FirstOrDefault(p => p.Name == value) ?? default!;
             }
+            Settings.MidiProfileName = selectedProfile?.Name ?? string.Empty;
         }
     }
 
@@ -153,7 +154,7 @@
 
     protected override Task OnInitializedAsync() {
         if(MidiProfiles.Count > 0) {
-            selectedProfile = MidiProfiles[0];
+            selectedProfile = MidiProfiles.FirstOrDefault(p => p.Name == Settings.MidiProfileName) ?? MidiProfiles[0];
             Program.MidiTools.OnMidiEvent += MidiEventsHandler;
             InvokeAsync(StateHasChanged);
         }

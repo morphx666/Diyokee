@@ -34,22 +34,6 @@
       "Parameter": 32563,
       "Controller": -1
     },
-    "LoadSelectedFileToPlayer0": {
-      "EventType": 1,
-      "Note": 81,
-      "Channel": 0,
-      "Velocity": 127,
-      "Parameter": 32593,
-      "Controller": -1
-    },
-    "LoadSelectedFileToPlayer1": {
-      "EventType": 1,
-      "Note": 81,
-      "Channel": 1,
-      "Velocity": 127,
-      "Parameter": 32593,
-      "Controller": -1
-    },
     "Gain": {
       "EventType": 64,
       "Note": -1,
@@ -103,11 +87,11 @@
         "Controller": 32
       },
       "LoadSelectedFile": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
+        "EventType": 1,
+        "Note": 81,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32593,
         "Controller": -1
       },
       "BpmMatch": {
@@ -298,11 +282,11 @@
         "Controller": 32
       },
       "LoadSelectedFile": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
+        "EventType": 1,
+        "Note": 81,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32593,
         "Controller": -1
       },
       "BpmMatch": {

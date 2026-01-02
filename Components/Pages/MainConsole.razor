@@ -390,16 +390,6 @@
                     case "ExpandFolder":
                         InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
                         return;
-                    case "LoadSelectedFileToPlayer0":
-                        player1File = selectedFile;
-                        shouldRender = true;
-                        if(!IsPlaying) InvokeAsync(StateHasChanged);
-                        return;
-                    case "LoadSelectedFileToPlayer1":
-                        player2File = selectedFile;
-                        shouldRender = true;
-                        if(!IsPlaying) InvokeAsync(StateHasChanged);
-                        return;
                     case "Crossfader":
                         double crossfaderValue = 1.0 - midiEvent.param / 127.0;
                         InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
@@ -457,6 +447,17 @@
                         } else {
                             targetPlayer.Stop(true);
                         }
+                        return;
+                    case "LoadSelectedFile":
+                        PlayerAction(() => {
+                            if(targetPlayer == player1) {
+                                player1File = selectedFile;
+                            } else if(targetPlayer == player2) {
+                                player2File = selectedFile;
+                            }
+                            shouldRender = true;
+                            if(!IsPlaying) InvokeAsync(StateHasChanged);
+                        });
                         return;
                     case "LoopJumpLockToggle":
                         PlayerAction(targetPlayer.ToggleLoopJumpSync);

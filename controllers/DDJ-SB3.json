@@ -1,5 +1,5 @@
 {
-  "Name": "AKM320",
+  "Name": "DDJ-SB3",
   "Enabled": true,
   "General": {
     "FoldersFilesToggle": {
@@ -34,6 +34,22 @@
       "Parameter": -1,
       "Controller": -1
     },
+    "LoadSelectedFileToPlayer0": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
+    "LoadSelectedFileToPlayer1": {
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
+    },
     "Gain": {
       "EventType": 0,
       "Note": -1,
@@ -55,12 +71,12 @@
     {
       "Index": 0,
       "PlayPause": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 1,
+        "Note": 11,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32523,
+        "Controller": 11
       },
       "Stop": {
         "EventType": 0,
@@ -71,12 +87,12 @@
         "Controller": -1
       },
       "Cue": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 1,
+        "Note": 12,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32524,
+        "Controller": 12
       },
       "SnapToBeatMarker": {
         "EventType": 0,
@@ -87,12 +103,12 @@
         "Controller": -1
       },
       "LoadSelectedFile": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 1,
+        "Note": 70,
+        "Channel": 6,
+        "Velocity": 127,
+        "Parameter": 32582,
+        "Controller": 70
       },
       "BpmMatch": {
         "EventType": 0,
@@ -103,20 +119,20 @@
         "Controller": -1
       },
       "Volume": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 64,
+        "Note": 19,
+        "Channel": 0,
+        "Velocity": 102,
+        "Parameter": 26131,
+        "Controller": 19
       },
       "Tempo": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 10,
+        "Note": 82,
+        "Channel": 0,
+        "Velocity": 0,
+        "Parameter": 82,
+        "Controller": 82
       },
       "EqHi": {
         "EventType": 0,
@@ -250,12 +266,12 @@
     {
       "Index": 1,
       "PlayPause": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 1,
+        "Note": 11,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32523,
+        "Controller": 11
       },
       "Stop": {
         "EventType": 0,
@@ -266,12 +282,12 @@
         "Controller": -1
       },
       "Cue": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 10,
+        "Note": 37,
+        "Channel": 0,
+        "Velocity": 0,
+        "Parameter": 37,
+        "Controller": 37
       },
       "SnapToBeatMarker": {
         "EventType": 0,
@@ -282,12 +298,12 @@
         "Controller": -1
       },
       "LoadSelectedFile": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 1,
+        "Note": 71,
+        "Channel": 6,
+        "Velocity": 127,
+        "Parameter": 32583,
+        "Controller": 71
       },
       "BpmMatch": {
         "EventType": 0,
@@ -298,20 +314,20 @@
         "Controller": -1
       },
       "Volume": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 64,
+        "Note": 19,
+        "Channel": 1,
+        "Velocity": 73,
+        "Parameter": 18707,
+        "Controller": 19
       },
       "Tempo": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 10,
+        "Note": 58,
+        "Channel": 1,
+        "Velocity": 0,
+        "Parameter": 58,
+        "Controller": 58
       },
       "EqHi": {
         "EventType": 0,
@@ -445,36 +461,36 @@
   ],
   "Keyboard": {
     "Volume": {
-      "EventType": 12,
-      "Note": 119,
-      "Channel": 0,
-      "Velocity": 0,
-      "Parameter": 119,
-      "Controller": 119
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
     },
     "Pitch": {
-      "EventType": 4,
-      "Note": 64,
-      "Channel": 0,
-      "Velocity": 33,
-      "Parameter": 8512,
-      "Controller": 64
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
     },
     "FirstKey": {
-      "EventType": 1,
-      "Note": 53,
-      "Channel": 0,
-      "Velocity": 99,
-      "Parameter": 25397,
-      "Controller": 53
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
     },
     "LastKey": {
-      "EventType": 1,
-      "Note": 84,
-      "Channel": 0,
-      "Velocity": 97,
-      "Parameter": 24916,
-      "Controller": 84
+      "EventType": 0,
+      "Note": -1,
+      "Channel": -1,
+      "Velocity": -1,
+      "Parameter": -1,
+      "Controller": -1
     },
     "TargetPlayer": {
       "EventType": 0,
