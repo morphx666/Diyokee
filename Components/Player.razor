@@ -1175,12 +1175,15 @@
                     long playerPos = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
 
                     if(pos == lastPos) {
-                        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
-                        isPaused = true;
+                        //splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
+                        //isPaused = true;
                     } else {
+                        // TODO: Calculate scrubbing speed based on how far the mouse is from the current playback position
+                        // and adjust the channel pitch accordingly
+
+                        // Naive scrubbing implementation
                         splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
-                                                                                                   | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                                   | BASSMode.BASS_POS_FLUSH));
+                                                                                                   | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
 
                         if(pos > lastPos) {
                             Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);

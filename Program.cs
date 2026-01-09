@@ -2,7 +2,6 @@ using Diyokee;
 using Diyokee.Components;
 using Diyokee.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.JSInterop.Infrastructure;
 using System.Diagnostics;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
@@ -77,7 +76,7 @@ internal class Program {
                     if(context?.Database.GetPendingMigrations().Any() ?? false) {
                         context.Database.Migrate();
                     }
-                }                
+                }
             }
         }
 

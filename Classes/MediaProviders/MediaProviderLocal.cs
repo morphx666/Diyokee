@@ -27,6 +27,7 @@ public class MediaProviderLocal : MediaProviderBase {
 
         return [.. new DirectoryInfo(path)
                         .EnumerateFiles()
+                        .Where(f => !f.Name.StartsWith("._"))
                         .Where(f => supportedExtensions.Contains(f.Extension))
                         .OrderBy(f => f.Name)
                         .Select(f => f.Name)];
