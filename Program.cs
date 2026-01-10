@@ -32,7 +32,7 @@ internal class Program {
         var connectionString = builder.Configuration.GetConnectionString("CacheDB");
 
         builder.WebHost.ConfigureKestrel(serverOptions => {
-            int kestrelPort = 5000;
+            int kestrelPort = 5001;
             string[] tokens = Settings.WebHostUrl.Split(":");
             if(tokens.Length > 2 && int.TryParse(tokens[2], out int port)) kestrelPort = port;
             serverOptions.ListenAnyIP(kestrelPort, listenOptions => {
