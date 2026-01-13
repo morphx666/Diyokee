@@ -5,16 +5,18 @@
 @using static Diyokee.DFile
 @inject IJSRuntime JS
 
-<div class="waveform-container">
-    <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
-    <div class="cursor" style="@GetCursorCss()"></div>
-    @if(EnableZoomControls && Mode == Modes.AudioSynced) {
-        <div class="zoom-controls">
-            <div @onclick="() => Zoom(+1)"><i class="fa-solid fa-plus"></i></div>
-            <div @onclick="() => Zoom(-1)"><i class="fa-solid fa-minus"></i></div>
-        </div>
-    }
-</div>
+<MouseSupport OnMouseEvent="@HandleMouseEvent">
+    <div class="waveform-container">
+        <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
+        <div class="cursor" style="@GetCursorCss()"></div>
+        @if(EnableZoomControls && Mode == Modes.AudioSynced) {
+            <div class="zoom-controls">
+                <div @onclick="() => Zoom(+1)"><i class="fa-solid fa-plus"></i></div>
+                <div @onclick="() => Zoom(-1)"><i class="fa-solid fa-minus"></i></div>
+            </div>
+        }
+    </div>
+</MouseSupport>
 
 @code {
     public enum Modes {
@@ -54,8 +56,6 @@
     [Parameter]
     public bool EnableZoomControls { get; set; } = true;
 
-    public bool EnableMouseEvents { get; set; } = true;
-
     [CascadingParameter]
     private MouseState? mouseState { get; set; } = null;
 
@@ -84,6 +84,21 @@
         if(Mode == Modes.Full) forceRenderWaveformFull = true;
     }
 
+    private async Task HandleMouseEvent(MouseState ms) {
+        IsMouseDown = ms.ButtonsDown == 0;
+        if(!IsMouseDown) return;
+
+        double sensitivity = 0.30;
+        switch(Mode) {
+            case Modes.AudioSynced:
+                PlaybackHead -= (long)(ms.DeltaX * sensitivity);
+                break;
+            case Modes.Full:
+                PlaybackHead = (long)((ms.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
+                break;
+        }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender || canvasWidth == 0 || canvasHeight == 0) {
             await OnResize();
@@ -91,47 +106,6 @@
 
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
-
-            double lastMousePosX = 0;
-            await Task.Run(async () => {
-                double sensitivity = 0.30;
-                int delay = 60;
-                while(true) {
-                    await Task.Delay(delay);
-                    if(!EnableMouseEvents) continue;
-
-                    if(!IsMouseDown
-                        && mouseState != null
-                        && canvasBounds != null
-                        && zoomControlsBounds != null
-                        && !mouseState.IsCaptured
-                        && mouseState.ButtonsDown == 1
-                        && canvasBounds.Contains(mouseState.X, mouseState.Y)
-                        && !zoomControlsBounds.Contains(mouseState.X, mouseState.Y)) {
-                        await Task.Delay(15); // Wait for the mouse to settle before setting the initial mousedown position
-                        lastMousePosX = mouseState.X;
-                        mouseState.IsCaptured = true;
-                        IsMouseDown = true;
-                    }
-
-                    if(IsMouseDown) {
-                        if(mouseState?.ButtonsDown == 1) {
-                            switch(Mode) {
-                                case Modes.AudioSynced:
-                                    PlaybackHead -= (long)((mouseState.X - lastMousePosX) * sensitivity);
-                                    lastMousePosX = mouseState.X;
-                                    break;
-                                case Modes.Full:
-                                    PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
-                                    break;
-                            }
-                        } else {
-                            mouseState!.IsCaptured = false;
-                            IsMouseDown = false;
-                        }
-                    }
-                }
-            });
         }
 
         if((ctx = await canvas.CreateCanvas2DAsync()) != null) {

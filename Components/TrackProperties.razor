@@ -25,14 +25,12 @@
             tabindex="0"
             @onblur="@(() => {
                 albumsAcVisible = false;
-                player?.EnableMouseEvents = true;
             })">
             <label for="album">Album</label>
             <div
                 class="select-container"
                 @onclick="@(async (e) => {
                     albumsAcVisible = true;
-                    player?.EnableMouseEvents = false;
                     await JS.InvokeVoidAsync("scrollToSelectedItem");
                 })">
                 <InputText id="album"
@@ -46,7 +44,6 @@
                             @onclick="@(async () => {
                                     File.Album = album;
                                     albumsAcVisible = false;
-                                    player?.EnableMouseEvents = true;
                                 })">
                             @album
                         </div>
@@ -59,14 +56,12 @@
             tabindex="1"
             @onblur="@(() => {
                 genresAcVisible = false;
-                player?.EnableMouseEvents = true;
             })">
             <label for="genre" class="no-min-size">Genre</label>
             <div
                 class="select-container"
                 @onclick="@(async () => {
                     genresAcVisible = true;
-                    player?.EnableMouseEvents = false;
                     await JS.InvokeVoidAsync("scrollToSelectedItem");
                 })">
                 <InputText id="genre"
@@ -80,7 +75,6 @@
                             @onclick="@(async () => {
                                     File.Genre = genre;
                                     genresAcVisible = false;
-                                    player?.EnableMouseEvents = true;
                                 })">
                             @genre
                         </div>
@@ -122,14 +116,12 @@
                     tabindex="2"
                     @onblur="@(() => {
                         keysAcVisible = false;
-                        player?.EnableMouseEvents = true;
                     })">
                     <label for="key">Key</label>
                     <div
                         class="select-container"
                         @onclick="@(async () => {
                             keysAcVisible = true;
-                            player?.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })">
                         <InputText
@@ -146,7 +138,6 @@
                                     @onclick="@(async () => {
                                             File.Key = key;
                                             keysAcVisible = false;
-                                            player?.EnableMouseEvents = true;
                                         })">
                                     @key
                                 </div>
@@ -159,13 +150,11 @@
                     tabindex="3"
                     @onblur="@(() => {
                         notationsAcVisible = false;
-                        player?.EnableMouseEvents = true;
                     })">
                     <div
                         class="select-container"
                         @onclick="@(async () => {
                             notationsAcVisible = true;
-                            player?.EnableMouseEvents = false;
                             await JS.InvokeVoidAsync("scrollToSelectedItem");
                         })">
                         <InputText
@@ -181,7 +170,6 @@
                                     @onclick="@(async () => {
                                         NotationAsString = notation;
                                         notationsAcVisible = false;
-                                        player?.EnableMouseEvents = true;
                                     })">
                                     @notation
                                 </div>
@@ -263,7 +251,6 @@
 
     public void Close() {
         player!.Stop(false);
-        player!.EnableMouseEvents = true;
         genresAcVisible = false;
         albumsAcVisible = false;
 

@@ -1,15 +1,18 @@
 ﻿@using Diyokee
+@using System.Diagnostics
 @inject IJSRuntime JS
 
-<div class="container" @ref="knobElement" @ondblclick="() => SetValue(initialValue)">
-    <div class="knob-container @(Enabled ? "" : "disabled")">
-        <div class="knob">
-            <div class="range" style="@GetRangeCss()"></div>
-            <div class="pointer" style="@GetPointerCss()"></div>
+<MouseSupport OnMouseEvent="@HandleMouseEvent">
+    <div class="container" @ondblclick="() => SetValue(initialValue)">
+        <div class="knob-container @(Enabled ? "" : "disabled")">
+            <div class="knob">
+                <div class="range" style="@GetRangeCss()"></div>
+                <div class="pointer" style="@GetPointerCss()"></div>
+            </div>
         </div>
+        <div class="name">@Name</div>
     </div>
-    <div class="name">@Name</div>
-</div>
+</MouseSupport>
 
 @code {
     [Parameter]
@@ -21,20 +24,17 @@
     [Parameter]
     public EventCallback<double> ValueChanged { get; set; }
 
-    [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
-
     [Parameter]
     public bool Enabled { get; set; } = true;
 
     [Parameter]
     public bool RangeFromCenter { get; set; } = true;
 
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+
     public bool EnableMouseEvents { get; set; } = true;
 
-    private ElementReference knobElement;
-    private Bounds? knobBounds;
-    private double knobSize = 0;
     private double initialValue = 0.5;
     private const double minAngle = 1.08;
     private double angleRange = 135.0; // Degrees from center to min/max
@@ -77,63 +77,14 @@
         }
     }
 
-    [JSInvokable]
-    public async Task OnResize() {
-        knobBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", knobElement));
-        knobSize = knobBounds.Height;
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if(firstRender || knobBounds?.Width == 0 || knobBounds?.Height == 0) {
-            await OnResize();
-            if(knobBounds?.Width == 0 || knobBounds?.Height == 0) return;
-
-            var dotNetReference = DotNetObjectReference.Create(this);
-            await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
-
-            await Task.Run(async () => {
-                bool isValid = false;
-                int delay = 60;
-                while(true) {
-                    await Task.Delay(delay);
-                    if(!EnableMouseEvents || !Enabled) continue;
-
-                    if(!isValid
-                        && knobBounds != null
-                        && (!mouseState?.IsCaptured ?? false)
-                        && mouseState?.ButtonsDown == 1
-                        && knobBounds.Contains(mouseState.X, mouseState.Y)) {
-                        mouseState.IsCaptured = true;
-                        isValid = true;
-                    }
-
-                    if(isValid) {
-                        if(mouseState?.ButtonsDown == 1) {
-                            double offset = mouseState.Y - knobBounds!.Y;
-                            double newValue = (knobSize - offset) / knobSize;
-                            newValue = Math.Clamp(newValue, 0, 1);
-                            await InvokeAsync(async () => {
-                                await SetValue(newValue);
-                                StateHasChanged();
-                            });
-                        } else {
-                            mouseState!.IsCaptured = false;
-                            isValid = false;
-                        }
-                    } else if(mouseState?.WheelDelta != 0 && knobBounds!.Contains(mouseState!.X, mouseState.Y)) {
-                        double newValue = Value - (mouseState.WheelDelta / 2_000);
-                        newValue = Math.Clamp(newValue, 0, 1);
-                        await InvokeAsync(async () => {
-                            await SetValue(newValue);
-                            StateHasChanged();
-                        });
-
-                        mouseState.WheelDelta = 0;
-                    }
-                }
+    private async Task HandleMouseEvent(MouseState ms) {
+        if(Enabled) {
+            double newValue = Value - ms.DeltaY / 100.0;
+            newValue = Math.Clamp(newValue, 0, 1);
+            await InvokeAsync(async () => {
+                await SetValue(newValue);
+                StateHasChanged();
             });
-
-            await InvokeAsync(StateHasChanged);
         }
     }
 }

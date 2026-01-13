@@ -49,17 +49,19 @@
     }
 
     <div class="waveform-full">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.Full"
-                  Player="this"
-                  @ref="waveformFull" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.Full"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.AudioSynced"
-                  Player="this"
-                  @ref="waveform" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.AudioSynced"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <div class="volume-monitor-container">
@@ -242,33 +244,11 @@
         get => waveform?.PlaybackHead ?? 0;
     }
 
-    [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
-
     public bool InBeat { get; set; } = false;
 
     public int InBeatIndex { get; set; } = 1;
 
     public int WaveformBarWidth { get; set; }
-
-    private bool enableMouseEvents = true;
-    public bool EnableMouseEvents {
-        get => enableMouseEvents;
-        set {
-            if(faderVolume == null) return; // Session restore - ignore
-
-            enableMouseEvents = value;
-            if(!MinimalMode) {
-                EqControls.EnableMouseEvents = value;
-                if(faderTempo != null) faderTempo.EnableMouseEvents = value;
-            }
-            faderVolume!.EnableMouseEvents = value;
-            waveform!.EnableMouseEvents = value;
-            waveform!.IsMouseDown = false;
-            waveformFull!.EnableMouseEvents = value;
-            waveformFull!.IsMouseDown = false;
-        }
-    }
 
     public void SetTempoRange(double range) {
         tempoMin = range / 100.0;
@@ -850,7 +830,8 @@
                                                                                         | BASSMode.BASS_POS_FLUSH));
     }
 
-    public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
+    //public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
+    public bool SnapToBeatMarkers => BeatMarkers.Count > 0;
 
     public void SnapToClosestBeatMarker() {
         if(BeatMarkers.Count == 0) return;
@@ -1194,12 +1175,13 @@
                         }
                         lastPos = pos;
                     }
-
+                    waveformFull!.PlaybackHead = waveform.PlaybackHead;
                 } else if(waveformFull!.IsMouseDown) {
                     long pos = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
                     splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
                                                                                                | BASSMode.BASS_MIXER_CHAN_NORAMPIN
                                                                                                | BASSMode.BASS_POS_FLUSH));
+                    waveform.PlaybackHead = waveformFull.PlaybackHead;
                 } else {
                     waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle) * WaveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
@@ -1223,23 +1205,15 @@
 
     int dragCounter = 0;
     private void HandleDragEnter(DragEventArgs e) {
-        mouseState!.Enabled = false;
         dragCounter += 1;
     }
 
     private void HandleDragLeave(DragEventArgs e) {
         dragCounter -= 1;
-        if(dragCounter <= 0) {
-            mouseState!.Enabled = true;
-            dragCounter = 0;
-        }
+        if(dragCounter <= 0) dragCounter = 0;
     }
 
     private async Task HandleDrop(DragEventArgs e) {
-        mouseState!.Enabled = true;
-        mouseState!.ButtonsDown = 0;
-        mouseState!.IsCaptured = false;
-
         await RequestedFileCue.InvokeAsync();
     }
 

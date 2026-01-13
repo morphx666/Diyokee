@@ -1,16 +1,18 @@
 ﻿@using Diyokee
 @inject IJSRuntime JS
 
-<div class="fader-container @(Enabled ? "" : "disabled")">
-    <div class="name">@((MarkupString)Name)</div>
-    <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
-        <div class="knob button-thin"
-        style="@GetKnobCss()"
-        @ondblclick="() => SetValue(initialValue)">
+<MouseSupport OnMouseEvent="@HandleMouseEvent">
+    <div class="fader-container @(Enabled ? "" : "disabled")">
+        <div class="name">@((MarkupString)Name)</div>
+        <div class="fader @(Orientation == Orientations.Vertical ? "vertical" : "horizontal")" @ref="faderElement">
+            <div class="knob button-thin"
+                 style="@GetKnobCss()"
+                 @ondblclick="() => SetValue(initialValue)">
+            </div>
+            <div class="range" style="@GetRangeCss()"></div>
         </div>
-        <div class="range" style="@GetRangeCss()"></div>
     </div>
-</div>
+</MouseSupport>
 
 @code {
     public enum Orientations {
@@ -88,6 +90,19 @@
         return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
     }
 
+    private async Task HandleMouseEvent(MouseState ms) {
+        if(Enabled) {
+            double newValue = Orientation == Orientations.Vertical
+                                ? 1.0 - (ms.Y - gutterOffsetTop - gutterOffsetBottom - faderBounds!.Y) / faderSize
+                                : 1.0 - (ms.X - gutterOffsetTop - faderBounds!.X) / faderSize;
+            newValue = Math.Clamp(newValue, 0, 1);
+            await InvokeAsync(async () => {
+                await SetValue(newValue);
+                StateHasChanged();
+            });
+        }
+    }
+
     [JSInvokable]
     public async Task OnResize() {
         faderBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", faderElement));
@@ -121,49 +136,6 @@
 
             UpdateRange();
             await InvokeAsync(StateHasChanged);
-
-            await Task.Run(async () => {
-                bool isValid = false;
-                int delay = 60;
-                while(true) {
-                    await Task.Delay(delay);
-                    if(!EnableMouseEvents || !Enabled) continue;
-
-                    if(!isValid
-                        && faderBounds != null
-                        && !mouseState.IsCaptured
-                        && mouseState.ButtonsDown == 1
-                        && faderBounds.Contains(mouseState.X, mouseState.Y)) {
-
-                        mouseState.IsCaptured = true;
-                        isValid = true;
-                    }
-
-                    if(isValid) {
-                        if(mouseState?.ButtonsDown == 1) {
-                            double offset = Orientation == Orientations.Vertical ? mouseState.Y - faderBounds!.Y : mouseState.X - faderBounds!.X;
-                            double newValue = (faderSize - (offset - gutterOffsetTop)) / faderSize;
-                            newValue = Math.Clamp(newValue, 0, 1);
-                            await InvokeAsync(async () => {
-                                await SetValue(newValue);
-                                StateHasChanged();
-                            });
-                        } else {
-                            mouseState!.IsCaptured = false;
-                            isValid = false;
-                        }
-                    } else if(mouseState?.WheelDelta != 0 && faderBounds!.Contains(mouseState!.X, mouseState.Y)) {
-                        double newValue = Value - (mouseState.WheelDelta / 2_000) * (Orientation == Orientations.Horizontal ? -1 : 1);
-                        newValue = Math.Clamp(newValue, 0, 1);
-                        await InvokeAsync(async () => {
-                            await SetValue(newValue);
-                            StateHasChanged();
-                        });
-
-                        mouseState.WheelDelta = 0;
-                    }
-                }
-            });
         }
     }
 }
