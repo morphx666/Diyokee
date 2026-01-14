@@ -77,9 +77,9 @@
         }
     }
 
-    private async Task HandleMouseEvent(MouseState ms) {
+    private async Task HandleMouseEvent() {
         if(Enabled) {
-            double newValue = Value - ms.DeltaY / 100.0;
+            double newValue = Value - mouseState.DeltaY / 100.0;
             newValue = Math.Clamp(newValue, 0, 1);
             await InvokeAsync(async () => {
                 await SetValue(newValue);

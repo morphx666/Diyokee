@@ -8,9 +8,7 @@
     aria-valuemax="100"
     @onmousedown="HandleMouseDown"
     @onwheel="HandleMouseWheel">
-    <CascadingValue Value="@mouseState"> @* This is not working, that's why we need to call the event handler with the mouseState object *@
         @ChildContent
-    </CascadingValue>
 </div>
 
 <script>
@@ -44,12 +42,14 @@
     public RenderFragment ChildContent { get; set; } = default!;
 
     [Parameter]
-    public EventCallback<MouseState> OnMouseEvent { get; set; } = default!;
+    public EventCallback OnMouseEvent { get; set; } = default!;
 
-    private MouseState mouseState = new();
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
     private MouseState lastMouseState = new();
 
     private async Task HandleMouseDown(MouseEventArgs e) {
+        if(e.Button != 0) return; // Only handle left button, for now
         lastMouseState.X = e.ClientX;
         lastMouseState.Y = e.ClientY;
         lastMouseState.ButtonsDown = e.Button;

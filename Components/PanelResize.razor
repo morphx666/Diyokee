@@ -34,6 +34,9 @@
     [Parameter]
     public EventCallback<(string, double)> OnResizeEnd { get; set; }
 
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+
     private ElementReference dividerElement;
     private Bounds? dividerBounds;
     private Bounds? resizeElementBounds = default!;
@@ -77,11 +80,11 @@
         if(Orientation == Orientations.Vertical) {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, -1, resizeElementBounds!.Height
-    });
+        });
         } else {
             await JS.InvokeVoidAsync("setElementBounds", ResizeElement, new double[] {
                 -1, -1, resizeElementBounds!.Width, -1
-    });
+        });
         }
 
         await Task.Delay(250);
@@ -100,15 +103,23 @@
         }
     }
 
-    private async Task HandleMouseEvent(MouseState ms) {
+    private async Task HandleMouseEvent() {
         if(Orientation == Orientations.Vertical) {
-            resizeElementBounds!.Height = ms.Y - elementsBetweenOffset;
+            resizeElementBounds!.Height = mouseState.Y - elementsBetweenOffset;
             dividerBounds!.Y = resizeElementBounds!.Height + dividerBounds.Height / 2;
         } else {
-            resizeElementBounds!.Width = ms.X - elementsBetweenOffset;
+            resizeElementBounds!.Width = mouseState.X - elementsBetweenOffset;
             dividerBounds!.X = resizeElementBounds!.Width + dividerBounds.Width / 2;
         }
         await ApplyNewSize();
+
+        if(mouseState.ButtonsDown == -1) {
+            if(Orientation == Orientations.Vertical) {
+                await OnResizeEnd.InvokeAsync((Name, resizeElementBounds!.Height));
+            } else {
+                await OnResizeEnd.InvokeAsync((Name, resizeElementBounds!.Width));
+            }
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

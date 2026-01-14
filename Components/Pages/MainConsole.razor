@@ -18,106 +18,108 @@
      @onkeydown="HandleKeyDown"
      @onkeydown:preventDefault="false"
      @onkeyup:preventDefault="false">
-    <div class="players" @ref="playersPanel">
-        <div class="player">
-            <Player
-                Settings="Program.Settings.Playback.Players[0]"
-                File="@player1File"
-                RequestedFileCue="() => LoadSelectedFile(player1)"
-                OtherPlayer="@player2"
-                @ref="player1" />
-        </div>
-
-        <div class="global-controls">
-            <Knob Name="GAIN" @ref="mainGain" RangeFromCenter="false" ValueChanged="ApplyMainGain" />
-            <div class="button-thin" @onclick="OpenSettingsDialog"><i class="fa-solid fa-gear"></i></div>
-        </div>
-
-        <div class="player">
-            <Player
-                Settings="Program.Settings.Playback.Players[1]"
-                File="@player2File"
-                RequestedFileCue="() => LoadSelectedFile(player2)"
-                OtherPlayer="@player1"
-                @ref="player2" />
-        </div>
-    </div>
-
-    @if(Program.Settings.Playback.BeatmatchingDisplay) {
-        <div class="beatmatching">
-            <BeatMatching
-            Player1="player1"
-            Player2="player2"
-            />
-        </div>
-    }
-
-    <div class="mixer" @ref="mixerPanel">
-        <div class="crossfade-controls">
-            <div class="button-3d" @onclick="() => HandleAutoCrossFade(-1)"><i class="fa-solid fa-caret-left"></i></div>
-            <Fader Orientation="Fader.Orientations.Horizontal" ValueChanged="ApplyCrossfaderVolume" DefaultValue="0.5" @ref="crossFader" />
-            <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><i class="fa-solid fa-caret-right"></i></div>
-        </div>
-        <div class="monitor-controls">
-            <Knob Name="Volume" @ref="monitorVolume" RangeFromCenter="false" ValueChanged="ApplyMonitorVolume" />
-            <i class="fa-solid fa-volume-high"></i>
-            <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
-            <i class="fa-solid fa-headphones-simple"></i>
-        </div>
-    </div>
-
-    <PanelResize
-        Orientation="PanelResize.Orientations.Vertical"
-        ResizeElement="playersPanel"
-        ElementsBetween="new() { mixerPanel }"
-        Name="main-resize-vertical"
-        OnResizeEnd="HandleDividerResize"
-        Constrains="playersConstrains" />
-
-    <div class="media">
-        <div class="media-providers" @ref="mediaProviderPanel">
-            <div class="tabs">
-                @foreach(IMediaProvider provider in mediaProviders) {
-                    <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
-                            @onclick="() => {
-                            selectedMediaProvider = provider;
-                            // FIXME: Hopefully we can find an easier way to do this...
-                            selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
-                            SelectedFolderChanged(provider.RootPath);
-                            shouldRender = true;
-                        }">
-                    @provider.Name
-                </div>
-                                    }
+     <CascadingValue Value="@mouseState">
+        <div class="players" @ref="playersPanel">
+            <div class="player">
+                <Player
+                    Settings="Program.Settings.Playback.Players[0]"
+                    File="@player1File"
+                    RequestedFileCue="() => LoadSelectedFile(player1)"
+                    OtherPlayer="@player2"
+                    @ref="player1" />
             </div>
 
-            <div class="sources panel">
-                <MediaProviderContainer
-                    Provider="@selectedMediaProvider"
-                    SelectedFolderChanged="SelectedFolderChanged"
-                    @ref="mediaProviderContainerUI" />
+            <div class="global-controls">
+                <Knob Name="GAIN" @ref="mainGain" RangeFromCenter="false" ValueChanged="ApplyMainGain" />
+                <div class="button-thin" @onclick="OpenSettingsDialog"><i class="fa-solid fa-gear"></i></div>
+            </div>
+
+            <div class="player">
+                <Player
+                    Settings="Program.Settings.Playback.Players[1]"
+                    File="@player2File"
+                    RequestedFileCue="() => LoadSelectedFile(player2)"
+                    OtherPlayer="@player1"
+                    @ref="player2" />
+            </div>
+        </div>
+
+        @if(Program.Settings.Playback.BeatmatchingDisplay) {
+            <div class="beatmatching">
+                <BeatMatching
+                Player1="player1"
+                Player2="player2"
+                />
+            </div>
+        }
+
+        <div class="mixer" @ref="mixerPanel">
+            <div class="crossfade-controls">
+                <div class="button-3d" @onclick="() => HandleAutoCrossFade(-1)"><i class="fa-solid fa-caret-left"></i></div>
+                <Fader Orientation="Fader.Orientations.Horizontal" ValueChanged="ApplyCrossfaderVolume" DefaultValue="0.5" @ref="crossFader" />
+                <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><i class="fa-solid fa-caret-right"></i></div>
+            </div>
+            <div class="monitor-controls">
+                <Knob Name="Volume" @ref="monitorVolume" RangeFromCenter="false" ValueChanged="ApplyMonitorVolume" />
+                <i class="fa-solid fa-volume-high"></i>
+                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
+                <i class="fa-solid fa-headphones-simple"></i>
             </div>
         </div>
 
         <PanelResize
-            Orientation="PanelResize.Orientations.Horizontal"
-            ResizeElement="mediaProviderPanel"
-            Name="main-resize-horizontal"
+            Orientation="PanelResize.Orientations.Vertical"
+            ResizeElement="playersPanel"
+            ElementsBetween="new() { mixerPanel }"
+            Name="main-resize-vertical"
             OnResizeEnd="HandleDividerResize"
-            Constrains="mediaProviderConstrains" />
+            Constrains="playersConstrains" />
 
-        <Files
-            Provider="@selectedMediaProvider"
-            RelativePath="@selectedFolder"
-            SelectedFileChanged="SelectedFileChanged"
-            @ref="filesComponent" />
-    </div>
+        <div class="media">
+            <div class="media-providers" @ref="mediaProviderPanel">
+                <div class="tabs">
+                    @foreach(IMediaProvider provider in mediaProviders) {
+                        <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
+                                @onclick="() => {
+                                selectedMediaProvider = provider;
+                                // FIXME: Hopefully we can find an easier way to do this...
+                                selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
+                                SelectedFolderChanged(provider.RootPath);
+                                shouldRender = true;
+                            }">
+                        @provider.Name
+                    </div>
+                                        }
+                </div>
 
-    @if(showSettingsDialog) {
-        <Settings
-            OnSave="() => CloseSettingsDialog(true)"
-            OnClose="() => CloseSettingsDialog(false)" />
-    }
+                <div class="sources panel">
+                    <MediaProviderContainer
+                        Provider="@selectedMediaProvider"
+                        SelectedFolderChanged="SelectedFolderChanged"
+                        @ref="mediaProviderContainerUI" />
+                </div>
+            </div>
+
+            <PanelResize
+                Orientation="PanelResize.Orientations.Horizontal"
+                ResizeElement="mediaProviderPanel"
+                Name="main-resize-horizontal"
+                OnResizeEnd="HandleDividerResize"
+                Constrains="mediaProviderConstrains" />
+
+            <Files
+                Provider="@selectedMediaProvider"
+                RelativePath="@selectedFolder"
+                SelectedFileChanged="SelectedFileChanged"
+                @ref="filesComponent" />
+        </div>
+
+        @if(showSettingsDialog) {
+            <Settings
+                OnSave="() => CloseSettingsDialog(true)"
+                OnClose="() => CloseSettingsDialog(false)" />
+        }
+    </CascadingValue>
 </div>
 
 @code {
@@ -137,6 +139,7 @@
     private Fader? crossFader;
 
     private bool showSettingsDialog = false;
+    private MouseState mouseState = new();
 
     private ElementReference playersPanel;
     private ElementReference mixerPanel;
@@ -189,6 +192,7 @@
     }
 
     private void HandleKeyDown(KeyboardEventArgs e) {
+        mouseState.ShiftDown = e.ShiftKey;
         if(e.CtrlKey && e.AltKey) {
             switch(e.Code) {
                 case "KeyA":

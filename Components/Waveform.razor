@@ -57,7 +57,7 @@
     public bool EnableZoomControls { get; set; } = true;
 
     [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
+    private MouseState mouseState { get; set; } = null;
 
     public async Task Refresh() {
         await InvokeAsync(StateHasChanged);
@@ -84,17 +84,17 @@
         if(Mode == Modes.Full) forceRenderWaveformFull = true;
     }
 
-    private async Task HandleMouseEvent(MouseState ms) {
-        IsMouseDown = ms.ButtonsDown == 0;
+    private async Task HandleMouseEvent() {
+        IsMouseDown = mouseState.ButtonsDown == 0;
         if(!IsMouseDown) return;
 
-        double sensitivity = 0.30;
+        double sensitivity = 0.60;
         switch(Mode) {
             case Modes.AudioSynced:
-                PlaybackHead -= (long)(ms.DeltaX * sensitivity);
+                PlaybackHead -= (long)(mouseState.DeltaX * sensitivity);
                 break;
             case Modes.Full:
-                PlaybackHead = (long)((ms.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
+                PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
                 break;
         }
     }

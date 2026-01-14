@@ -240,6 +240,9 @@
     [Parameter]
     public bool MinimalMode { get; set; } = false;
 
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+
     public long PlaybackHead {
         get => waveform?.PlaybackHead ?? 0;
     }
@@ -830,8 +833,7 @@
                                                                                         | BASSMode.BASS_POS_FLUSH));
     }
 
-    //public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
-    public bool SnapToBeatMarkers => BeatMarkers.Count > 0;
+    public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && !mouseState.ShiftDown;
 
     public void SnapToClosestBeatMarker() {
         if(BeatMarkers.Count == 0) return;

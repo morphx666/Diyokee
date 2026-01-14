@@ -90,11 +90,11 @@
         return $"{prop1}: {rangeTop}px; {prop2}: {rangeHeight}px";
     }
 
-    private async Task HandleMouseEvent(MouseState ms) {
+    private async Task HandleMouseEvent() {
         if(Enabled) {
             double newValue = Orientation == Orientations.Vertical
-                                ? 1.0 - (ms.Y - gutterOffsetTop - gutterOffsetBottom - faderBounds!.Y) / faderSize
-                                : 1.0 - (ms.X - gutterOffsetTop - faderBounds!.X) / faderSize;
+                                ? 1.0 - (mouseState.Y - gutterOffsetTop - gutterOffsetBottom - faderBounds!.Y) / faderSize
+                                : 1.0 - (mouseState.X - gutterOffsetTop - faderBounds!.X) / faderSize;
             newValue = Math.Clamp(newValue, 0, 1);
             await InvokeAsync(async () => {
                 await SetValue(newValue);
