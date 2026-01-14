@@ -1,0 +1,81 @@
+﻿@inject IJSRuntime JS
+
+<div
+    style="display: contents"
+    role="slider"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    @onmousedown="HandleMouseDown"
+    @onwheel="HandleMouseWheel">
+        @ChildContent
+</div>
+
+<script>
+    var parentElement = null;
+
+    handleMouseDown = (e, element) => {
+        parentElement = element;
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = 'none';
+        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button);
+    }
+
+    handleMouseMove = (e) => {
+        if(parentElement != null) {
+            parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button);
+        }
+    }
+
+    handleMouseUp = (e) => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = 'auto';
+        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, -1);
+        parentElement = null;
+    }
+</script>
+
+@code {
+    [Parameter]
+    public RenderFragment ChildContent { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnMouseEvent { get; set; } = default!;
+
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+    private MouseState lastMouseState = new();
+
+    private async Task HandleMouseDown(MouseEventArgs e) {
+        if(e.Button != 0) return; // Only handle left button, for now
+        lastMouseState.X = e.ClientX;
+        lastMouseState.Y = e.ClientY;
+        lastMouseState.ButtonsDown = e.Button;
+
+        var dotNetReference = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("handleMouseDown", e, dotNetReference);
+    }
+
+    private async Task HandleMouseWheel(WheelEventArgs e) {
+        mouseState.DeltaX = e.DeltaY / 100.0;
+        mouseState.DeltaY = e.DeltaY / 100.0;
+        await OnMouseEvent.InvokeAsync(mouseState);
+    }
+
+    [JSInvokable]
+    public async Task UpdateMousePositionAsync(double x, double y, long button) {
+        mouseState.X = x;
+        mouseState.Y = y;
+        mouseState.ButtonsDown = button;
+
+        mouseState.DeltaX = mouseState.X - lastMouseState.X;
+        mouseState.DeltaY = mouseState.Y - lastMouseState.Y;
+
+        await OnMouseEvent.InvokeAsync(mouseState);
+
+        lastMouseState.X = mouseState.X;
+        lastMouseState.Y = mouseState.Y;
+        lastMouseState.ButtonsDown = mouseState.ButtonsDown;
+    }
+}

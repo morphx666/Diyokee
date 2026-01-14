@@ -7,7 +7,6 @@
 @using Newtonsoft.Json
 @using System.ComponentModel
 @using System.Threading.Tasks
-@using System.Diagnostics
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
 @using Un4seen.Bass.AddOn.Mix
@@ -49,17 +48,19 @@
     }
 
     <div class="waveform-full">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.Full"
-                  Player="this"
-                  @ref="waveformFull" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.Full"
+            Player="this"
+            @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform CssColor="@Settings.Color"
-                  Mode="Waveform.Modes.AudioSynced"
-                  Player="this"
-                  @ref="waveform" />
+        <Waveform
+            CssColor="@Settings.Color"
+            Mode="Waveform.Modes.AudioSynced"
+            Player="this"
+            @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <div class="volume-monitor-container">
@@ -238,37 +239,18 @@
     [Parameter]
     public bool MinimalMode { get; set; } = false;
 
+    [CascadingParameter]
+    private MouseState mouseState { get; set; } = default!;
+
     public long PlaybackHead {
         get => waveform?.PlaybackHead ?? 0;
     }
-
-    [CascadingParameter]
-    private MouseState? mouseState { get; set; } = null;
 
     public bool InBeat { get; set; } = false;
 
     public int InBeatIndex { get; set; } = 1;
 
     public int WaveformBarWidth { get; set; }
-
-    private bool enableMouseEvents = true;
-    public bool EnableMouseEvents {
-        get => enableMouseEvents;
-        set {
-            if(faderVolume == null) return; // Session restore - ignore
-
-            enableMouseEvents = value;
-            if(!MinimalMode) {
-                EqControls.EnableMouseEvents = value;
-                if(faderTempo != null) faderTempo.EnableMouseEvents = value;
-            }
-            faderVolume!.EnableMouseEvents = value;
-            waveform!.EnableMouseEvents = value;
-            waveform!.IsMouseDown = false;
-            waveformFull!.EnableMouseEvents = value;
-            waveformFull!.IsMouseDown = false;
-        }
-    }
 
     public void SetTempoRange(double range) {
         tempoMin = range / 100.0;
@@ -541,7 +523,14 @@
             masterHandle = 0;
         }
 
-        if(File == null || faderVolume == null) return;
+        if(File == null) return;
+        if(faderVolume == null) { // FIXME: This fixes a problem when loading the TrackProperties dialog. Why? This wasn't happening before?
+            Task.Run(async () => {
+                await Task.Delay(250);
+                LoadFile();
+            });
+            return;
+        }
 
         var r = CreateStreams();
         if(r.Error != BASSError.BASS_OK) {
@@ -802,11 +791,7 @@
         Peaks = [];
         BeatMarkers.Clear();
 
-        if(File == null || !File.WaveformUnZipped.Contains('|')) {
-            waveformFull?.UpdateFullWaveform();
-            return false;
-        }
-
+        if(File == null) return false;
         Peaks = File.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
         MaxPeak = Peaks.Max();
 
@@ -818,8 +803,6 @@
         GenerateBeatMarkers();
         CacheBpmStrings();
         CacheKeyAdjustment();
-
-        waveformFull?.UpdateFullWaveform();
 
         return true;
     }
@@ -850,7 +833,7 @@
                                                                                         | BASSMode.BASS_POS_FLUSH));
     }
 
-    public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && (!mouseState?.ShiftDown ?? true);
+    public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && !mouseState.ShiftDown;
 
     public void SnapToClosestBeatMarker() {
         if(BeatMarkers.Count == 0) return;
@@ -1194,12 +1177,13 @@
                         }
                         lastPos = pos;
                     }
-
+                    waveformFull!.PlaybackHead = waveform.PlaybackHead;
                 } else if(waveformFull!.IsMouseDown) {
                     long pos = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
                     splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
                                                                                                | BASSMode.BASS_MIXER_CHAN_NORAMPIN
                                                                                                | BASSMode.BASS_POS_FLUSH));
+                    waveform.PlaybackHead = waveformFull.PlaybackHead;
                 } else {
                     waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle) * WaveformBarWidth / waveformStepLength;
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
@@ -1208,38 +1192,32 @@
                         Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
                     }
                 }
-
-                await waveform.Refresh();
-                if(intervals % 10 == 0) await waveformFull!.Refresh();
             } else if(IsPlaying) {
                 Stop(false);
                 CreateStreams();
                 Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
             }
 
-            if(++intervals % 24 == 0) await InvokeAsync(StateHasChanged);
+            if(waveform != null && intervals % 2 == 0) await waveform.Refresh();
+            if(waveformFull != null && intervals % 4 == 0) await waveformFull.Refresh();
+
+            if(++intervals >= 1000) intervals = 0;
+
+            //if(++intervals % 24 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 
     int dragCounter = 0;
     private void HandleDragEnter(DragEventArgs e) {
-        mouseState!.Enabled = false;
         dragCounter += 1;
     }
 
     private void HandleDragLeave(DragEventArgs e) {
         dragCounter -= 1;
-        if(dragCounter <= 0) {
-            mouseState!.Enabled = true;
-            dragCounter = 0;
-        }
+        if(dragCounter <= 0) dragCounter = 0;
     }
 
     private async Task HandleDrop(DragEventArgs e) {
-        mouseState!.Enabled = true;
-        mouseState!.ButtonsDown = 0;
-        mouseState!.IsCaptured = false;
-
         await RequestedFileCue.InvokeAsync();
     }
 
@@ -1311,6 +1289,8 @@
     }
 
     protected override void OnParametersSet() {
+        base.OnParametersSet();
+
         if(File != null) {
             if(lastFilename == File.Filename) {
                 SetParameters();
@@ -1324,8 +1304,6 @@
                 SavePlayerState();
             }
         }
-
-        base.OnParametersSet();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -1339,9 +1317,9 @@
                 loopJumpLock = Settings.LoopJumpLock;
                 loopSize = Settings.LoopSize;
                 jumpSize = Settings.JumpSize;
-            }
 
-            RestorePlayerState();
+                RestorePlayerState();
+            }
 
             await InvokeAsync(StateHasChanged);
         }

@@ -89,9 +89,6 @@
     [Parameter]
     public EventCallback<EqualizerProfile> EqProfileChanged { get; set; }
 
-    [CascadingParameter]
-    private MouseState mouseState { get; set; } = null!;
-
     public Eq() {
         eqValues.Hi = 0.5;
         eqValues.Mid = 0.5;
@@ -149,8 +146,7 @@
     }
 
     private void OpenSubMenu(MouseEventArgs e) {
-        if(!mouseState.Enabled) return;
-        JS.InvokeVoidAsync("positionSubMenu", mouseState.X, mouseState.Y, knobs);
+        JS.InvokeVoidAsync("positionSubMenu", 0, 0, knobs);
         eqOptionsVisible = true;
     }
 }

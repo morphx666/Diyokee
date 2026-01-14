@@ -211,13 +211,20 @@
         }
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        if(firstRender) {
+    protected override void OnParametersSet() {
+        if(settings == null) {
             settings = (Diyokee.Settings)Program.Settings.Clone();
             midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
-            dialog.Open();
         }
 
+        base.OnParametersSet();
+    }
+
+    protected override void OnAfterRender(bool firstRender) {
+        if(firstRender) {
+            dialog.Open();
+            InvokeAsync(StateHasChanged);
+        }
         base.OnAfterRender(firstRender);
     }
 }

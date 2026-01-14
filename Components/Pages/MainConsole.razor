@@ -1,7 +1,6 @@
 ﻿@using Diyokee
 @using Diyokee.MediaProviders
 @using Newtonsoft.Json
-@using System.Diagnostics
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Mix
 @using Un4seen.Bass.AddOn.Midi
@@ -17,14 +16,8 @@
      tabindex="0"
      @onkeydown="HandleKeyDown"
      @onkeydown:preventDefault="false"
-     @onkeyup="HandleKeyUp"
-     @onkeyup:preventDefault="false"
-     @onmousedown="HandleMouseDown"
-     @onmousemove="HandleMouseMove"
-     @onmouseup="HandleMouseUp"
-     @onmousewheel="HandleMouseWheel"
-     @onwheel="HandleMouseWheel">
-    <CascadingValue Value="@mouseState">
+     @onkeyup:preventDefault="false">
+     <CascadingValue Value="@mouseState">
         <div class="players" @ref="playersPanel">
             <div class="player">
                 <Player
@@ -86,13 +79,13 @@
                 <div class="tabs">
                     @foreach(IMediaProvider provider in mediaProviders) {
                         <div class="tab @(selectedMediaProvider == provider ? "selected" : "")"
-                             @onclick="() => {
-                             selectedMediaProvider = provider;
-                             // FIXME: Hopefully we can find an easier way to do this...
-                             selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
-                             SelectedFolderChanged(provider.RootPath);
-                             shouldRender = true;
-                         }">
+                                @onclick="() => {
+                                selectedMediaProvider = provider;
+                                // FIXME: Hopefully we can find an easier way to do this...
+                                selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
+                                SelectedFolderChanged(provider.RootPath);
+                                shouldRender = true;
+                            }">
                         @provider.Name
                     </div>
                                         }
@@ -117,8 +110,6 @@
                 Provider="@selectedMediaProvider"
                 RelativePath="@selectedFolder"
                 SelectedFileChanged="SelectedFileChanged"
-                TrackSettingsDialogOpened="() => SetPlayersMouseCapturing(false)"
-                TrackSettingsDialogClosed="() => SetPlayersMouseCapturing(true)"
                 @ref="filesComponent" />
         </div>
 
@@ -199,9 +190,9 @@
         session.Set(nameof(selectedFile), file);
     }
 
-    private void HandleKeyDown(KeyboardEventArgs e) {
+    private async Task HandleKeyDown(KeyboardEventArgs e) {
         mouseState.ShiftDown = e.ShiftKey;
-        if(e.CtrlKey && e.AltKey) {
+        if(e.ShiftKey && e.CtrlKey) {
             switch(e.Code) {
                 case "KeyA":
                     player1File = selectedFile;
@@ -212,44 +203,18 @@
                     shouldRender = true;
                     break;
                 case "KeyS":
-                    OpenSettingsDialog();
+                    await OpenSettingsDialog();
                     break;
             }
         }
     }
 
-    private void HandleKeyUp(KeyboardEventArgs e) {
-        mouseState.ShiftDown = e.ShiftKey;
-    }
-
-    private void OpenSettingsDialog() {
-        SetPlayersMouseCapturing(false);
+    private async Task OpenSettingsDialog() {
         enableMidiEvents = false;
         showSettingsDialog = true;
 
         shouldRender = true;
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void HandleMouseDown(MouseEventArgs e) {
-        mouseState.X = e.ClientX;
-        mouseState.Y = e.ClientY;
-        mouseState.ButtonsDown = e.Buttons;
-    }
-
-    private void HandleMouseMove(MouseEventArgs e) {
-        mouseState.X = e.ClientX;
-        mouseState.Y = e.ClientY;
-    }
-
-    private void HandleMouseUp(MouseEventArgs e) {
-        mouseState.X = e.ClientX;
-        mouseState.Y = e.ClientY;
-        mouseState.ButtonsDown = e.Buttons;
-    }
-
-    private void HandleMouseWheel(WheelEventArgs e) {
-        mouseState.WheelDelta = e.DeltaY;
+        await InvokeAsync(StateHasChanged);
     }
 
     private void HandleDividerResize((string name, double value) args) {
@@ -345,17 +310,11 @@
             await JS.InvokeVoidAsync("forceRefresh");
         }
 
-        SetPlayersMouseCapturing(true);
         enableMidiEvents = true;
         showSettingsDialog = false;
 
         shouldRender = true;
         await InvokeAsync(StateHasChanged);
-    }
-
-    private void SetPlayersMouseCapturing(bool state) {
-        player1!.EnableMouseEvents = state;
-        player2!.EnableMouseEvents = state;
     }
 
     protected override bool ShouldRender() {

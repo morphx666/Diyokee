@@ -7,7 +7,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 ## Basic usage
 
 - To load a track into a player, drag & drop the track or select the track and click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.
-  You can also use `Ctrl+Alt+A` or `Ctrl+Alt+B` keys on your keyboard to load a track into the A or B player, respectively.
+  You can also use `Shift+Ctrl+A` or `Shift+Ctrl+B` keys on your keyboard to load a track into the A or B player, respectively.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button to start playing.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" width="12"> button to stop playback and move to the beginning of the track.
 - Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
@@ -41,7 +41,8 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 
 ## Known issues
 - Making changes to a file with the Track Properties dialog can cause duplicates in the database, which will crash the program
-- Mouse support (scrolling/dragging) still needs to be improved
+- ~~Mouse support (scrolling/dragging) still needs to be improved~~
+The whole mouse support has been rewritten and now works much better
 - The code needs to be cleaned up before adding new features, especially in the Player component
   
 ## Nightly Releases

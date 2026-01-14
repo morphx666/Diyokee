@@ -2,6 +2,7 @@
     --fader-size: 40px;
     display: flex;
     flex-direction: column;
+    background-color: var(--panel-background-color-dark);
 
     &.disabled {
         pointer-events: none;
@@ -93,7 +94,7 @@
                 left: 50%;
                 top: 0;
                 height: 20px;
-                width: 1px;
+                width: 3px;
                 background-color: var(--ctrl-highlight-soft);
                 pointer-events: none;
                 transform: translateX(-50%);

@@ -55,7 +55,7 @@ namespace Diyokee {
             [JsonProperty("reverse-controls")] public bool ReverseControls { get; set; } = false;
         }
 
-        [JsonProperty("webhost-url")] public string WebHostUrl { get; set; } = "http://localhost:5000";
+        [JsonProperty("webhost-url")] public string WebHostUrl { get; set; } = "http://localhost:5001";
         [JsonProperty("cert-file")] public string CertFile { get; set; } = "";
         [JsonProperty("cert-password")] public string CertPassword { get; set; } = "";
         [JsonProperty("bassnet-reg-email")] public string BassNetRegEmail { get; set; } = "";
