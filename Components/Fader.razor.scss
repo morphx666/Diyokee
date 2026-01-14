@@ -2,6 +2,7 @@
     --fader-size: 40px;
     display: flex;
     flex-direction: column;
+    background-color: var(--panel-background-color-dark);
 
     &.disabled {
         pointer-events: none;
