@@ -1,6 +1,7 @@
 ﻿.container {
     --arc-width: 6px;
     --knob-margin: 4px;
+    --range-width: 3px;
 
     display: flex;
     flex-direction: column;
@@ -42,7 +43,7 @@
                 &::after {
                     content: "";
                     position: absolute;
-                    inset: calc(var(--arc-width) / 2);
+                    inset: var(--range-width);
                     border-radius: 50%;
                     background-color: var(--panel-background-color-dark);
                 }

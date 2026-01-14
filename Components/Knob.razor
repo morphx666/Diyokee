@@ -61,15 +61,15 @@
         if(RangeFromCenter) {
             if(angle < 0) {
                 angle += 360;
-                return $"background: conic-gradient(var(--app-background-color) 0deg {angle}deg, var(--ctrl-highlight-soft) {angle}deg);";
+                return $"background: conic-gradient(var(--app-background-color) 0deg {angle}deg, var(--ctrl-highlight-soft) {angle}deg 0deg);";
             } else {
-                return $"background: conic-gradient(var(--ctrl-highlight-soft) 0deg {angle}deg, var(--app-background-color) {angle}deg);";
+                return $"background: conic-gradient(var(--ctrl-highlight-soft) 0deg {angle}deg, var(--app-background-color) {angle}deg 0deg);";
             }
         } else {
             double rangeStart = 360.0 - angleRange;
             if(angle < 0) {
                 angle += 360;
-                return $"background: conic-gradient(var(--app-background-color) 0deg {rangeStart}deg, var(--ctrl-highlight-soft) {rangeStart}deg {angle}deg, var(--app-background-color) {angle}deg);";
+                return $"background: conic-gradient(var(--app-background-color) 0deg {rangeStart}deg, var(--ctrl-highlight-soft) {rangeStart}deg {angle}deg, var(--app-background-color) {angle}deg 0deg);";
             } else {
                 return $"background: conic-gradient(var(--ctrl-highlight-soft) 0 {angle}deg, var(--app-background-color) {angle}deg {rangeStart}deg, var(--ctrl-highlight-soft) {rangeStart}deg 0deg);";
             }
