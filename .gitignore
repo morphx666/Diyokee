@@ -372,3 +372,5 @@ settings.json
 PrepareReleases/
 MonitorChannels/
 publish.bat
+.DS_Store
+

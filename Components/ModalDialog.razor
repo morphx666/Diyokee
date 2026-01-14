@@ -70,7 +70,6 @@
         if(!IsOpen) {
             IsOpen = true;
             OnOpen.InvokeAsync();
-            InvokeAsync(StateHasChanged);
         }
     }
 

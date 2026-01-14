@@ -35,9 +35,8 @@
     private Bounds? canvasBounds;
     private Bounds? zoomControlsBounds;
 
-    private long waveformId = 0;
-    private long lastWaveformId = 0;
-    private bool forceRenderWaveformFull = false;
+    private long lastPlaybackHead = -1;
+    private bool forceReRender = false;
 
     [Parameter]
     public string CssColor { get; set; } = "#444";
@@ -57,14 +56,14 @@
     public bool EnableZoomControls { get; set; } = true;
 
     [CascadingParameter]
-    private MouseState mouseState { get; set; } = null;
+    private MouseState mouseState { get; set; } = default!;
 
     public async Task Refresh() {
+        if(lastPlaybackHead != PlaybackHead) {
+            lastPlaybackHead = PlaybackHead;
+            forceReRender = true;
+        }
         await InvokeAsync(StateHasChanged);
-    }
-
-    public void UpdateFullWaveform() {
-        waveformId = DateTime.Now.Ticks;
     }
 
     [JSInvokable]
@@ -80,8 +79,8 @@
             canvasBounds.Y,
             25,
             46
-    });
-        if(Mode == Modes.Full) forceRenderWaveformFull = true;
+        });
+        if(Mode == Modes.Full) forceReRender = true;
     }
 
     private async Task HandleMouseEvent() {
@@ -108,22 +107,21 @@
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
         }
 
-        if((ctx = await canvas.CreateCanvas2DAsync()) != null) {
-            try {
-                switch(Mode) {
-                    case Modes.AudioSynced:
-                        await RenderWaveform();
-                        break;
-                    case Modes.Full:
-                        if(forceRenderWaveformFull) {
-                            forceRenderWaveformFull = false;
+        if(forceReRender) {
+            if((ctx = await canvas.CreateCanvas2DAsync()) != null) {
+                try {
+                    switch(Mode) {
+                        case Modes.AudioSynced:
+                            await RenderWaveform();
+                            break;
+                        case Modes.Full:
                             await RenderWaveformFull();
-                        }
-                        break;
+                            break;
+                    }
+                } catch {
+                    // Just ignore it - this is usually caused by the beatMarkers collection being modified while rendering
+                    if(Mode == Modes.Full) forceReRender = true;
                 }
-            } catch {
-                // Just ignore it - this is usually caused by the beatMarkers collection being modified while rendering
-                if(Mode == Modes.Full) forceRenderWaveformFull = true;
             }
         }
     }
@@ -135,15 +133,6 @@
             if(Player.WaveformWidth == 0) return "display: none;";
             return $"left: {(double)PlaybackHead / Player.WaveformWidth * canvasWidth}px;";
         }
-    }
-
-    protected override void OnParametersSet() {
-        if(waveformId != lastWaveformId) {
-            lastWaveformId = waveformId;
-            forceRenderWaveformFull = true;
-        }
-
-        base.OnParametersSet();
     }
 
     private async Task RenderWaveformFull() {
