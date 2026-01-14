@@ -37,7 +37,7 @@
     --header-background-color: #563283;
 
     --ctrl-highlight: #81bcb7;
-    --ctrl-highlight-soft: #4be7fabb; /* #81bcb7; */
+    --ctrl-highlight-soft: #4be7fa88; /* #81bcb7; */
     --ctrl-focus-rect: #ff450088;
 
     --primary: #007bff; /* --pale-blue */

@@ -58,6 +58,8 @@
     }
 
     private async Task HandleMouseWheel(WheelEventArgs e) {
+        mouseState.X = -1;
+        mouseState.Y = -1;
         mouseState.DeltaX = e.DeltaY / 100.0;
         mouseState.DeltaY = e.DeltaY / 100.0;
         await OnMouseEvent.InvokeAsync(mouseState);
