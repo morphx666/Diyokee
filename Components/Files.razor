@@ -265,7 +265,7 @@
 
             if((file.Artist == "" || file.Title == "") && file.Filename.Contains(" - ")) {
                 string name = file.Filename;
-                if(name.Contains('\\')) name = name.Split('\\').Last();
+                if(name.Contains(Path.DirectorySeparatorChar)) name = name.Split(Path.DirectorySeparatorChar).Last();
                 string[] tokens = name.Split(" - ");
                 if(file.Artist == "") file.Artist = tokens[0];
                 if(file.Title == "") file.Title = tokens[1].Replace(fileExtension, "");

@@ -121,7 +121,7 @@
             }
             await InvokeAsync(StateHasChanged);
         });
-        deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == '\\');
+        deep = RelativePath == "" ? 0 : 1 + RelativePath.Count(c => c == Path.DirectorySeparatorChar);
     }
 
     private async void ChangeSelectedFolder(string folder) {
