@@ -72,11 +72,12 @@ internal class Program {
         app.Logger.LogInformation("Validating Cache Database...");
         using(IServiceScope? scope = app.Services.CreateScope()) {
             using(CacheDbContext? context = scope.ServiceProvider.GetService<CacheDbContext>()) {
-                if(!context?.Database.EnsureCreated() ?? false) {
-                    if(context?.Database.GetPendingMigrations().Any() ?? false) {
-                        context.Database.Migrate();
-                    }
-                }
+                context?.Database.Migrate();
+                //if(!context?.Database.EnsureCreated() ?? false) {
+                //    if(context?.Database.GetPendingMigrations().Any() ?? false) {
+                //        context.Database.Migrate();
+                //    }
+                //}
             }
         }
 
