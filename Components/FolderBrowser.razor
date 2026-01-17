@@ -125,10 +125,12 @@
         }
     }
 
-    public void Open() {
+    public async Task Open() {
         expandedFolders.Clear();
         selectedFolder = "";
         dialog.Open();
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private void Cancel() {

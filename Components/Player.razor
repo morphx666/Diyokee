@@ -341,22 +341,22 @@
 
     public void SetMonitorVolume(double value) {
         monitorVolume = value;
-        SetMatrixVolume();
+        SetAudioMatrixVolume();
     }
 
     public void SetMonitorMix(double value) {
         monitorMix = value;
-        SetMatrixVolume();
+        SetAudioMatrixVolume();
     }
 
     public void SetCrossFaderVolume(double value) {
         crossFaderVolume = value;
-        SetMatrixVolume();
+        SetAudioMatrixVolume();
     }
 
     private void ApplyTrackVolume(double value) {
         trackVolume = value;
-        SetMatrixVolume();
+        SetAudioMatrixVolume();
     }
 
     public async Task SetTempo(double value) {
@@ -625,7 +625,7 @@
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
 
-        SetMatrixVolume();
+        SetAudioMatrixVolume();
 
         return (BASSError.BASS_OK, "");
     }
@@ -1016,11 +1016,11 @@
     private void ToggleSendToMonitor(MouseEventArgs e) {
         if(e.Button == 0) {
             sendToMonitor = !sendToMonitor;
-            SetMatrixVolume();
+            SetAudioMatrixVolume();
         }
     }
 
-    private void SetMatrixVolume() {
+    private void SetAudioMatrixVolume() {
         if(File == null) return;
 
         int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
@@ -1033,8 +1033,10 @@
                     speakersMatrix[i, j] *= (float)(trackVolume * crossFaderVolume);
                 }
             }
-            var splitterStream = splitterStreams[mainDeviceIndex];
-            BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+            if(mainDeviceIndex < splitterStreams.Count) { // REASON: This code avoids crashing when there are pending changes in the matrix. A restart is necessary.
+                var splitterStream = splitterStreams[mainDeviceIndex];
+                BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+            }
         }
 
         // Monitor devices
@@ -1045,8 +1047,11 @@
                     speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorMix) : (1.0 - monitorMix) * trackVolume * crossFaderVolume * monitorVolume);
                 }
             }
-            var splitterStream = splitterStreams[mainOutputDevicesCount + monitorDeviceIndex];
-            BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+            monitorDeviceIndex += mainOutputDevicesCount;
+            if(monitorDeviceIndex < splitterStreams.Count) {
+                var splitterStream = splitterStreams[monitorDeviceIndex];
+                BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
+            }
         }
     }
 
@@ -1199,7 +1204,7 @@
             }
 
             if(waveform != null && intervals % 2 == 0) await waveform.Refresh();
-            if(waveformFull != null && intervals % 4 == 0) await waveformFull.Refresh();
+            if(waveformFull != null && intervals % 8 == 0) await waveformFull.Refresh();
 
             if(++intervals >= 1000) intervals = 0;
 

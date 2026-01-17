@@ -43,6 +43,9 @@
     [Parameter]
     public EventCallback OnMouseEvent { get; set; } = default!;
 
+    [Parameter]
+    public bool SupportMouseWheel { get; set; } = true;
+
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
     private MouseState lastMouseState = new();
@@ -58,11 +61,13 @@
     }
 
     private async Task HandleMouseWheel(WheelEventArgs e) {
-        mouseState.X = -1;
-        mouseState.Y = -1;
-        mouseState.DeltaX = e.DeltaY / 100.0;
-        mouseState.DeltaY = e.DeltaY / 100.0;
-        await OnMouseEvent.InvokeAsync(mouseState);
+        if(SupportMouseWheel) {
+            mouseState.X = -1;
+            mouseState.Y = -1;
+            mouseState.DeltaX = e.DeltaY / 100.0;
+            mouseState.DeltaY = e.DeltaY / 100.0;
+            await OnMouseEvent.InvokeAsync(mouseState);
+        }
     }
 
     [JSInvokable]

@@ -4,7 +4,7 @@
         public double Y { get; set; }
         public double DeltaX { get; set; }
         public double DeltaY { get; set; }
-        public long ButtonsDown { get; set; }
+        public long ButtonsDown { get; set; } = -1;
         public bool IsCaptured {get;set; }
         public double WheelDelta { get; set; }
 

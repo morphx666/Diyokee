@@ -14,7 +14,7 @@
     <div class="field">
         <label for="local-media-location">Location</label>
         <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
-        <button class="button-select-location" onclick="@(() => folderBrowser.Open())"><i class="fa-solid fa-folder"></i></button>
+        <button class="button-select-location" onclick="@OpenFolderBrowser"><i class="fa-solid fa-folder"></i></button>
     </div>
 
     <button class="button-delete-provider" onclick="@OnDeleteProvider"><i class="fa-solid fa-circle-xmark"></i></button>
@@ -33,4 +33,8 @@
     public EventCallback OnDeleteProvider { get; set; } = default!;
 
     private FolderBrowser folderBrowser = null!;
+
+    private async Task OpenFolderBrowser() {
+        await folderBrowser.Open();
+    }
 }
