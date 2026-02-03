@@ -621,7 +621,7 @@
         }
         masterSplitterHandle = splitterStreams[0];
 
-        gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
+        gainHandle = Bass.BASS_ChannelSetFX(masterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
 
