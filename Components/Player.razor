@@ -628,6 +628,7 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_StreamAddChannel));
 
+
             float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
             r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
             bassErrorCode = Bass.BASS_ErrorGetCode();
