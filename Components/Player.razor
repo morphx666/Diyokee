@@ -48,26 +48,30 @@
     }
 
     <div class="waveform-full">
-        <Waveform
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.Full"
-            Player="this"
-            @ref="waveformFull" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.Full"
+                  Player="this"
+                  @ref="waveformFull" />
     </div>
 
     <div class="waveform @(Settings.ReverseControls ? "reverse" : "")">
-        <Waveform
-            CssColor="@Settings.Color"
-            Mode="Waveform.Modes.AudioSynced"
-            Player="this"
-            @ref="waveform" />
+        <Waveform CssColor="@Settings.Color"
+                  Mode="Waveform.Modes.AudioSynced"
+                  Player="this"
+                  @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
         <div class="volume-monitor-container">
             <Fader Orientation="Fader.Orientations.Vertical" ValueChanged="ApplyTrackVolume" Name="<i class='fa-solid fa-volume-high'></i>" DefaultValue="0" @ref="faderVolume" />
-            <div class="button-3d @(sendToMonitor ? "active" : "")" @onclick="ToggleSendToMonitor">
-                <i class="fa-solid fa-headphones-simple"></i>
-            </div>
+            @if(Program.Settings.Audio.MonitorDevice.Count == 0) {
+                <div class="button-3d disabled">
+                    <i class="fa-solid fa-headphones-simple"></i>
+                </div>
+            } else {
+                <div class="button-3d @(sendToMonitor ? "active" : "")" @onclick="ToggleSendToMonitor">
+                    <i class="fa-solid fa-headphones-simple"></i>
+                </div>
+            }
         </div>
 
         @if(!MinimalMode) {
@@ -575,32 +579,33 @@
         Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(streamHandle));
 
-        // Gain Control
-        gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
-
-        // Tempo Control
-        tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
-                                                               | BASSFlag.BASS_STREAM_DECODE
-                                                               | BASSFlag.BASS_FX_FREESOURCE);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
-
-        // Eq Control
-        eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
-
-        // Pitch Control
-        pitchHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
-        pitch.fPitchShift = 0;
-        pitch.fSemitones = 0;
-        pitch.lOsamp = 32;
-
         if(!MinimalMode) {
+            // Gain Control
+            gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
+
+            // Tempo Control
+            tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
+                                                                   | BASSFlag.BASS_STREAM_DECODE
+                                                                   | BASSFlag.BASS_FX_FREESOURCE);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
+
+            // Eq Control
+            eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
+
+            // Pitch Control
+            pitchHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
+            bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
+            pitch.fPitchShift = 0;
+            pitch.fSemitones = 0;
+            pitch.lOsamp = 32;
+
+            // Resonant Filter Control
             InitResonantFilter();
             int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspResonantFilter, IntPtr.Zero, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
@@ -609,7 +614,7 @@
 
         splitterStreams.Clear();
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(streamHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(splitterHandle));
@@ -1025,8 +1030,17 @@
         }
     }
 
+    public void ForceSendToMonitor() {
+        sendToMonitor = true;
+        SetAudioMatrixVolume();
+    }
+
     private void SetAudioMatrixVolume() {
         if(File == null) return;
+        if(sendToMonitor && Program.Settings.Audio.MonitorDevice.Count == 0) {
+            sendToMonitor = false;
+            return;
+        }
 
         int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
 
@@ -1035,7 +1049,13 @@
             var speakersMatrix = GetSpeakersMatrix(mainDeviceIndex);
             for(int i = 0; i < speakersMatrix.GetLength(0); i++) {
                 for(int j = 0; j < speakersMatrix.GetLength(1); j++) {
-                    speakersMatrix[i, j] *= (float)(trackVolume * crossFaderVolume);
+                    if(MinimalMode) {
+                        // In minimal mode (TrackProperties) we mute the main output if the send to monitor toggle is ON (which should be by default)
+                        // So, basically, in minimal mode, the send to monitor button behaves like a toggle
+                        speakersMatrix[i, j] *= (float)(sendToMonitor ? 0 : trackVolume);
+                    } else {
+                        speakersMatrix[i, j] *= (float)(trackVolume * crossFaderVolume);
+                    }
                 }
             }
             if(mainDeviceIndex < splitterStreams.Count) { // REASON: This code avoids crashing when there are pending changes in the matrix. A restart is necessary.

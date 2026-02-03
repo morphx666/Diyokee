@@ -85,6 +85,13 @@ body, html {
     &:active {
         background-color: var(--panel-background-color-dark);
     }
+
+    &.disabled {
+        background-color: var(--panel-background-color-light);
+        cursor: default;
+        pointer-events: none;
+        color: var(--text-gray);
+    }
 }
 
 .button-thin {

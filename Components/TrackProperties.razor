@@ -215,7 +215,7 @@
     private ModalDialog dialog = default!;
     private Player? player = default!;
 
-    // TODO: This autocomplete thing is not working correctly. We need to create a separate component to handle it.
+    // FIXME: This auto-complete thing is not working correctly. We need to create a separate component to handle it.
     private bool albumsAcVisible = false;
     private bool genresAcVisible = false;
     private bool keysAcVisible = false;
@@ -353,6 +353,7 @@
                 while(player == null) await Task.Delay(60);
 
                 player.WaveformBarWidth = Program.Settings.Playback.WaveformZoom;
+                player.ForceSendToMonitor();
                 dialog.Open();
             });
         }
