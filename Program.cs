@@ -141,6 +141,12 @@ internal class Program {
         });
     }
 
+    // TODO: Implement support to add/remove audio outputs without restarting the application
+    // For this to work this function needs to be called every time the Settings.Audio object changes
+    // and the BassMixHandles should be used to not re-initialize devices that have already been initialized and
+    // to remove those are not longer in use.
+    // Then, the Player.CreateStreams() function needs to be modified to update it's splitter streams accordingly.
+
     private static void SetupBASS() {
         int index = 0;
         var devices = Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice).ToList();

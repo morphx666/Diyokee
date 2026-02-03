@@ -1204,11 +1204,9 @@
             }
 
             if(waveform != null && intervals % 2 == 0) await waveform.Refresh();
-            if(waveformFull != null && intervals % 8 == 0) await waveformFull.Refresh();
+            if(waveformFull != null && intervals % 16 == 0) await waveformFull.Refresh();
 
             if(++intervals >= 1000) intervals = 0;
-
-            //if(++intervals % 24 == 0) await InvokeAsync(StateHasChanged);
         }
     }
 

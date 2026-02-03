@@ -3,7 +3,7 @@ using static Diyokee.MediaProviders.IMediaProvider;
 namespace Diyokee.MediaProviders;
 
 public abstract class MediaProviderBase(string name, string rootPath) : IMediaProvider {
-    internal string[] supportedExtensions = [ ".mp3", ".wav", ".flac", ".aac", ".ac3" ];
+    internal string[] supportedExtensions = [ ".mp3", ".wav", ".flac", ".aac", ".ac3", ".m4a" ];
     internal bool isBusy = false;
 
     public string Name { get; init; } = name;

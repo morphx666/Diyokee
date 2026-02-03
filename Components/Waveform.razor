@@ -79,7 +79,7 @@
             canvasBounds.Y,
             25,
             46
-        });
+    });
         if(Mode == Modes.Full) forceReRender = true;
     }
 
@@ -136,6 +136,8 @@
     }
 
     private async Task RenderWaveformFull() {
+        if(Player.Peaks.Length == 0) return;
+
         double cw = canvasWidth / canvasRatio;
         double ch = canvasHeight / canvasRatio;
         double cw2 = canvasWidth / (canvasRatio * 2);
@@ -152,14 +154,14 @@
         await ctx.SetFillStyleAsync(CssColor);
 
         // Render waveform
-        double lastX = -1;
+        int lastI = -1;
         double step = cw / Player.Peaks.Length;
         double barWidth = step < 1 ? 1 : step - 1;
-        for(int i = 0; i < Player.Peaks.Length; i++) {
-            double x = i * step;
-            if(lastX == x) continue;
-            lastX = x;
-            if(x < 0 || x >= cw) continue;
+        for(int x = 0; x < cw; x++) {
+            int i = (int)(x / step);
+            if(i == lastI) continue;
+            lastI = i;
+
             double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
             await ctx.FillRectAsync(x, y, barWidth, ch - y * 2);
         }
@@ -203,67 +205,68 @@
         await ctx.LineToAsync(cw, ch2);
         await ctx.StrokeAsync();
 
+        if(Player.Peaks.Length > 0) {
+            // Render waveform
+            await ctx.SetFillStyleAsync(CssColor);
+            for(int i = (int)Math.Max(0, (pbh - cw2) / wfw - 1); i < Player.Peaks.Length; i++) {
+                double x = i * wfw + cw2 - pbh;
+                if(x >= cw) break;
+                double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
+                await ctx.FillRectAsync(x, y, wfw - 1, ch - y * 2);
+            }
 
-        // Render waveform
-        await ctx.SetFillStyleAsync(CssColor);
-        for(int i = (int)Math.Max(0, (pbh - cw2) / wfw - 1); i < Player.Peaks.Length; i++) {
-            double x = i * wfw + cw2 - pbh;
-            if(x >= cw) break;
-            double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
-            await ctx.FillRectAsync(x, y, wfw - 1, ch - y * 2);
-        }
+            // Render beat markers
+            if(Player.File != null) {
+                await ctx.BeginPathAsync();
+                await ctx.SetStrokeStyleAsync("#888");
+                Player.BeatMarkers.ForEach(async beatMarker => {
+                    double x = beatMarker.X / tempoFactor + cw2 - pbh;
+                    if(x >= 0 && x < cw) {
+                        await ctx.MoveToAsync(x, 0);
+                        await ctx.LineToAsync(x, ch);
+                    }
+                });
+                await ctx.StrokeAsync();
 
-        // Render beat markers
-        if(Player.File != null) {
-            await ctx.BeginPathAsync();
-            await ctx.SetStrokeStyleAsync("#888");
-            Player.BeatMarkers.ForEach(async beatMarker => {
-                double x = beatMarker.X / tempoFactor + cw2 - pbh;
-                if(x >= 0 && x < cw) {
+                // Render downbeat marker
+                await ctx.BeginPathAsync();
+                await ctx.SetStrokeStyleAsync("#2ef");
+                await ctx.MoveToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, 0);
+                await ctx.LineToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, ch);
+                await ctx.StrokeAsync();
+            }
+
+            // Render loop
+            if(Player.Loop.Enabled) {
+                double x1 = Player.Loop.Start * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+                double x2 = Player.Loop.End * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+
+                if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
+                    await ctx.SetFillStyleAsync(CssColor + "55");
+                    await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
+                }
+            }
+
+            // Render Cue Points
+            const int heightHack = 12;
+            await ctx.SetStrokeStyleAsync("#f92");
+            foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
+                double p = 2; // Padding
+                double x = cp.Position * Player.SecondsToPosX / tempoFactor + cw2 - pbh + 0.5; // FIXME: Again with +0.5 ??? Why?
+
+                var textMetrics = await ctx.MeasureTextAsync(cp.Name);
+                if(x >= -textMetrics.Width && x < cw) {
+                    await ctx.BeginPathAsync();
+
+                    await ctx.SetFillStyleAsync("#f92");
+                    await ctx.FillRectAsync(x, p, textMetrics.Width + 4 * p, heightHack + p);
+                    await ctx.SetFillStyleAsync("#000");
+                    await ctx.FillTextAsync(cp.Name, x + p, 10 + p);
+
                     await ctx.MoveToAsync(x, 0);
                     await ctx.LineToAsync(x, ch);
+                    await ctx.StrokeAsync();
                 }
-            });
-            await ctx.StrokeAsync();
-
-            // Render downbeat marker
-            await ctx.BeginPathAsync();
-            await ctx.SetStrokeStyleAsync("#2ef");
-            await ctx.MoveToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, 0);
-            await ctx.LineToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, ch);
-            await ctx.StrokeAsync();
-        }
-
-        // Render loop
-        if(Player.Loop.Enabled) {
-            double x1 = Player.Loop.Start * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
-            double x2 = Player.Loop.End * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
-
-            if(x1 >= 0 || x1 <= cw || x2 >= 0 || x2 <= cw) { // Render the loop if it's partially visible
-                await ctx.SetFillStyleAsync(CssColor + "55");
-                await ctx.FillRectAsync(x1, 0, x2 - x1, ch);
-            }
-        }
-
-        // Render Cue Points
-        const int heightHack = 12;
-        await ctx.SetStrokeStyleAsync("#f92");
-        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
-            double p = 2; // Padding
-            double x = cp.Position * Player.SecondsToPosX / tempoFactor + cw2 - pbh + 0.5; // FIXME: Again with +0.5 ??? Why?
-
-            var textMetrics = await ctx.MeasureTextAsync(cp.Name);
-            if(x >= -textMetrics.Width && x < cw) {
-                await ctx.BeginPathAsync();
-
-                await ctx.SetFillStyleAsync("#f92");
-                await ctx.FillRectAsync(x, p, textMetrics.Width + 4 * p, heightHack + p);
-                await ctx.SetFillStyleAsync("#000");
-                await ctx.FillTextAsync(cp.Name, x + p, 10 + p);
-
-                await ctx.MoveToAsync(x, 0);
-                await ctx.LineToAsync(x, ch);
-                await ctx.StrokeAsync();
             }
         }
 
