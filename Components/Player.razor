@@ -559,6 +559,7 @@
     private (BASSError Error, string Message) CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
 
+        // Master Stream
         masterHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
@@ -569,20 +570,29 @@
         BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(masterHandle);
         isMono = channelInfo.chans == 1;
 
+        // Reverse support Stream
         streamHandle = BassFx.BASS_FX_ReverseCreate(masterHandle, 30, BASSFlag.BASS_FX_FREESOURCE | BASSFlag.BASS_STREAM_DECODE);
         Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(streamHandle));
 
+        // Gain Control
+        gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
+
+        // Tempo Control
         tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
                                                                | BASSFlag.BASS_STREAM_DECODE
                                                                | BASSFlag.BASS_FX_FREESOURCE);
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
 
+        // Eq Control
         eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
 
+        // Pitch Control
         pitchHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
@@ -613,17 +623,12 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_StreamAddChannel));
 
-
             float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
             r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
         }
         masterSplitterHandle = splitterStreams[0];
-
-        gainHandle = Bass.BASS_ChannelSetFX(masterSplitterHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
-        bassErrorCode = Bass.BASS_ErrorGetCode();
-        if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
 
         SetAudioMatrixVolume();
 
