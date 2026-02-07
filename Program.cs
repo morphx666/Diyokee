@@ -84,11 +84,7 @@ internal class Program {
         if(!app.Environment.IsDevelopment()) {
             app.UseExceptionHandler("/Error", createScopeForErrors: true);
             app.UseHsts();
-            if(File.Exists(Settings.CertFile)) {
-                app.UseHttpsRedirection();
-            }
         }
-
         if(File.Exists(Settings.CertFile)) app.UseHttpsRedirection();
 
         app.UseAntiforgery();
