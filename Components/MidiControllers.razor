@@ -124,7 +124,7 @@
     </div>
 }
 
-    @code {
+@code {
     private MidiControllerProfile selectedProfile = default!;
     private bool isListening = false;
     private object listeningSection = null!;
@@ -133,7 +133,7 @@
     private MidiControllerProfile.MidiMapping mapping = new();
     private bool isEditingName = false;
 
-    private BASS_MIDI_DEVICEINFO[] MidiDevices => BassMidi.BASS_MIDI_InGetGeviceInfos();
+    private BASS_MIDI_DEVICEINFO[] MidiDevices => MidiTools.GetMidiDevices();
     private string SelectedProfileName {
         get => selectedProfile?.Name ?? string.Empty;
         set {

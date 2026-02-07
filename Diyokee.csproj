@@ -27,17 +27,17 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AspNetCore.SassCompiler" Version="1.96.0" />
+		<PackageReference Include="AspNetCore.SassCompiler" Version="1.97.1" />
 		<PackageReference Include="Blazor.Extensions.Canvas" Version="1.1.1" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.1" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.2">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.1" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-		<PackageReference Include="radio42.Bass.Net.core" Version="2.4.17.8" />
-		<PackageReference Include="System.Drawing.Common" Version="10.0.1" />
+		<PackageReference Include="radio42.Bass.Net.core" Version="2.4.18" />
+		<PackageReference Include="System.Drawing.Common" Version="10.0.2" />
 		<PackageReference Include="TagLibSharp" Version="2.3.0" />
 	</ItemGroup>
 

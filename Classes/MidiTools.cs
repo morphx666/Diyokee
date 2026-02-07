@@ -137,7 +137,7 @@ namespace Diyokee {
             };
 
             // TODO: Handle multiple MIDI devices - should we listen to all devices or just a specific one?
-            BASS_MIDI_DEVICEINFO[] midiDevices = BassMidi.BASS_MIDI_InGetGeviceInfos();
+            BASS_MIDI_DEVICEINFO[] midiDevices = GetMidiDevices();
             int deviceIndex = midiDevices.ToList().FindIndex(d => d.name == Program.Settings.MidiDeviceName);
             if(deviceIndex != -1) {
                 if(!midiDevices[deviceIndex].IsInitialized) {
@@ -152,7 +152,7 @@ namespace Diyokee {
 
             Bass.BASS_StreamFree(midiStream);
 
-            BASS_MIDI_DEVICEINFO[] midiDevices = BassMidi.BASS_MIDI_InGetGeviceInfos();
+            BASS_MIDI_DEVICEINFO[] midiDevices = GetMidiDevices();
             int deviceIndex = midiDevices.ToList().FindIndex(d => d.name == Program.Settings.MidiDeviceName);
             if(deviceIndex != -1) {
                 if(midiDevices[deviceIndex].IsInitialized) {
@@ -160,6 +160,16 @@ namespace Diyokee {
                     BassMidi.BASS_MIDI_InFree(deviceIndex);
                 }
             }
+        }
+
+        internal static BASS_MIDI_DEVICEINFO[] GetMidiDevices() {
+            int inMidiDevicesCount = BassMidi.BASS_MIDI_InGetDeviceInfos();
+            BASS_MIDI_DEVICEINFO[] midiDevices = new BASS_MIDI_DEVICEINFO[inMidiDevicesCount];
+            for(int i = 0; i < inMidiDevicesCount; i++) {
+                midiDevices[i] = BassMidi.BASS_MIDI_InGetDeviceInfo(i);
+
+            }
+            return midiDevices;
         }
     }
 }
