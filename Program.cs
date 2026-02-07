@@ -110,21 +110,21 @@ internal class Program {
             autoStart = false;
 #endif
 
+            string line = new('—', 57 + Settings.WebHostUrl.Length);
+            Logger.LogInformation(
+                $"""
+
+                    {line}
+                    You may now open your browser and navigate to: {Settings.WebHostUrl}
+                    {line}
+
+                """);
+
             if(autoStart && Settings.WebHostUrl != "") {
                 Process.Start(new ProcessStartInfo {
                     FileName = Settings.WebHostUrl,
                     UseShellExecute = true
                 });
-            } else {
-                string line = new('—', 57 + Settings.WebHostUrl.Length);
-                Logger.LogInformation(
-                    $"""
-
-                    {line}
-                        You may now open your browser and navigate to: {Settings.WebHostUrl}
-                    {line}
-
-                    """);
             }
         });
 
