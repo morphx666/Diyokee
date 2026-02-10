@@ -48,11 +48,11 @@ The whole mouse support has been rewritten and now works much better
 ## Nightly Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-02-02
-Linux|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-02-02
-Linux|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-02-02
-MacOS|x64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-02-02
-MacOS|Arm64|Working[^2]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-02-02
+Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-02-10
+Linux|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-02-10
+Linux|Arm64|Working]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-02-10
+MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-02-10
+MacOS|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-02-10
 
 ## Acknowledgments
 
@@ -65,10 +65,6 @@ This project wouldn't have been possible without the following:
 
 ![Alt](https://repobeats.axiom.co/api/embed/c2c1360a9361b0aa67fab23ec95bcf536a4421b4.svg "Repobeats analytics image")
 
-[^1]: File attributes may be lost when unzipping the app under Linux-like systems, including macOS.  
-Use `chmod +x` to set the executable bit on the `diyokee-server` binary.
-
-[^2]: Before running the program, open a Terminal and change to the directory where you unzipped the file (usually `~/Downloads/diyokee-osx-x64`).  
-Next, set the executable attribute on the `pre-run.sh` file: `chmod +x pre-run.sh`.  
-Then, run the script: `./pre-run.sh`.  
-Now, you can launch the app by double-clicking the `Diyokee-server` file in the Finder or by running `./Diyokee-server` in the Terminal.
+[^1]: Before running the program, open a Terminal and change to the directory where you unzipped the file (usually `~/Downloads/diyokee-osx-x64`).  
+Next, run the script: `./pre-run.sh`.  
+Now, you can launch the app by double-clicking the `Diyokee-server` file in the Finder or by running `./Diyokee-server` from the Terminal.
