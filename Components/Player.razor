@@ -614,7 +614,7 @@
 
         splitterStreams.Clear();
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(MinimalMode ? streamHandle : tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(splitterHandle));
