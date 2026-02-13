@@ -30,13 +30,14 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
   ![image](https://github.com/user-attachments/assets/7c2dbdbd-50ed-4b91-b639-5a5c2206ab96)
 
 ## Notable missing features and known bugs
+- Pitch/key adjustments don't seem to work on platforms other than Windows
+- Accessing shared folders from Linux/macOS appears to be broken - you can still manually type/paste the folder path, but the file browser is lacking support to detect such sources
 - A fancy screen for remote connections to the stream
 - The settings dialog does not yet support streaming configuration
 - Searching is quite limited and a bit buggy
 - Song Key detection is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
 - Making changes to the Audio Matrix, the MIDI profiles or changing the MIDI controller requires restarting the application
-- Movable dialogs are now disabled as they break support for mouse sensitive UI controls (see Known Issues regarding mouse support)
 - ...and many more
 
 ## Known issues
