@@ -152,7 +152,7 @@ namespace FFTLib {
             }
 
             public static ComplexDouble[] FromDouble(double[] values) {
-                return (from d in values select ComplexDouble.FromDouble(d)).ToArray();
+                return (from d in values select FromDouble(d)).ToArray();
             }
 
             public override string ToString() {

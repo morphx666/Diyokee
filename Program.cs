@@ -148,7 +148,7 @@ internal class Program {
         var devices = Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice).ToList();
         for(int i = 0; i < devices.Count; i++) {
             AudioDevice device = devices[i];
-            int bassDeviceIndex = Program.GetDeviceIndexByName(device.Name);
+            int bassDeviceIndex = GetDeviceIndexByName(device.Name);
             bool r = Bass.BASS_SetDevice(bassDeviceIndex);
             if(!r || Bass.BASS_ErrorGetCode() != BASSError.BASS_OK) {
                 Logger.LogError($"Failed to set BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");

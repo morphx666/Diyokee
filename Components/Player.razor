@@ -593,12 +593,12 @@
             if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
 
             // Eq Control
-            eqHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
+            eqHandle = Bass.BASS_ChannelSetFX(tempoHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(eqHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(eqHandle));
 
             // Pitch Control
-            pitchHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
+            pitchHandle = Bass.BASS_ChannelSetFX(tempoHandle, BASSFXType.BASS_FX_BFX_PITCHSHIFT, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
             pitch.fPitchShift = 0;
@@ -607,14 +607,14 @@
 
             // Resonant Filter Control
             InitResonantFilter();
-            int dspHandle = Bass.BASS_ChannelSetDSP(streamHandle, dspResonantFilter, IntPtr.Zero, 0);
+            int dspHandle = Bass.BASS_ChannelSetDSP(tempoHandle, dspResonantFilter, IntPtr.Zero, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(dspHandle));
         }
 
         splitterStreams.Clear();
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(streamHandle, BASSFlag.BASS_STREAM_DECODE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(splitterHandle));
