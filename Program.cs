@@ -24,6 +24,8 @@ internal class Program {
         Directory.SetCurrentDirectory(workingDirectory);
 #endif
 
+        if(args.Length > 0 && ProcessArguments(args, workingDirectory)) return;
+
         Settings = await Diyokee.Settings.Load();
         MidiControllersProfiles = await MidiControllerProfile.LoadAll();
         AutoSave();
@@ -125,6 +127,49 @@ internal class Program {
         });
 
         app.Run();
+    }
+
+    private static bool ProcessArguments(string[] args, string workingDirectory) {
+        foreach(string arg in args) {
+            switch(arg) {
+                case "--help":
+                case "-h":
+                    Console.WriteLine("Usage: Diyokee [options]");
+                    Console.WriteLine("Options:");
+                    Console.WriteLine("  --help, -h       Show this help message");
+                    Console.WriteLine("  --version, -v    Show version information");
+                    Console.WriteLine("  --info           Show version information about the files in the working directory");
+                    return true;
+                case "--version":
+                case "-v":
+                    string[] ignore = ["microsoft.", "system.", "diyokee", "mono."];
+                    List<(string FileName, string FileVerson)> versions = [];
+                    versions.Add(("Diyokee", typeof(Program).Assembly.GetName().Version?.ToString() ?? "N/A"));
+
+                    FileInfo[] files = new DirectoryInfo(workingDirectory).GetFiles();
+                    foreach(FileInfo file in files.Where(f => !ignore.Any(f.Name.ToLower().Contains)).OrderBy(f => f.Name)) {
+                        try {
+                            FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(file.FullName);
+                            string? ver = fvi.ProductVersion == "" ? fvi.FileVersion : fvi.ProductVersion;
+                            if(ver != null) {
+                                if(ver.IndexOf("+") > 0) ver = ver.Split("+")[0];
+                                versions.Add((file.Name, ver));
+                            }
+                        } catch { }
+                    }
+
+                    int maxNameLength = versions.Max(v => v.FileName.Length) + 2;
+                    foreach((string FileName, string FileVerson) in versions) {
+                        Console.WriteLine($"{FileName}:{" ".PadRight(maxNameLength - FileName.Length)} {FileVerson}");
+                    }
+                    return true;
+                default:
+                    Console.WriteLine($"Unknown argument: {arg}");
+                    return false;
+            }
+        }
+
+        return false;
     }
 
     private static void AutoSave() { // FIXME: This is just... wrong... 
@@ -233,7 +278,7 @@ internal class Program {
 
         Bass.BASS_PluginLoadDirectory(workingDirectory);
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
-        
+
         SetupDevice(Settings.Audio.MainOutputDevice);
         SetupDevice(Settings.Audio.MonitorDevice, false);
 
