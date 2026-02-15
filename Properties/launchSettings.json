@@ -8,19 +8,6 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       },
       "applicationUrl": "https://xfx.no-ip.org:5001/",
-      "dotnetRunMessages": true,
-    },
-    "watch": {
-      "commandName": "Project",
-      "commandLineArgs": "watch run",
-      "launchBrowser": true,
-      "launchUrl": "https://xfx.no-ip.org:5001/",
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "hotReloadEnabled": true,
-      "hotReloadProfile": "aspnetcore",
-      "applicationUrl": "https://xfx.no-ip.org:5001",
       "dotnetRunMessages": true
     },
     "IIS Express": {
@@ -29,6 +16,17 @@
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
+    },
+    "http": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "launchUrl": "http://localhost:5001/",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "http://localhost:5001/",
+      "dotnetRunMessages": true,
+      "sqlDebugging": false
     }
   },
   "iisSettings": {
