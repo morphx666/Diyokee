@@ -1114,19 +1114,28 @@
             float fb_lp = res_lp + res_lp / (1.0f - cut_lp);
             float fb_hp = res_hp + res_hp / (1.0f - cut_hp);
 
+            // Limit feedback to prevent excessive resonance and clipping
+            fb_lp = Math.Min(fb_lp, 4.0f);
+            fb_hp = Math.Min(fb_hp, 4.0f);
+
+            // Calculate gain compensation to prevent clipping in lowpass mode
+            float gain_compensation_lp = 1.0f / (1.0f + fb_lp * 0.5f);
+            float gain_compensation_hp = 1.0f / (1.0f + fb_hp * 0.5f);
+            float gain_compensation = res < 0.5f ? gain_compensation_lp : gain_compensation_hp;
+
             for(int i = 0; i < len; i += step) {
                 n1_l += cut_lp * (input[i] - n1_l + fb_lp * (n1_l - n2_l));
                 n2_l += cut_lp * (n1_l - n2_l);
                 n3_l += cut_hp * (input[i] - n3_l + fb_hp * (n3_l - n4_l));
                 n4_l += cut_hp * (n3_l - n4_l);
-                result[i] = n2_l - n4_l;
+                result[i] = (n2_l - n4_l) * 0 * gain_compensation; // Disabled for now
 
                 if(isMono) continue;
                 n1_r += cut_lp * (input[i + 1] - n1_r + fb_lp * (n1_r - n2_r));
                 n2_r += cut_lp * (n1_r - n2_r);
                 n3_r += cut_hp * (input[i + 1] - n3_r + fb_hp * (n3_r - n4_r));
                 n4_r += cut_hp * (n3_r - n4_r);
-                result[i + 1] = n2_r - n4_r;
+                result[i + 1] = (n2_r - n4_r) * 0 * gain_compensation; // Disabled for now
             }
 
             Marshal.Copy(result, 0, buffer, len);

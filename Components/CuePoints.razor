@@ -82,5 +82,7 @@
 
         await cache.SaveChangesAsync();
         await cache.DisposeAsync();
+
+        await InvokeAsync(StateHasChanged);
     }
 }
