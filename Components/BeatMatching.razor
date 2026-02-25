@@ -43,11 +43,19 @@
                     await Task.Delay(delay);
 
                     if(waveform1 != null && player1 != null) {
-                        waveform1.PlaybackHead = player1.PlaybackHead;
+                        if(waveform1.IsMouseDown) {
+                            player1.PlaybackHead = waveform1.PlaybackHead;
+                        } else {
+                            waveform1.PlaybackHead = player1.PlaybackHead;
+                        }
                         await waveform1.Refresh();
                     }
                     if(waveform2 != null && player2 != null) {
-                        waveform2.PlaybackHead = player2.PlaybackHead;
+                        if(waveform2.IsMouseDown) {
+                            player2.PlaybackHead = waveform2.PlaybackHead;
+                        } else {
+                            waveform2.PlaybackHead = player2.PlaybackHead;
+                        }
                         await waveform2.Refresh();
                     }
                 }

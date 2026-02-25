@@ -248,6 +248,13 @@
 
     public long PlaybackHead {
         get => waveform?.PlaybackHead ?? 0;
+        set {
+            if(waveform != null) {
+                long pos = value * waveformStepLength / WaveformBarWidth;
+                splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
+                                                                                           | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
+            }
+        }
     }
 
     public bool InBeat { get; set; } = false;
@@ -389,7 +396,7 @@
         await faderTempo!.SetValue(faderValue, true);
     }
 
-    private async void SyncKeyToOtherPlayer() {
+    private async void SyncKeyToOtherPlayer() { // FIXME: This needs to accept a list of other players if we ever want to support more than 2 players
         if(OtherPlayer?.File == null || File.Key == string.Empty || OtherPlayer.File.Key == string.Empty) return;
 
         var otherPlayerKey = keyTools.ToMidiNote(OtherPlayer.AdjustedKey);
