@@ -4,8 +4,8 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyVersion>2025.11.12.4062</AssemblyVersion>
-		<FileVersion>2025.11.12.4062</FileVersion>
+		<AssemblyVersion>2026.3.6.4068</AssemblyVersion>
+		<FileVersion>2026.3.6.4068</FileVersion>
 		<Title>Diyokee</Title>
 		<UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
 	</PropertyGroup>
@@ -82,8 +82,8 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<None Update="Data\cache.db">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		<None Update="Data\Empty DB\cache.db">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 		<None Update="README.md">
 		  <Pack>True</Pack>

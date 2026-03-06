@@ -367,7 +367,6 @@ Components/**/*.css
 secrets.json
 settings*.json
 !/bass/**
-.editorconfig
 PrepareReleases/
 MonitorChannels/
 publish.bat

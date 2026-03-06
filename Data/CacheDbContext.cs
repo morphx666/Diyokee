@@ -7,10 +7,10 @@ namespace Diyokee.Data {
         public DbSet<DFile> Files { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) {
-            string connectionString = Configuration.GetConnectionString("CacheDB") ?? "Data Source=.\\Data\\cache.db";
-            string[] tokens = connectionString.Split('=');
-            tokens[1] = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, connectionString);
-            optionsBuilder.UseSqlite(string.Join("=", tokens));
+            string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string dbFilePath = Path.Combine(baseDirectory, "Data", "cache.db");
+            string connectionString = $"Data Source={dbFilePath}";
+            optionsBuilder.UseSqlite(connectionString);
         }
     }
 }
