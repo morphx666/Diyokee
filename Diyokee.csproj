@@ -4,8 +4,8 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyVersion>2026.3.6.4068</AssemblyVersion>
-		<FileVersion>2026.3.6.4068</FileVersion>
+		<AssemblyVersion>2026.3.12.4070</AssemblyVersion>
+		<FileVersion>2026.3.12.4070</FileVersion>
 		<Title>Diyokee</Title>
 		<UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
 	</PropertyGroup>
@@ -29,16 +29,16 @@
 	<ItemGroup>
 		<PackageReference Include="AspNetCore.SassCompiler" Version="1.97.1" />
 		<PackageReference Include="Blazor.Extensions.Canvas" Version="1.1.1" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.3" />
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
+		<PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.4" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.3" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.4" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-		<PackageReference Include="radio42.Bass.Net.core" Version="2.4.18" />
-		<PackageReference Include="System.Drawing.Common" Version="10.0.3" />
+		<PackageReference Include="System.Drawing.Common" Version="10.0.4" />
 		<PackageReference Include="TagLibSharp" Version="2.3.0" />
+		<PackageReference Include="Un4seen.Bass" Version="2.4.18.2" />
 	</ItemGroup>
 
 	<ItemGroup>
