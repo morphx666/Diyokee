@@ -43,7 +43,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 ## Known issues
 - Making changes to a file with the Track Properties dialog can cause duplicates in the database, which will crash the program
 - ~~Mouse support (scrolling/dragging) still needs to be improved~~  
-The whole mouse support has been rewritten and now works much better
+The whole mouse support has been rewritten and works much better now
 - The code needs to be cleaned up before adding new features, especially in the Player component
   
 ## Nightly Releases
