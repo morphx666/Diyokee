@@ -177,6 +177,8 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="recalculate" @onclick="ReCalcKey"><i class="fa-solid fa-arrow-rotate-right"></i></div>
             </div>
         </div>
 
@@ -312,6 +314,19 @@
 
     private async void ReCalcDownbeat() {
         File.DownbeatAt = FilesComponent.CalcDownbeat(File);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void ReCalcKey() {
+        await Task.Run(() => {
+            int handle = Un4seen.Bass.Bass.BASS_StreamCreateFile(File.Filename, 0, 0, Un4seen.Bass.BASSFlag.BASS_STREAM_DECODE
+                                                                                      | Un4seen.Bass.BASSFlag.BASS_SAMPLE_MONO
+                                                                                      | Un4seen.Bass.BASSFlag.BASS_STREAM_PRESCAN);
+            if(handle != 0) {
+                File.Key = Krumhansl_Schmuckler.DetectKey(handle, selectedNotation);
+                Un4seen.Bass.Bass.BASS_StreamFree(handle);
+            }
+        });
         await InvokeAsync(StateHasChanged);
     }
 

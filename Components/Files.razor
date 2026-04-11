@@ -283,8 +283,7 @@
                 if(bpm <= 0) bpm = CalcBpm(file, handle);
                 if(bpm > 0) file.BPM = bpm;
 
-                // TODO: Implement key finding algorithm, such as Krumhansl-Schmuckler
-                //Console.WriteLine($"{file.Artist} - {file.Title}: {Krumhansl_Schmuckler.DetectKey(handle)}");
+                if(file.Key == "") file.Key = Krumhansl_Schmuckler.DetectKey(handle, Program.Settings.KeyNotation);
 
                 file.DownbeatAt = CalcDownbeat(file, handle);
                 BassFx.BASS_FX_BPM_Free(handle);
