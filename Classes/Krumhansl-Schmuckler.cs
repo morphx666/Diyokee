@@ -1,116 +1,116 @@
-﻿using static FFTLib.FFT;
-using Un4seen.Bass;
-
-// FIXME: This is not working!
+﻿using Un4seen.Bass;
 
 // https://github.com/Corentin-Lcs/music-key-finder/tree/main/src
-// https://dsp.stackexchange.com/questions/93745/can-the-constant-q-transform-be-implemented-more-efficiently-using-an-fft
+// Krumhansl, C.L. "Cognitive Foundations of Musical Pitch", 1990
+
+// https://rnhart.net/articles/key-finding/
 
 namespace Diyokee {
     public class Krumhansl_Schmuckler {
-        private static double[] majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
-        private static double[] minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
-        private static string[] chromaLabels = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+        // Krumhansl-Schmuckler key-finding profiles (C=0, C#=1, ..., B=11)
+        private static readonly double[] majorProfile = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+        private static readonly double[] minorProfile = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
 
-        public static string DetectKey(int handle) {
+        // Maps chroma index (C=0, C#=1, ..., B=11) to KeyTools.NotationToKeysMap index
+        private static readonly int[] minorKeyMap = [8, 22, 12, 2, 16, 6, 20, 10, 0, 14, 4, 18];
+        private static readonly int[] majorKeyMap = [15, 5, 19, 9, 23, 13, 3, 17, 7, 21, 11, 1];
+
+        private const double C1_FREQ = 32.703;    // C1 reference frequency in Hz
+        private const double MIN_FREQ = 65.0;     // Lower bound (~C2)
+        private const double MAX_FREQ = 2100.0;   // Upper bound (~C7)
+        private const int FFT_SIZE = 16384;
+        private const int FFT_HALF = FFT_SIZE / 2;
+
+        public static string DetectKey(int handle, KeyTools.Notations notation) {
             Bass.BASS_ChannelSetPosition(handle, 0, BASSMode.BASS_POS_BYTE);
-            BASS_CHANNELINFO channel_info = Bass.BASS_ChannelGetInfo(handle);
+            BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(handle);
+            int sampleRate = channelInfo.freq;
 
-            int samplingRate = channel_info.freq;
-            int segmentLength = 10 * samplingRate;
-            Int16 maxValue = Int16.MaxValue;
-            Int16[] buffer = new Int16[segmentLength];
-            int fftSize = (int)FFTSizeConstants.FFTs16384;
-            int fftLen = fftSize / 2;
-            ComplexDouble[] fftOutput = new ComplexDouble[fftSize];
+            double[] chromagram = new double[12];
 
-            double[] cqtResult = new double[12];
+            // Precompute FFT bin to pitch class mapping
+            int minBin = Math.Max(1, (int)Math.Ceiling(MIN_FREQ * FFT_SIZE / sampleRate));
+            int maxBin = Math.Min(FFT_HALF - 1, (int)Math.Floor(MAX_FREQ * FFT_SIZE / sampleRate));
 
-            double[] fftWindowValues = GetWindowValues((FFTSizeConstants)fftSize, FFTWindowConstants.Hanning);
-            //double fftWindowSum = GetWindowSum((FFTSizeConstants)fftSize, FFTWindowConstants.Hanning);
-
-            while(true) {
-                if(Bass.BASS_ChannelGetData(handle, buffer, buffer.Length) <= 0) break;
-
-                double[] doubleBuffer = new double[buffer.Length];
-                for(int i = 0; i < buffer.Length; i++) {
-                    int windowIndex = (int)Math.Floor((double)i / buffer.Length * fftSize);
-                    doubleBuffer[i] = (double)buffer[i] / maxValue * fftWindowValues[windowIndex];
-                }
-
-                FourierTransform(fftSize, doubleBuffer, fftOutput, false);
-
-                int cqtIndex = 0;
-                for(int bin = 0; bin < 12; bin++) {
-                    double binStart = bin * segmentLength;
-                    double binEnd = (bin + 1) * segmentLength;
-                    ComplexDouble binSum = new();
-
-                    for(int i = 0; i < fftLen; i++) {
-                        double frequency =  binStart + (i * (binEnd - binStart) / fftLen);
-                        double omega = 2.0 * Math.PI * frequency / samplingRate;
-                        binSum += fftOutput[i] * ComplexDouble.Pow(Math.E, new(0, -omega * i));
-                    }
-                    cqtResult[cqtIndex++] += binSum.Power(); // / fftSize;
-                }
+            int[] binPitchClass = new int[FFT_HALF];
+            for(int k = minBin; k <= maxBin; k++) {
+                double freq = (double)k * sampleRate / FFT_SIZE;
+                int pitchClass = (int)Math.Round(12.0 * Math.Log2(freq / C1_FREQ)) % 12;
+                if(pitchClass < 0) pitchClass += 12;
+                binPitchClass[k] = pitchClass;
             }
 
-            double max = cqtResult.Max();
-            cqtResult = [.. cqtResult.Select(x => x / max)];
+            // Process audio using BASS's built-in FFT (Hanning-windowed)
+            float[] fftData = new float[FFT_HALF];
+            int segmentCount = 0;
 
-            double[] majorCorrelation = new double[12];
-            double[] minorCorrelation = new double[12];
+            while(Bass.BASS_ChannelGetData(handle, fftData, (int)BASSData.BASS_DATA_FFT16384) > 0) {
+                for(int k = minBin; k <= maxBin; k++) {
+                    chromagram[binPitchClass[k]] += fftData[k];
+                }
+                segmentCount++;
+            }
+
+            if(segmentCount == 0) return "";
+
+            // Normalize chromagram
+            double maxChroma = chromagram.Max();
+            if(maxChroma > 0) {
+                for(int i = 0; i < 12; i++) chromagram[i] /= maxChroma;
+            }
+
+            // Correlate with K-S profiles for all 12 possible root notes
+            double bestCorrelation = double.MinValue;
+            int bestChromaIndex = 0;
+            bool bestIsMajor = true;
 
             for(int i = 0; i < 12; i++) {
-                majorCorrelation[i] = PearsonCorrelation(cqtResult, RollRight(majorProfile, i));
-                minorCorrelation[i] = PearsonCorrelation(cqtResult, RollRight(minorProfile, i));
-            }
+                double majorCorr = PearsonCorrelation(chromagram, Rotate(majorProfile, i));
+                double minorCorr = PearsonCorrelation(chromagram, Rotate(minorProfile, i));
 
-            double majorMax = majorCorrelation.Max();
-            double minorMax = minorCorrelation.Max();
-            if(majorMax > minorMax) {
-                int majorIndex = Array.IndexOf(majorCorrelation, majorMax);
-                return chromaLabels[majorIndex] + " Major";
-            } else if(minorMax > majorMax) {
-                int minorIndex = Array.IndexOf(minorCorrelation, minorMax);
-                return chromaLabels[minorIndex] + " Minor";
-            } else {
-                return "Ambiguous";
-            }
-        }
-
-        private static double[] RollRight(double[] values, int times) {
-            double[] rolled = [.. values];
-
-            for(int i = 0; i < times; i++) {
-                double last = rolled[^1];
-                for(int j = rolled.Length - 1; j > 0; j--) {
-                    rolled[j] = rolled[j - 1];
+                if(majorCorr > bestCorrelation) {
+                    bestCorrelation = majorCorr;
+                    bestChromaIndex = i;
+                    bestIsMajor = true;
                 }
-                rolled[0] = last;
+                if(minorCorr > bestCorrelation) {
+                    bestCorrelation = minorCorr;
+                    bestChromaIndex = i;
+                    bestIsMajor = false;
+                }
             }
 
-            return rolled;
+            int keyIndex = bestIsMajor ? majorKeyMap[bestChromaIndex] : minorKeyMap[bestChromaIndex];
+            return KeyTools.NotationToKeysMap[notation][keyIndex];
         }
 
-        private static double PearsonCorrelation(double[] cqtResult, double[] profile) {
-            double meanCqt = cqtResult.Average();
-            double meanProfile = profile.Average();
+        /// <summary>
+        /// Rotates the profile array so that the tonic weight aligns with the given chroma index.
+        /// </summary>
+        private static double[] Rotate(double[] values, int positions) {
+            int n = values.Length;
+            double[] rotated = new double[n];
+            for(int i = 0; i < n; i++) {
+                rotated[i] = values[(i - positions + n) % n];
+            }
+            return rotated;
+        }
+
+        private static double PearsonCorrelation(double[] x, double[] y) {
+            double meanX = x.Average();
+            double meanY = y.Average();
             double numerator = 0;
-            double denominatorCqt = 0;
-            double denominatorProfile = 0;
-            for(int i = 0; i < cqtResult.Length; i++) {
-                double diffCqt = cqtResult[i] - meanCqt;
-                double diffProfile = profile[i] - meanProfile;
-                numerator += diffCqt * diffProfile;
-                denominatorCqt += diffCqt * diffCqt;
-                denominatorProfile += diffProfile * diffProfile;
+            double denomX = 0;
+            double denomY = 0;
+            for(int i = 0; i < x.Length; i++) {
+                double dx = x[i] - meanX;
+                double dy = y[i] - meanY;
+                numerator += dx * dy;
+                denomX += dx * dx;
+                denomY += dy * dy;
             }
-            if(denominatorCqt == 0 || denominatorProfile == 0) {
-                return 0;
-            } else {
-                return numerator / Math.Sqrt(denominatorCqt * denominatorProfile);
-            }
+            if(denomX == 0 || denomY == 0) return 0;
+            return numerator / Math.Sqrt(denomX * denomY);
         }
     }
 }

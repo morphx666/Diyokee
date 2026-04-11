@@ -12,6 +12,10 @@
         left: 0 !important;
         width: fit-content !important;
     }
+
+    ::deep #key {
+        width: auto;
+    }
 }
 
 .bpm-container {
@@ -26,22 +30,22 @@
             width: 3ch;
         }
     }
+}
 
-    .recalculate {
-        margin-left: 0.5rem;
-        opacity: 0.7;
-        white-space: nowrap;
+.recalculate {
+    margin-left: 0.5rem;
+    opacity: 0.7;
+    white-space: nowrap;
 
-        padding-right: 0.5rem;
-        &:not(:last-child) {
-            border-right: 1px solid var(--panel-background-color-light);
-        }
+    padding-right: 0.5rem;
+    &:not(:last-child) {
+        border-right: 1px solid var(--panel-background-color-light);
+    }
 
-        transition: opacity 250ms;
+    transition: opacity 250ms;
 
-        &:hover {
-            opacity: 1;
-        }
+    &:hover {
+        opacity: 1;
     }
 }
 
