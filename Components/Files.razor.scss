@@ -89,6 +89,14 @@
                     height: 1.5rem;
                     filter: invert(1) brightness(0.7);
                 }
+
+                span.colorized-key {
+                    display: inline-block;
+                    text-align: center;
+                    color: #000;
+                    border-radius: 0.25rem;
+                    width: 100%;
+                }
             }
 
             .column {

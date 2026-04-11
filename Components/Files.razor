@@ -35,7 +35,11 @@
                 <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Genre</div>
                 <div class="@(GetFileClasses(file))" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.Album</div>
                 <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@file.BPM.ToString("N2")</div>
-                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@keyTools.ConvertTo(file.Key, Program.Settings.KeyNotation)</div>
+                <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">
+                    <span class="colorized-key" style="background-color: @keyTools.GetKeyColor(file.Key)">
+                        @keyTools.ConvertTo(file.Key, Program.Settings.KeyNotation)
+                    </span>
+                </div>
                 <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@(file.HasReplayGain? @file.ReplayGain.ToString("N2") : "")</div>
                 <div class="@(GetFileClasses(file)) right mono" @ondblclick="OpenTrackProperties" @onmousedown="() => ChangeSelectedFile(file)" draggable="true" ondragstart="event.dataTransfer.setData('', event.target.id);">@DFile.FormatTime(file.Duration)</div>
             }

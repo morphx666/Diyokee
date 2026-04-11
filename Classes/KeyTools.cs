@@ -3,6 +3,8 @@
 // https://www.dcode.fr/music-notes
 // Re Octave in midi keys: https://computermusicresource.com/midikeys.html
 
+using System.Drawing;
+
 namespace Diyokee {
     public class KeyTools {
         public enum Notations {
@@ -17,6 +19,12 @@ namespace Diyokee {
         }
 
         public Notations Notation { get; set; } = Notations.CamelotKey;
+
+        private static readonly string[] keyColors = [
+            "#56f0d8", "#08ecc8", "#7cf1a8", "#3eed7f", "#acf487", "#84f150","#e7d89f","#dec872","#fdbda5","#fe9e7b","#fcadb5","#fe8692",
+            "#fca8ca", "#fe7fb2", "#f1a9e3", "#ed80d7", "#dcb2fc", "#cc8dff","#bccbfc","#9db4ff","#8ce3f8","#56d7f8","#55efef","#05eaea",
+
+        ];
 
         private static readonly string[] camelot = [
             "1A", "1B", "2A", "2B", "3A", "3B", "4A", "4B", "5A", "5B", "6A", "6B",
@@ -153,6 +161,13 @@ namespace Diyokee {
             var newKeyIndex = CalculateNewKeyIndex(keyIndex, step, toggleScale);
 
             return NotationToKeysMap[notation][newKeyIndex];
+        }
+
+        public string GetKeyColor(string key) {
+            if(!IsValidKey(key)) return "#000000";
+            var keyIndex = GetKeyIndex(key);
+            if(!IsValidKeyIndex(keyIndex)) return "#000000";
+            return keyColors[keyIndex % WHEEL_KEYS_NUM];
         }
 
         private static bool IsValidKey(string key) {

@@ -3,6 +3,8 @@
 // https://github.com/Corentin-Lcs/music-key-finder/tree/main/src
 // Krumhansl, C.L. "Cognitive Foundations of Musical Pitch", 1990
 
+// https://rnhart.net/articles/key-finding/
+
 namespace Diyokee {
     public class Krumhansl_Schmuckler {
         // Krumhansl-Schmuckler key-finding profiles (C=0, C#=1, ..., B=11)
