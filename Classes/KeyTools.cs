@@ -20,8 +20,8 @@ namespace Diyokee {
 
         // https://mixedinkey.com/wp-content/uploads/2018/05/camalote-wheel-001.png
         private static readonly string[] keyColors = [
-            "#56f0d8", "#08ecc8", "#7cf1a8", "#3eed7f", "#acf487", "#84f150","#e7d89f","#dec872","#fdbda5","#fe9e7b","#fcadb5","#fe8692",
-            "#fca8ca", "#fe7fb2", "#f1a9e3", "#ed80d7", "#dcb2fc", "#cc8dff","#bccbfc","#9db4ff","#8ce3f8","#56d7f8","#55efef","#05eaea",
+            "#56f0d8", "#08ecc8", "#7cf1a8", "#3eed7f", "#acf487", "#84f150", "#e7d89f", "#dec872", "#fdbda5", "#fe9e7b", "#fcadb5", "#fe8692",
+            "#fca8ca", "#fe7fb2", "#f1a9e3", "#ed80d7", "#dcb2fc", "#cc8dff", "#bccbfc", "#9db4ff", "#8ce3f8", "#56d7f8", "#55efef", "#05eaea",
 
         ];
 
@@ -166,7 +166,7 @@ namespace Diyokee {
             if(!IsValidKey(key)) return "#000000";
             var keyIndex = GetKeyIndex(key);
             if(!IsValidKeyIndex(keyIndex)) return "#000000";
-            return keyColors[keyIndex % WHEEL_KEYS_NUM];
+            return keyColors[keyIndex % (WHEEL_KEYS_NUM * 2)];
         }
 
         private static bool IsValidKey(string key) {
@@ -187,7 +187,7 @@ namespace Diyokee {
             return (stepChange + currentKeyIndex) % (WHEEL_KEYS_NUM * 2);
         }
 
-        private static int GetKeyIndex(string key) {
+        public static int GetKeyIndex(string key) {
             string normalizedKey = Normalize(key);
 
             Notations notation = GetNotation(normalizedKey);

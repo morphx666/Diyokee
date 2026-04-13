@@ -554,7 +554,7 @@
         SetupEQ();
         faderTempo?.SetValue(0.5);
         if(Loop.Enabled) ToggleLoop();
-        ApplyFilterValues(FilterControls.FiltersValues);
+        if(!MinimalMode) ApplyFilterValues(FilterControls.FiltersValues);
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, Files.TimeSlice);

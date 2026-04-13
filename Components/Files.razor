@@ -228,7 +228,7 @@
             if(sortIndex == 2) files = files.OrderBy(f => f.Genre).ToList();
             if(sortIndex == 3) files = files.OrderBy(f => f.Album).ToList();
             if(sortIndex == 4) files = files.OrderBy(f => f.BPM).ToList();
-            if(sortIndex == 5) files = files.OrderBy(f => f.Key).ToList();
+            if(sortIndex == 5) files = files.OrderBy(f => KeyTools.GetKeyIndex(f.Key)).ToList();
             if(sortIndex == 6) files = files.OrderBy(f => f.ReplayGain).ToList();
             if(sortIndex == 7) files = files.OrderBy(f => f.Duration).ToList();
         } else {
@@ -237,7 +237,7 @@
             if(sortIndex == 2) files = files.OrderByDescending(f => f.Genre).ToList();
             if(sortIndex == 3) files = files.OrderByDescending(f => f.Album).ToList();
             if(sortIndex == 4) files = files.OrderByDescending(f => f.BPM).ToList();
-            if(sortIndex == 5) files = files.OrderByDescending(f => f.Key).ToList();
+            if(sortIndex == 5) files = files.OrderByDescending(f => KeyTools.GetKeyIndex(f.Key)).ToList();
             if(sortIndex == 6) files = files.OrderByDescending(f => f.ReplayGain).ToList();
             if(sortIndex == 7) files = files.OrderByDescending(f => f.Duration).ToList();
         }
