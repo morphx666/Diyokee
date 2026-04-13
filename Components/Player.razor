@@ -1,5 +1,4 @@
-﻿@using System.Drawing
-@using Blazor.Extensions
+﻿@using Blazor.Extensions
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
@@ -555,6 +554,7 @@
         SetupEQ();
         faderTempo?.SetValue(0.5);
         if(Loop.Enabled) ToggleLoop();
+        ApplyFilterValues(FilterControls.FiltersValues);
 
         trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
         waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, Files.TimeSlice);
@@ -610,6 +610,7 @@
             if(pitchHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(pitchHandle));
             pitch.fPitchShift = 0;
             pitch.fSemitones = 0;
+            //pitch.lFFTsize = 2048;
             pitch.lOsamp = 32;
 
             // Resonant Filter Control
@@ -1126,11 +1127,11 @@
             fb_hp = Math.Min(fb_hp, 4.0f);
 
             // Calculate gain compensation to prevent clipping in lowpass mode
-            float gain_compensation_lp = 1.0f / (1.0f + fb_lp * 0.5f);
-            float gain_compensation_hp = 1.0f / (1.0f + fb_hp * 0.5f);
+            float gain_compensation_lp = 1.0f / (1.0f + fb_lp * 0.25f);
+            float gain_compensation_hp = 1.0f / (1.0f + fb_hp * 0.25f);
 
             // Disabled for now
-            float gain_compensation = 1; //res < 0.5f ? gain_compensation_lp : gain_compensation_hp;
+            float gain_compensation = res < 0.5f ? gain_compensation_lp : gain_compensation_hp;
 
             for(int i = 0; i < len; i += step) {
                 n1_l += cut_lp * (input[i] - n1_l + fb_lp * (n1_l - n2_l));

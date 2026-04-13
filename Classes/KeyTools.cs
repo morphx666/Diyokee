@@ -3,8 +3,6 @@
 // https://www.dcode.fr/music-notes
 // Re Octave in midi keys: https://computermusicresource.com/midikeys.html
 
-using System.Drawing;
-
 namespace Diyokee {
     public class KeyTools {
         public enum Notations {
