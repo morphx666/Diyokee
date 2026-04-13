@@ -31,6 +31,29 @@ h5 {
     display: flex;
     flex-direction: column;
     margin-left: 2rem;
+
+    .vu-colors {
+        display: flex;
+        flex-direction: row;
+        gap: 1rem;
+
+        label {
+            min-width: unset;
+            padding: 0;
+            white-space: nowrap;
+        }
+
+        input {
+            margin: 0;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            min-width: 5ch;
+        }
+    }
 }
 
 ::deep input.as-number {

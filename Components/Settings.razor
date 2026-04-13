@@ -1,5 +1,6 @@
 ﻿@using Diyokee.Data
 @using Microsoft.EntityFrameworkCore
+@using System.Globalization
 @using Un4seen.Bass
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 
@@ -114,6 +115,19 @@
             </div>
         }
 
+        <div class="sub-header">
+            <h5>VU Meters Colors</h5>
+
+            <div class="vu-colors">
+                @foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-") && !e.Key.Contains("-alt"))) {
+                    <div class="field">
+                        <label for=@vuColor.Key>@(textInfo.ToTitleCase(vuColor.Key.Replace("vu-", "").Replace("color", "").Replace("-", " ")))</label>
+                        <input type="color" class="color" id=@vuColor.Key @bind=@settings.UIElements[vuColor.Key] />
+                    </div>
+                }
+            </div>
+        </div>
+
         <div class="header">
             <h3>Midi</h3>
             <MidiControllers
@@ -156,6 +170,8 @@
 
     private static readonly int[] TempoRanges = new int[] { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 25, 35, 50, 100 };
 
+    TextInfo textInfo = CultureInfo.CurrentCulture.TextInfo;
+
     public void Close() {
         dialog.Close();
 
@@ -165,6 +181,10 @@
     public async void Save() {
         foreach(var mp in Program.MidiControllersProfiles) {
             File.Delete(MidiControllerProfile.GetProfilePath(mp.Name));
+        }
+
+        foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-color-") && !e.Key.Contains("-alt") && !e.Key.Contains("-off"))) {
+            settings.UIElements[vuColor.Key + "-alt"] = vuColor.Value + (vuColor.Value.Length > 4 ? "88" : "8"); // Add alpha to create the alternate color for peak levels
         }
 
         Program.Settings = settings;
