@@ -277,7 +277,9 @@ internal class Program {
         }
 
         Bass.BASS_PluginLoadDirectory(workingDirectory);
+
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
+        // Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_BUFFER, 30);
 
         SetupDevice(Settings.Audio.MainOutputDevice);
         SetupDevice(Settings.Audio.MonitorDevice, false);
