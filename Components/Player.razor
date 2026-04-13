@@ -1101,6 +1101,11 @@
         const float hiPassMinFreq = 0.03f;
 
         dspResonantFilter = new((int handle, int channel, IntPtr buffer, int length, IntPtr user) => {
+            float res = (float)FilterControls.FiltersValues.Color;
+            if(res == 0.5f) return;
+            if(res >= lowPassMaxFreq) res = lowPassMaxFreq;
+            if(res <= hiPassMinFreq) res = hiPassMinFreq;
+
             int len = length / (2 * step);
             float[] input = new float[len];
             float[] result = new float[len];
@@ -1108,11 +1113,6 @@
 
             float n1_l = 0, n2_l = 0, n3_l = 0, n4_l = 0;
             float n1_r = 0, n2_r = 0, n3_r = 0, n4_r = 0;
-
-            float res = (float)FilterControls.FiltersValues.Color;
-            if(res == 0.5f) return;
-            if(res >= lowPassMaxFreq) res = lowPassMaxFreq;
-            if(res <= hiPassMinFreq) res = hiPassMinFreq;
 
             float cut_lp = res < 0.5f ? Math.Max(hiPassMinFreq, lowPassMaxFreq - 2.0f * (0.5f - res)) : lowPassMaxFreq; // cutoff frequency of the lowpass [0..1)
             float cut_hp = res > 0.5 ? Math.Min(2.0f * (res - 0.5f), lowPassMaxFreq) : hiPassMinFreq; // cutoff frequency of the hipass [0..1)
@@ -1133,7 +1133,7 @@
             // Disabled for now
             float gain_compensation = res < 0.5f ? gain_compensation_lp : gain_compensation_hp;
 
-            for(int i = 0; i < len; i += step) {
+            for(int i = 0; i < len; i += step) { // FIXME: No multichannel (+2) support for now; only mono and stereo are supported
                 n1_l += cut_lp * (input[i] - n1_l + fb_lp * (n1_l - n2_l));
                 n2_l += cut_lp * (n1_l - n2_l);
                 n3_l += cut_hp * (input[i] - n3_l + fb_hp * (n3_l - n4_l));
