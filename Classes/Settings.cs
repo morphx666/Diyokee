@@ -65,7 +65,17 @@ namespace Diyokee {
         [JsonProperty("ui")]
         public Dictionary<string, string> UIElements { get; set; } = new() {
             ["main-resize-horizontal"] = "400",
-            ["main-resize-vertical"] = "420"
+            ["main-resize-vertical"] = "420",
+            ["vu-color-off"] = "#444",
+            ["vu-color-low"] = "#0c0",
+            ["vu-color-mid"] = "#cc0",
+            ["vu-color-hi"] = "#c00",
+            ["vu-color-low-alt"] = "#0c08",
+            ["vu-color-mid-alt"] = "#cc08",
+            ["vu-color-hi-alt"] = "#c008",
+            ["vu-beat1-color"] = "#f88",
+            ["vu-beat2-color"] = "#08f",
+            ["vu-beat-border-color"] = "#111"
         };
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();

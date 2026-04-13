@@ -4,8 +4,8 @@
 		<TargetFramework>net10.0</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
-		<AssemblyVersion>2026.4.13.4126</AssemblyVersion>
-		<FileVersion>2026.4.13.4126</FileVersion>
+		<AssemblyVersion>2026.4.13.4144</AssemblyVersion>
+		<FileVersion>2026.4.13.4144</FileVersion>
 		<Title>Diyokee</Title>
 		<UserSecretsId>70947a19-85b3-4af1-a847-0e8170eba51a</UserSecretsId>
 	</PropertyGroup>

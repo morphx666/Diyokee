@@ -65,44 +65,44 @@
 
         await ctx.ClearRectAsync(0, 0, cw, ch);
 
-        double max_ch = (ch-10) - ((ch-10) % vuSize);
+        double max_ch = (ch - 10) - ((ch - 10) % vuSize);
         for(int y = (int)((ch - max_ch) / 2); y < max_ch; y += vuSize) {
             double levelReal2y = (1 - levelReal) * max_ch;
             double levelMonitor2y = (1 - levelMonitor) * max_ch;
 
             if(y < levelMonitor2y) {
                 if(y < levelReal2y) {
-                    await ctx.SetFillStyleAsync("#444");
+                    await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-off"]);
                 } else {
                     if(y < ch2 * 0.3) {
-                        await ctx.SetFillStyleAsync("#c008");
+                        await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-hi-alt"]);
                     } else if(y < ch2) {
-                        await ctx.SetFillStyleAsync("#cc08");
+                        await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-mid-alt"]);
                     } else {
-                        await ctx.SetFillStyleAsync("#0c08");
+                        await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-low-alt"]);
                     }
                 }
             } else if(y < ch2 * 0.3) {
-                await ctx.SetFillStyleAsync("#c00");
+                await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-hi"]);
             } else if(y < ch2) {
-                await ctx.SetFillStyleAsync("#cc0");
+                await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-mid"]);
             } else {
-                await ctx.SetFillStyleAsync("#0c0");
+                await ctx.SetFillStyleAsync(Program.Settings.UIElements["vu-color-low"]);
             }
 
             await ctx.FillRectAsync(0, y, cw, vuSize - 1);
         }
 
-        await ctx.SetStrokeStyleAsync("#111");
+        await ctx.SetStrokeStyleAsync(Program.Settings.UIElements["vu-beat-border-color"]);
 
         await ctx.BeginPathAsync();
-        await ctx.SetFillStyleAsync(beat == 1 ? "#f88" : "#444");
+        await ctx.SetFillStyleAsync(beat == 1 ? Program.Settings.UIElements["vu-beat1-color"] : Program.Settings.UIElements["vu-color-off"]);
         await ctx.ArcAsync(4, ch - 3, 3, 0, 2 * Math.PI);
         await ctx.FillAsync();
         await ctx.StrokeAsync();
 
         await ctx.BeginPathAsync();
-        await ctx.SetFillStyleAsync(beat == 2 ? "#08f" : "#444");
+        await ctx.SetFillStyleAsync(beat == 2 ? Program.Settings.UIElements["vu-beat2-color"] : Program.Settings.UIElements["vu-color-off"]);
         await ctx.ArcAsync(cw - 4, ch - 3, 3, 0, 2 * Math.PI);
         await ctx.FillAsync();
         await ctx.StrokeAsync();
