@@ -105,7 +105,7 @@
                     <InputText class="as-number"
                                id="@($"player{playerObj.index}-color")"
                                @bind-value="playerObj.player.Color" />
-                    <div class="color" style="background-color: @(playerObj.player.Color)"></div>
+                    <input type="color" class="color" id="@($"player{playerObj.index}-color-picker")" @bind-value="playerObj.player.Color" />
                 </div>
                 <div class="field">
                     <label for="@($"player{playerObj.index}-reverse-controls")">Reverse Controls Order</label>
