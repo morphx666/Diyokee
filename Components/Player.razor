@@ -563,6 +563,8 @@
             while(!SetParameters()) await Task.Delay(1000);
             //queueAutoSnap = !IsPlaying; // FIXME: Uh???
 
+            waveformFull?.ForceReRender();
+
             await InvokeAsync(StateHasChanged);
         });
     }
@@ -574,7 +576,8 @@
         masterHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
-                                                                        | BASSFlag.BASS_SAMPLE_FLOAT);
+                                                                        | BASSFlag.BASS_SAMPLE_FLOAT
+                                                                        | (Program.Settings.Playback.EnablePrescan ? BASSFlag.BASS_STREAM_PRESCAN : BASSFlag.BASS_DEFAULT));
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(masterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(masterHandle));
 

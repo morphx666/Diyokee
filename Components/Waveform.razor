@@ -58,6 +58,11 @@
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
 
+    public void ForceReRender() {
+        forceReRender = true;
+        StateHasChanged();
+    }
+
     public async Task Refresh() {
         if(lastPlaybackHead != PlaybackHead) {
             lastPlaybackHead = PlaybackHead;
@@ -167,16 +172,20 @@
         }
 
         // Render Cue Points
-        await ctx.SetStrokeStyleAsync("#f92");
-        foreach(CuePoint cp in Player.File?.CuePoints ?? []) {
-            double x = cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
+        if(Player.File?.CuePoints.Count > 0) {
+            await ctx.SetStrokeStyleAsync("#f92");
+            foreach(CuePoint cp in Player.File.CuePoints) {
+                double x = cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
 
-            await ctx.MoveToAsync(x, 0);
-            await ctx.LineToAsync(x, ch);
+                await ctx.MoveToAsync(x, 0);
+                await ctx.LineToAsync(x, ch);
+            }
+            await ctx.StrokeAsync();
         }
-        await ctx.StrokeAsync();
 
         await ctx.EndBatchAsync();
+
+        forceReRender = false;
     }
 
     private async Task RenderWaveform() {
