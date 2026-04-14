@@ -58,9 +58,9 @@
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
 
-    public void ForceReRender() {
+    public async Task ForceReRender() {
         forceReRender = true;
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged);
     }
 
     public async Task Refresh() {

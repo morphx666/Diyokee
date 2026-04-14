@@ -563,9 +563,7 @@
             while(!SetParameters()) await Task.Delay(1000);
             //queueAutoSnap = !IsPlaying; // FIXME: Uh???
 
-            waveformFull?.ForceReRender();
-
-            await InvokeAsync(StateHasChanged);
+            await (waveformFull?.ForceReRender() ?? Task.CompletedTask);
         });
     }
 
