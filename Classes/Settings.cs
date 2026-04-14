@@ -45,6 +45,7 @@ namespace Diyokee {
             [JsonProperty("waveform-zoom")] public int WaveformZoom { get; set; } = 5;
             [JsonProperty("beatmatching-display")] public bool BeatmatchingDisplay { get; set; } = false;
             [JsonProperty("enable-track-prescan")] public bool EnablePrescan { get; set; } = false;
+            [JsonProperty("snap-to-downbeat-onload")] public bool SnapToDownBeatOnLoad { get; set; } = true;
         }
 
         public class PlayerSettings {

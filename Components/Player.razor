@@ -561,7 +561,11 @@
 
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);
-            //queueAutoSnap = !IsPlaying; // FIXME: Uh???
+
+            if(Program.Settings.Playback.SnapToDownBeatOnLoad) {
+                Bass.BASS_ChannelSetPosition(streamHandle, Bass.BASS_ChannelSeconds2Bytes(streamHandle, File.DownbeatAt), BASSMode.BASS_POS_BYTE | BASSMode.BASS_POS_DECODE);
+                queueAutoSnap = true;
+            }
 
             await (waveformFull?.ForceReRender() ?? Task.CompletedTask);
         });

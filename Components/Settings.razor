@@ -56,9 +56,14 @@
         </div>
 
         <div class="field">
-            <label for="sync-playback">Start playback in-sync with other player </label>
+            <label for="sync-playback">Start playback in-sync with other player</label>
             <InputCheckbox id="sync-playback" @bind-value="settings.Playback.SyncPlayback" />
             <span class="info" hidden="@(!settings.Playback.SyncPlayback)">(hold SHIFT to override)</span>
+        </div>
+
+        <div class="field">
+            <label for="snap-on-load">Snap to downbeat on load</label>
+            <InputCheckbox id="snap-on-load" @bind-value="settings.Playback.SnapToDownBeatOnLoad" />
         </div>
 
         <div class="field">
