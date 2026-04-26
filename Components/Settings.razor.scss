@@ -56,15 +56,22 @@ h5 {
     }
 }
 
-::deep input.as-number {
-    max-width: 5rem !important;
-}
-
 .color {
-    width: 1.74rem !important;
-    padding: 1px 2px !important;
+    width: calc(1.6rem + 2px) !important;
+    height: calc(1.6rem + 2px) !important;
+    padding: 0 !important;
     margin-left: 0.5rem;
     cursor: pointer;
+
+    /* Trying to match the color picker swatch between Chrome and Firefox (they both suck) */
+    &::-webkit-color-swatch-wrapper {
+        background-color: #808080;
+        padding: 1px;
+    }
+
+    &::-webkit-color-swatch {
+        border: none;
+    }
 }
 
 .eq-profile-info {
