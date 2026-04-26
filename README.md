@@ -1,7 +1,7 @@
 # Diyokee
 A work in progress, DJ mixing webapp with streaming support, where the UI runs on your browser.
 
-[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s5.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v2.mkv)
+[![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s6.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v2.mkv)
 <sup>*You will notice that while loading some tracks the UI freezes. This has been greatly improved in version 2025.11.11</sup>
 
 ## Basic usage
@@ -49,11 +49,11 @@ The whole mouse support has been rewritten and works much better now
 ## Nightly Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-03-05
-Linux|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-03-05
-Linux|Arm64|Working]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-03-05
-MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-03-05
-MacOS|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-03-05
+Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-04-14
+Linux|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-04-14
+Linux|Arm64|Working]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-04-14
+MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-04-14
+MacOS|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-04-14
 
 ## Acknowledgments
 
@@ -69,3 +69,8 @@ This project wouldn't have been possible without the following:
 [^1]: Before running the program, open a Terminal and change to the directory where you unzipped the file (usually `~/Downloads/diyokee-osx-x64`).  
 Next, run the script: `./pre-run.sh`.  
 Now, you can launch the app by double-clicking the `Diyokee-server` file in the Finder or by running `./Diyokee-server` from the Terminal.
+
+
+
+
+Is there anyone insterested in this? Hello!? Anyone?
