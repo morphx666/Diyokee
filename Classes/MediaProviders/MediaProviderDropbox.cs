@@ -48,14 +48,20 @@ public class MediaProviderDropbox : MediaProviderBase {
         return rel.Replace('/', Path.DirectorySeparatorChar);
     }
 
+    // The Dropbox SDK calls are async, but IMediaProvider exposes synchronous
+    // methods. Running the awaits via Task.Run moves them onto a thread-pool thread
+    // with no captured synchronization context, so blocking on the result here does
+    // not deadlock Blazor's renderer context (which it would otherwise capture).
     private List<Metadata> ListAll(string path, bool recursive) {
-        List<Metadata> entries = [];
-        ListFolderResult result = connection.Client.Files.ListFolderAsync(path, recursive).GetAwaiter().GetResult();
-        entries.AddRange(result.Entries);
-        while(result.HasMore) {
-            result = connection.Client.Files.ListFolderContinueAsync(result.Cursor).GetAwaiter().GetResult();
+        return Task.Run(async () => {
+            List<Metadata> entries = [];
+            ListFolderResult result = await connection.Client.Files.ListFolderAsync(path, recursive);
             entries.AddRange(result.Entries);
-        }
-        return entries;
+            while(result.HasMore) {
+                result = await connection.Client.Files.ListFolderContinueAsync(result.Cursor);
+                entries.AddRange(result.Entries);
+            }
+            return entries;
+        }).GetAwaiter().GetResult();
     }
 }

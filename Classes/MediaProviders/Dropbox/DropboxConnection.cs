@@ -78,7 +78,9 @@ public class DropboxConnection {
             }
         }
 
-        GetTemporaryLinkResult result = Client.Files.GetTemporaryLinkAsync(dropboxPath).GetAwaiter().GetResult();
+        // Run the async SDK call via Task.Run so blocking on the result does not
+        // deadlock a captured Blazor synchronization context (see ListAll).
+        GetTemporaryLinkResult result = Task.Run(() => Client.Files.GetTemporaryLinkAsync(dropboxPath)).GetAwaiter().GetResult();
         (string Url, long Size, DateTime Timestamp) entry = (result.Link, (long)result.Metadata.Size, DateTime.UtcNow);
         lock(linkLock) {
             linkCache[dropboxPath] = entry;

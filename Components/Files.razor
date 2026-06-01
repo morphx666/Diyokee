@@ -74,6 +74,7 @@
 @code {
     private List<DFile> files = [];
     private string lastRelativePath = "-";
+    private IMediaProvider? lastProvider = null;
     private string selectedFile = "";
     private Task analyzingTask = default!;
     private KeyTools keyTools = new();
@@ -429,6 +430,13 @@
     public override Task SetParametersAsync(ParameterView parameters) {
         parameters.SetParameterProperties(this);
 
+        // Root is represented by an empty relative path for every provider, so two
+        // different providers share the same "" root. Force a re-analyze when the
+        // provider itself changes so switching tabs at the root still refreshes.
+        if(lastProvider != Provider) {
+            lastProvider = Provider;
+            lastRelativePath = "-";
+        }
         SetRelativePath(RelativePath);
 
         return base.OnParametersSetAsync();
