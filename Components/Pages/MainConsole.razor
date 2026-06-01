@@ -283,8 +283,9 @@
                                             mp.InitialPath);
                 this.mediaProviders.Add(nmp);
             } else if(mp.Type == "dropbox") {
-                if(string.IsNullOrEmpty(mp.AppKey) || string.IsNullOrEmpty(mp.RefreshToken)) continue;
-                DropboxConnection conn = DropboxConnection.GetOrCreate(mp.Name, mp.AppKey, mp.RefreshToken, mp.RootDirectory);
+                string refreshToken = Diyokee.Secrets.Unprotect(mp.RefreshToken);
+                if(string.IsNullOrEmpty(DropboxOAuth.AppKey) || string.IsNullOrEmpty(refreshToken)) continue;
+                DropboxConnection conn = DropboxConnection.GetOrCreate(mp.Name, refreshToken, mp.RootDirectory);
                 MediaProviderDropbox nmp = new(mp.Name, conn, mp.InitialPath);
                 this.mediaProviders.Add(nmp);
             }

@@ -67,6 +67,8 @@ internal class Program {
 
         var app = builder.Build();
 
+        Diyokee.Secrets.Initialize(app.Services.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>());
+
         Logger = app.Logger;
         Logger.LogInformation("Setting up BASS...");
         InitBASS(workingDirectory);

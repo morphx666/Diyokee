@@ -12,30 +12,54 @@ public class DropboxConnection {
     private static readonly ConcurrentDictionary<string, DropboxConnection> connections = new();
 
     public string Name { get; }
-    public string AppKey { get; }
     public string BaseFolder { get; }
     public DropboxClient Client { get; }
 
     private readonly Dictionary<string, (string Url, long Size, DateTime Timestamp)> linkCache = [];
     private readonly Lock linkLock = new();
 
-    private DropboxConnection(string name, string appKey, string refreshToken, string? baseFolder) {
+    private DropboxConnection(string name, string refreshToken, string? baseFolder) {
         Name = name;
-        AppKey = appKey;
         BaseFolder = baseFolder ?? "";
-        Client = new DropboxClient(refreshToken, appKey);
+        Client = new DropboxClient(refreshToken, DropboxOAuth.AppKey);
     }
 
-    public static DropboxConnection GetOrCreate(string name, string appKey, string refreshToken, string baseFolder) {
+    public static DropboxConnection GetOrCreate(string name, string refreshToken, string baseFolder) {
         return connections.AddOrUpdate(name,
-            _ => new DropboxConnection(name, appKey, refreshToken, baseFolder),
-            (_, existing) => existing.AppKey == appKey && existing.BaseFolder == (baseFolder ?? "")
+            _ => new DropboxConnection(name, refreshToken, baseFolder),
+            (_, existing) => existing.BaseFolder == (baseFolder ?? "")
                                 ? existing
-                                : new DropboxConnection(name, appKey, refreshToken, baseFolder));
+                                : new DropboxConnection(name, refreshToken, baseFolder));
     }
 
     public static DropboxConnection? TryGet(string name) {
         return connections.TryGetValue(name, out DropboxConnection? c) ? c : null;
+    }
+
+    // Drops the cached connection for the named provider, if any. Used when the user
+    // revokes a Dropbox connection so the stale client is not reused.
+    public static void Remove(string name) {
+        connections.TryRemove(name, out _);
+    }
+
+    // Creates a standalone connection that is not added to the shared cache. Used by
+    // the folder browser, which needs to list the whole account (BaseFolder empty)
+    // without disturbing the live connection registered for a provider.
+    public static DropboxConnection CreateTransient(string refreshToken) {
+        return new DropboxConnection("", refreshToken, "");
+    }
+
+    // Lists the names of the immediate sub-folders of the given Dropbox API path
+    // (use "" for the account root). Folders are returned sorted by name.
+    public async Task<List<string>> ListFolders(string dropboxPath) {
+        List<string> folders = [];
+        ListFolderResult result = await Client.Files.ListFolderAsync(dropboxPath);
+        folders.AddRange(result.Entries.Where(e => e.IsFolder).Select(e => e.Name));
+        while(result.HasMore) {
+            result = await Client.Files.ListFolderContinueAsync(result.Cursor);
+            folders.AddRange(result.Entries.Where(e => e.IsFolder).Select(e => e.Name));
+        }
+        return [.. folders.OrderBy(n => n, StringComparer.OrdinalIgnoreCase)];
     }
 
     // Translates an OS-relative path (as used by the rest of the app) into a
