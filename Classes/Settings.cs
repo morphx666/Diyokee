@@ -17,6 +17,8 @@ namespace Diyokee {
             [JsonProperty("name")] public string Name { get; set; } = "Local";
             [JsonProperty("root-directory")] public string RootDirectory { get; set; } = "";
             [JsonProperty("initial-path")] public string InitialPath { get; set; } = "";
+            [JsonProperty("app-key")] public string AppKey { get; set; } = "";
+            [JsonProperty("refresh-token")] public string RefreshToken { get; set; } = "";
         }
 
         public class EncoderOptions {

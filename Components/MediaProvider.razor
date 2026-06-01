@@ -1,4 +1,5 @@
 ﻿@using Diyokee.MediaProviders
+@inject IJSRuntime JS
 
 <div class="container">
     <div class="field">
@@ -11,11 +12,47 @@
         <InputText id="local-media-name" @bind-value="@Provider.Name" />
     </div>
 
-    <div class="field">
-        <label for="local-media-location">Location</label>
-        <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
-        <button class="button-select-location" onclick="@OpenFolderBrowser"><i class="fa-solid fa-folder"></i></button>
-    </div>
+    @if(Provider.Type == "dropbox") {
+        <div class="field">
+            <label for="dropbox-app-key">App Key</label>
+            <InputText id="dropbox-app-key" @bind-value="@Provider.AppKey" />
+        </div>
+
+        <div class="field">
+            <label for="dropbox-folder">Folder</label>
+            <InputText id="dropbox-folder" @bind-value="@Provider.RootDirectory" placeholder="(root)" />
+        </div>
+
+        <div class="field">
+            <label>Status</label>
+            <span class="info">@(string.IsNullOrEmpty(Provider.RefreshToken) ? "Not connected" : "Connected")</span>
+            <button class="button-select-location" onclick="@Connect">
+                <i class="fa-brands fa-dropbox"></i> Connect
+            </button>
+        </div>
+
+        @if(awaitingCode) {
+            <div class="field">
+                <label for="dropbox-code">Code</label>
+                <InputText id="dropbox-code" @bind-value="@authCode" placeholder="Paste the code from Dropbox" />
+                <button class="button-select-location" onclick="@Finish">
+                    <i class="fa-solid fa-check"></i> Finish
+                </button>
+            </div>
+        }
+
+        @if(!string.IsNullOrEmpty(statusMessage)) {
+            <div class="field">
+                <span class="info">@statusMessage</span>
+            </div>
+        }
+    } else {
+        <div class="field">
+            <label for="local-media-location">Location</label>
+            <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
+            <button class="button-select-location" onclick="@OpenFolderBrowser"><i class="fa-solid fa-folder"></i></button>
+        </div>
+    }
 
     <button class="button-delete-provider" onclick="@OnDeleteProvider"><i class="fa-solid fa-circle-xmark"></i></button>
 </div>
@@ -34,7 +71,45 @@
 
     private FolderBrowser folderBrowser = null!;
 
+    private bool awaitingCode = false;
+    private string authCode = "";
+    private string statusMessage = "";
+
     private async Task OpenFolderBrowser() {
         await folderBrowser.Open();
+    }
+
+    // Starts the manual (no-redirect) PKCE flow: opens the Dropbox authorize page
+    // in a new tab and reveals the code-entry field. Dropbox shows the user an
+    // authorization code that they paste back and submit via Finish.
+    private async Task Connect() {
+        if(string.IsNullOrWhiteSpace(Provider.AppKey)) {
+            statusMessage = "Enter an App Key first.";
+            return;
+        }
+
+        string url = DropboxOAuth.BeginAuth(Provider.Name, Provider.AppKey);
+        awaitingCode = true;
+        statusMessage = "Approve access in the browser, then paste the code below.";
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    // Exchanges the pasted code for a refresh token and stores it on the provider
+    // (the dialog's clone), which is persisted when the user clicks Save.
+    private async Task Finish() {
+        if(string.IsNullOrWhiteSpace(authCode)) {
+            statusMessage = "Paste the code from Dropbox first.";
+            return;
+        }
+
+        try {
+            string refreshToken = await DropboxOAuth.CompleteAuth(Provider.Name, Provider.AppKey, authCode);
+            Provider.RefreshToken = refreshToken;
+            awaitingCode = false;
+            authCode = "";
+            statusMessage = "Connected. Click Save to keep this connection.";
+        } catch(Exception ex) {
+            statusMessage = $"Connection failed: {ex.Message}";
+        }
     }
 }

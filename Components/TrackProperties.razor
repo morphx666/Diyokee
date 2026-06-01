@@ -319,7 +319,7 @@
 
     private async void ReCalcKey() {
         await Task.Run(() => {
-            int handle = Un4seen.Bass.Bass.BASS_StreamCreateFile(File.Filename, 0, 0, Un4seen.Bass.BASSFlag.BASS_STREAM_DECODE
+            int handle = Diyokee.MediaProviders.BassStreamFactory.CreateStreamFile(File.Filename, 0, 0, Un4seen.Bass.BASSFlag.BASS_STREAM_DECODE
                                                                                       | Un4seen.Bass.BASSFlag.BASS_SAMPLE_MONO
                                                                                       | Un4seen.Bass.BASSFlag.BASS_STREAM_PRESCAN);
             if(handle != 0) {

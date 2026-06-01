@@ -275,12 +275,17 @@
         this.mediaProviders.Clear();
 
         foreach(Diyokee.Settings.MediaProvider mp in Program.Settings.MediaProviders) {
-            if(mp.Type == "local") { // We only support local/netshare paths for now
+            if(mp.Type == "local") {
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
                                                 ? MediaProviderLocal.DefaultDirectory
                                                 : mp.RootDirectory,
                                             mp.InitialPath);
+                this.mediaProviders.Add(nmp);
+            } else if(mp.Type == "dropbox") {
+                if(string.IsNullOrEmpty(mp.AppKey) || string.IsNullOrEmpty(mp.RefreshToken)) continue;
+                DropboxConnection conn = DropboxConnection.GetOrCreate(mp.Name, mp.AppKey, mp.RefreshToken, mp.RootDirectory);
+                MediaProviderDropbox nmp = new(mp.Name, conn, mp.InitialPath);
                 this.mediaProviders.Add(nmp);
             }
         }

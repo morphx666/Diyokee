@@ -1,6 +1,7 @@
 using Diyokee;
 using Diyokee.Components;
 using Diyokee.Data;
+using Diyokee.MediaProviders;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using Un4seen.Bass;

@@ -254,7 +254,10 @@
             file.Artist = "";
             string fileExtension = Path.GetExtension(file.Filename).ToLower();
             if(fileExtension != ".ac3") {
-                using(TagLib.File tlFile = TagLib.File.Create(file.Filename)) {
+                using TagLib.File? tlFile = BassStreamFactory.IsRemote(file.Filename)
+                                                ? DropboxConnection.CreateTagLibFile(file.Filename)
+                                                : TagLib.File.Create(file.Filename);
+                if(tlFile != null) {
                     file.Artist = tlFile.Tag.FirstPerformer ?? "";
                     file.Title = tlFile.Tag.Title ?? "";
                     file.Genre = tlFile.Tag.FirstGenre ?? "";
@@ -277,7 +280,7 @@
             // This is for files where only the title is present and it has been set to the file name
             if(file.Title.StartsWith(file.Artist)) file.Title = file.Title.Replace($"{file.Artist} - ", "").Trim();
 
-            int handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+            int handle = BassStreamFactory.CreateStreamFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
             BASSError bassErrorCode = Bass.BASS_ErrorGetCode();
             if(handle == 0 || bassErrorCode != BASSError.BASS_OK) {
                 file.IsValid = false;
@@ -318,7 +321,7 @@
     public float CalcBpm(DFile file, int fromHandle = -1) {
         int handle;
         if(fromHandle == -1) {
-            handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+            handle = BassStreamFactory.CreateStreamFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
         } else {
             handle = fromHandle;
         }
@@ -335,7 +338,7 @@
         double downbeatAt = -1;
         int handle;
         if(fromHandle == -1) {
-            handle = Bass.BASS_StreamCreateFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
+            handle = BassStreamFactory.CreateStreamFile(file.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_MONO | BASSFlag.BASS_STREAM_PRESCAN);
         } else {
             handle = fromHandle;
         }

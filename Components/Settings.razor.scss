@@ -109,4 +109,45 @@ h5 {
         margin-top: -0.5rem;
         cursor: pointer;
     }
+
+    .add-provider-menu {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+
+        .add-provider-dropdown {
+            position: absolute;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%);
+            margin-left: 0.5rem;
+            z-index: 10;
+
+            display: flex;
+            flex-direction: column;
+
+            background-color: var(--panel-background-color-dark-dark);
+            border: 1px solid var(--panel-background-color-light-light);
+            border-radius: 0.25rem;
+            overflow: hidden;
+
+            button {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                white-space: nowrap;
+
+                padding: 0.5rem 0.75rem;
+                color: var(--primary-light);
+                background: none;
+                border: none;
+                cursor: pointer;
+                text-align: left;
+
+                &:hover {
+                    background-color: var(--panel-background-color-light);
+                }
+            }
+        }
+    }
 }

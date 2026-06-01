@@ -2,6 +2,7 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
+@using Diyokee.MediaProviders
 @using System.Runtime.InteropServices
 @using Newtonsoft.Json
 @using System.ComponentModel
@@ -575,7 +576,7 @@
         BASSError bassErrorCode = BASSError.BASS_OK;
 
         // Master Stream
-        masterHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
+        masterHandle = BassStreamFactory.CreateStreamFile(File?.Filename ?? "", 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT
