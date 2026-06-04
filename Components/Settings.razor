@@ -38,7 +38,15 @@
                     Provider="provider"
                     OnDeleteProvider="@(() => DeleteProvider(provider))" />
             }
-            <button class="button-add-provider" onclick="@AddProvider"><i class="fa-solid fa-circle-plus"></i></button>
+            <div class="add-provider-menu">
+                <button class="button-add-provider" onclick="@ToggleAddMenu"><i class="fa-solid fa-circle-plus"></i></button>
+                @if(showAddMenu) {
+                    <div class="add-provider-dropdown">
+                        <button onclick="@(() => AddProvider("local"))"><i class="fa-solid fa-folder"></i> Local</button>
+                        <button onclick="@(() => AddProvider("dropbox"))"><i class="fa-brands fa-dropbox"></i> Dropbox</button>
+                    </div>
+                }
+            </div>
         </div>
     </div>
 
@@ -205,12 +213,25 @@
         settings.MediaProviders.Remove(provider);
     }
 
-    private void AddProvider() {
-        var newProvider = new Diyokee.Settings.MediaProvider() {
-                Type = "local",
-                Name = "New Local Provider",
-                RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
-            };
+    private bool showAddMenu = false;
+
+    private void ToggleAddMenu() {
+        showAddMenu = !showAddMenu;
+    }
+
+    private void AddProvider(string type) {
+        showAddMenu = false;
+        var newProvider = type == "dropbox"
+            ? new Diyokee.Settings.MediaProvider() {
+                  Type = "dropbox",
+                  Name = "New Dropbox Provider",
+                  RootDirectory = ""
+              }
+            : new Diyokee.Settings.MediaProvider() {
+                  Type = "local",
+                  Name = "New Local Provider",
+                  RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
+              };
         settings.MediaProviders.Add(newProvider);
     }
 
@@ -220,7 +241,7 @@
         using(CacheDbContext? context = await CacheDbContextFactory.CreateDbContextAsync()) {
             context?.Files
                .AsEnumerable()
-               .Where(f => !File.Exists(f.Filename))
+               .Where(f => !MediaProviders.BassStreamFactory.IsRemote(f.Filename) && !File.Exists(f.Filename))
                .ToList()
                .ForEach(f => {
                    context.Files.Remove(f);

@@ -1,6 +1,7 @@
 using Diyokee;
 using Diyokee.Components;
 using Diyokee.Data;
+using Diyokee.MediaProviders;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using Un4seen.Bass;
@@ -56,6 +57,7 @@ internal class Program {
         });
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.Services.AddServerSideBlazor();
+        builder.Services.AddScoped<UiBusyState>();
         builder.Services.AddSingleton<SessionState>();
 
 #if DEBUG
@@ -65,6 +67,8 @@ internal class Program {
         builder.Services.AddDbContextFactory<CacheDbContext>(options => options.UseSqlite(connectionString));
 
         var app = builder.Build();
+
+        Diyokee.Secrets.Initialize(app.Services.GetRequiredService<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>());
 
         Logger = app.Logger;
         Logger.LogInformation("Setting up BASS...");

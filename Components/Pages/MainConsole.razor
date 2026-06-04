@@ -80,7 +80,7 @@
                                 selectedMediaProvider = provider;
                                 // FIXME: Hopefully we can find an easier way to do this...
                                 selectedMediaProvider.InitialPath = Program.Settings.MediaProviders.Where(mp => mp.Name == provider.Name).First().InitialPath;
-                                SelectedFolderChanged(provider.RootPath);
+                                SelectedFolderChanged(string.Empty);
                                 shouldRender = true;
                             }">
                         @provider.Name
@@ -275,12 +275,18 @@
         this.mediaProviders.Clear();
 
         foreach(Diyokee.Settings.MediaProvider mp in Program.Settings.MediaProviders) {
-            if(mp.Type == "local") { // We only support local/netshare paths for now
+            if(mp.Type == "local") {
                 MediaProviderLocal nmp = new(mp.Name,
                                             string.IsNullOrEmpty(mp.RootDirectory)
                                                 ? MediaProviderLocal.DefaultDirectory
                                                 : mp.RootDirectory,
                                             mp.InitialPath);
+                this.mediaProviders.Add(nmp);
+            } else if(mp.Type == "dropbox") {
+                string refreshToken = Diyokee.Secrets.Unprotect(mp.RefreshToken);
+                if(string.IsNullOrEmpty(DropboxOAuth.AppKey) || string.IsNullOrEmpty(refreshToken)) continue;
+                DropboxConnection conn = DropboxConnection.GetOrCreate(mp.Name, refreshToken, mp.RootDirectory);
+                MediaProviderDropbox nmp = new(mp.Name, conn, mp.InitialPath);
                 this.mediaProviders.Add(nmp);
             }
         }

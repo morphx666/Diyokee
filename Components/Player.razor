@@ -1,10 +1,7 @@
-﻿@using Blazor.Extensions
-@using Blazor.Extensions.Canvas
-@using Blazor.Extensions.Canvas.Canvas2D
-@using Diyokee
+﻿@using Diyokee
+@using Diyokee.MediaProviders
 @using System.Runtime.InteropServices
 @using Newtonsoft.Json
-@using System.ComponentModel
 @using System.Threading.Tasks
 @using Un4seen.Bass
 @using Un4seen.Bass.AddOn.Fx
@@ -13,6 +10,7 @@
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 @inject SessionState session
+@inject UiBusyState Busy
 
 <div class="player-container"
      @ondragover="HandleDragOver"
@@ -575,7 +573,7 @@
         BASSError bassErrorCode = BASSError.BASS_OK;
 
         // Master Stream
-        masterHandle = Bass.BASS_StreamCreateFile(File?.Filename, 0, 0, BASSFlag.BASS_STREAM_DECODE
+        masterHandle = BassStreamFactory.CreateStreamFile(File?.Filename ?? "", 0, 0, BASSFlag.BASS_STREAM_DECODE
                                                                         | BASSFlag.BASS_STREAM_PRESCAN
                                                                         | BASSFlag.BASS_ASYNCFILE
                                                                         | BASSFlag.BASS_SAMPLE_FLOAT
@@ -1341,8 +1339,8 @@
         Task.Run(MonitorBeats);
     }
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
 
         if(File != null) {
             if(lastFilename == File.Filename) {
@@ -1352,7 +1350,12 @@
 
                 lastFilename = File.Filename;
                 Stop(false);
-                LoadFile();
+
+                using(Busy.Begin()) {
+                    await InvokeAsync(StateHasChanged);
+                    await Task.Yield();
+                    LoadFile();
+                }
 
                 SavePlayerState();
             }

@@ -96,7 +96,7 @@
         if(Provider == null) return;
 
         previousRelativePath = RelativePath;
-        directoryExists = Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
+        directoryExists = BassStreamFactory.IsRemote(Provider.RootPath) || Directory.Exists(Path.Combine(Provider.RootPath, RelativePath));
 
         Task.Run(async () => {
             await Task.Delay(50); // Just for good measure

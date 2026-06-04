@@ -1,0 +1,112 @@
+@using Diyokee.MediaProviders
+
+<ModalDialog
+    @ref="dialog"
+    Title="Select Dropbox Folder"
+    Buttons="buttons"
+    Movable=true>
+
+    <div class="scroller">
+        @RenderNode("", "Dropbox", 0)
+    </div>
+
+    <div class="selected-folder ellipsis">@DisplaySelected &nbsp;</div>
+</ModalDialog>
+
+@code {
+    private ModalDialog dialog = null!;
+
+    private ModalDialog.Button[] buttons => new[] {
+        new ModalDialog.Button { Text = "Select", Class = "primary", Click = EventCallback.Factory.Create(this, Ok) },
+        new ModalDialog.Button { Text = "Cancel", Class = "secondary", Click = EventCallback.Factory.Create(this, Cancel) }
+    };
+
+    [Parameter]
+    public EventCallback<string> OnFolderSelected { get; set; }
+
+    private DropboxConnection? connection;
+    private readonly HashSet<string> expanded = [];
+    private readonly Dictionary<string, List<string>> children = [];
+    private string selected = "";
+
+    private string DisplaySelected => selected == "" ? "Dropbox (root)" : selected;
+
+    private RenderFragment RenderNode(string path, string name, int depth) =>
+        @<div class="container" style="margin-left: @(depth * 8)px">
+            <div class="entry">
+                <div @onclick="@(() => Toggle(path))">
+                    @if(expanded.Contains(path)) {
+                        <i class="fa-regular fa-square-minus"></i>
+                    } else {
+                        <i class="fa-regular fa-square-plus"></i>
+                    }
+                </div>
+                <div class="entry-name @(selected == path ? "selected" : "")"
+                     @onclick="@(() => selected = path)">
+                    <span>@name</span>
+                </div>
+            </div>
+            @if(expanded.Contains(path) && children.TryGetValue(path, out List<string>? kids)) {
+                @foreach(string child in kids) {
+                    string childPath = path == "" ? "/" + child : path + "/" + child;
+                    @RenderNode(childPath, child, depth + 1)
+                }
+            }
+        </div>;
+
+    public async Task Open(string refreshToken, string current) {
+        expanded.Clear();
+        children.Clear();
+        selected = Normalize(current);
+        connection = string.IsNullOrEmpty(refreshToken)
+            ? null
+            : DropboxConnection.CreateTransient(refreshToken);
+
+        await LoadChildren("");
+        expanded.Add("");
+
+        dialog.Open();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Toggle(string path) {
+        if(expanded.Contains(path)) {
+            expanded.Remove(path);
+            return;
+        }
+
+        await LoadChildren(path);
+        expanded.Add(path);
+    }
+
+    private async Task LoadChildren(string path) {
+        if(children.ContainsKey(path)) return;
+
+        if(connection == null) {
+            children[path] = [];
+            return;
+        }
+
+        try {
+            children[path] = await connection.ListFolders(path);
+        } catch {
+            children[path] = [];
+        }
+    }
+
+    // Converts a stored RootDirectory value (which may use OS separators and omit
+    // the leading slash) into a Dropbox API path; the account root maps to "".
+    private static string Normalize(string current) {
+        string p = (current ?? "").Replace('\\', '/').Trim('/');
+        return p == "" ? "" : "/" + p;
+    }
+
+    private void Cancel() {
+        dialog.Close();
+    }
+
+    private void Ok() {
+        OnFolderSelected.InvokeAsync(selected);
+        dialog.Save();
+    }
+}

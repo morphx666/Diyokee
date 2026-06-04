@@ -1,4 +1,5 @@
 ﻿@using Diyokee.MediaProviders
+@inject IJSRuntime JS
 
 <div class="container">
     <div class="field">
@@ -11,11 +12,61 @@
         <InputText id="local-media-name" @bind-value="@Provider.Name" />
     </div>
 
-    <div class="field">
-        <label for="local-media-location">Location</label>
-        <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
-        <button class="button-select-location" onclick="@OpenFolderBrowser"><i class="fa-solid fa-folder"></i></button>
-    </div>
+    @if(Provider.Type == "dropbox") {
+        bool connected = !string.IsNullOrEmpty(Provider.RefreshToken);
+
+        <div class="field">
+            <label>Status</label>
+            <span class="info">@(connected ? "Connected" : "Not connected")</span>
+        </div>
+
+        @if(!connected) {
+            <div class="field">
+                <label>Dropbox</label>
+                <button class="button-select-location" onclick="@Connect">
+                    <i class="fa-brands fa-dropbox"></i> Connect
+                </button>
+            </div>
+        } else {
+            <div class="field">
+                <label for="dropbox-folder">Folder</label>
+                <InputText id="dropbox-folder" @bind-value="@Provider.RootDirectory" placeholder="(root)" readonly />
+                <button class="button-select-location" onclick="@OpenDropboxBrowser"><i class="fa-solid fa-folder"></i></button>
+            </div>
+
+            <div class="field">
+                <label>Connection</label>
+                <button class="button-select-location" onclick="@Connect">
+                    <i class="fa-solid fa-rotate"></i> Re-authenticate
+                </button>
+                <button class="button-select-location" onclick="@Revoke">
+                    <i class="fa-solid fa-link-slash"></i> Revoke
+                </button>
+            </div>
+        }
+
+        @if(awaitingCode) {
+            <div class="field">
+                <label for="dropbox-code">Code</label>
+                <InputText id="dropbox-code" @bind-value="@authCode" placeholder="Paste the code from Dropbox" />
+                <button class="button-select-location" onclick="@Finish">
+                    <i class="fa-solid fa-check"></i> Finish
+                </button>
+            </div>
+        }
+
+        @if(!string.IsNullOrEmpty(statusMessage)) {
+            <div class="field">
+                <span class="info">@statusMessage</span>
+            </div>
+        }
+    } else {
+        <div class="field">
+            <label for="local-media-location">Location</label>
+            <InputText id="local-media-location" @bind-value="@Provider.RootDirectory" />
+            <button class="button-select-location" onclick="@OpenFolderBrowser"><i class="fa-solid fa-folder"></i></button>
+        </div>
+    }
 
     <button class="button-delete-provider" onclick="@OnDeleteProvider"><i class="fa-solid fa-circle-xmark"></i></button>
 </div>
@@ -23,6 +74,11 @@
 <FolderBrowser
     OnFolderSelected="@(folder => Provider.RootDirectory = folder)"
     @ref="folderBrowser"
+/>
+
+<DropboxFolderBrowser
+    OnFolderSelected="@(folder => Provider.RootDirectory = folder)"
+    @ref="dropboxBrowser"
 />
 
 @code {
@@ -33,8 +89,70 @@
     public EventCallback OnDeleteProvider { get; set; } = default!;
 
     private FolderBrowser folderBrowser = null!;
+    private DropboxFolderBrowser dropboxBrowser = null!;
+
+    private bool awaitingCode = false;
+    private string authCode = "";
+    private string statusMessage = "";
 
     private async Task OpenFolderBrowser() {
         await folderBrowser.Open();
+    }
+
+    // Opens the Dropbox folder tree so the user can pick the provider's root
+    // directory. Requires an established connection (a stored refresh token).
+    private async Task OpenDropboxBrowser() {
+        string token = Secrets.Unprotect(Provider.RefreshToken);
+        if(string.IsNullOrEmpty(token)) {
+            statusMessage = "Re-authenticate before selecting a folder.";
+            return;
+        }
+
+        await dropboxBrowser.Open(token, Provider.RootDirectory);
+    }
+
+    // Starts the manual (no-redirect) PKCE flow: opens the Dropbox authorize page
+    // in a new tab and reveals the code-entry field. Dropbox shows the user an
+    // authorization code that they paste back and submit via Finish.
+    private async Task Connect() {
+        if(string.IsNullOrWhiteSpace(DropboxOAuth.AppKey)) {
+            statusMessage = "The Dropbox App Key has not been configured in this build.";
+            return;
+        }
+
+        string url = DropboxOAuth.BeginAuth(Provider.Name);
+        awaitingCode = true;
+        statusMessage = "Approve access in the browser, then paste the code below.";
+        await JS.InvokeVoidAsync("open", url, "_blank");
+    }
+
+    // Exchanges the pasted code for a refresh token and stores it (encrypted) on the
+    // provider's clone, which is persisted when the user clicks Save.
+    private async Task Finish() {
+        if(string.IsNullOrWhiteSpace(authCode)) {
+            statusMessage = "Paste the code from Dropbox first.";
+            return;
+        }
+
+        try {
+            string refreshToken = await DropboxOAuth.CompleteAuth(Provider.Name, authCode);
+            Provider.RefreshToken = Secrets.Protect(refreshToken);
+            awaitingCode = false;
+            authCode = "";
+            statusMessage = "Connected. Click Save to keep this connection.";
+        } catch(Exception ex) {
+            statusMessage = $"Connection failed: {ex.Message}";
+        }
+    }
+
+    // Clears the stored credentials and drops any cached connection so the provider
+    // returns to the unauthenticated state. Persisted when the user clicks Save.
+    private void Revoke() {
+        Provider.RefreshToken = "";
+        Provider.RootDirectory = "";
+        DropboxConnection.Remove(Provider.Name);
+        awaitingCode = false;
+        authCode = "";
+        statusMessage = "Connection revoked. Click Save to apply.";
     }
 }
