@@ -10,6 +10,7 @@
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 @inject SessionState session
+@inject UiBusyState Busy
 
 <div class="player-container"
      @ondragover="HandleDragOver"
@@ -1338,8 +1339,8 @@
         Task.Run(MonitorBeats);
     }
 
-    protected override void OnParametersSet() {
-        base.OnParametersSet();
+    protected override async Task OnParametersSetAsync() {
+        await base.OnParametersSetAsync();
 
         if(File != null) {
             if(lastFilename == File.Filename) {
@@ -1349,7 +1350,12 @@
 
                 lastFilename = File.Filename;
                 Stop(false);
-                LoadFile();
+
+                using(Busy.Begin()) {
+                    await InvokeAsync(StateHasChanged);
+                    await Task.Yield();
+                    LoadFile();
+                }
 
                 SavePlayerState();
             }

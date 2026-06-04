@@ -75,6 +75,11 @@ body, html {
     background-color: var(--app-background-color);
 }
 
+.app-busy,
+.app-busy * {
+    cursor: wait !important;
+}
+
 .button-3d {
     border: 1px solid var(--black);
     background-color: var(--panel-background-color-dark-dark);

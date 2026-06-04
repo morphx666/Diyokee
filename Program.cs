@@ -57,6 +57,7 @@ internal class Program {
         });
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         builder.Services.AddServerSideBlazor();
+        builder.Services.AddScoped<UiBusyState>();
         builder.Services.AddSingleton<SessionState>();
 
 #if DEBUG
