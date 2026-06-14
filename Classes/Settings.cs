@@ -82,7 +82,7 @@ namespace Diyokee {
         };
         [JsonProperty("audio-settings")] public AudioSettings Audio { get; set; } = new();
         [JsonProperty("playback-settings")] public PlaybackSettings Playback { get; set; } = new();
-        [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = true;
+        [JsonProperty("auto-start-browser")] public bool AutoStartBrowser { get; set; } = false;
         [JsonProperty("midi-device-name")] public string MidiDeviceName { get; set; } = "";
         [JsonProperty("midi-profile-name")] public string MidiProfileName { get; set; } = "";
         [JsonProperty("key-notation")] public KeyTools.Notations KeyNotation { get; set; } = KeyTools.Notations.CamelotKey;

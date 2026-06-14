@@ -814,7 +814,7 @@
         BeatMarkers.Clear();
 
         if(File == null) return false;
-        Peaks = File.WaveformUnZipped.Split('|').Select(p => double.Parse(p)).ToArray();
+        Peaks = File.WaveformUnZipped.Split('|').Select(p => double.TryParse(p, out var result) ? result : 0).ToArray();
         MaxPeak = Peaks.Max();
 
         WaveformWidth = Peaks.Length * WaveformBarWidth;
