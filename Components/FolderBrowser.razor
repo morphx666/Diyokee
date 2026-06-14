@@ -66,6 +66,9 @@
                     .ToArray();
 
             case Runtime.Platforms.Linux:
+            case Runtime.Platforms.Aarch64:
+            case Runtime.Platforms.ARMHard:
+            case Runtime.Platforms.ARMSoft:
                 return new[] {
                     (new DirectoryInfo("/"), "Root", "Root"),
                     (new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "Home", Environment.UserName)
