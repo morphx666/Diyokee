@@ -19,7 +19,9 @@
                     } else {
                         <i class="fa-regular fa-square"></i>
                     }
-                    <div class="entry-name @(selectedFolder == drive.Directory.FullName ? "selected" : "")"
+                    <div class="entry-name @(selectedFolder.StartsWith(drive.Directory.FullName)
+                                            ? (selectedFolder == drive.Directory.FullName ? "selected" : "selected more")
+                                            : "")"
                          @onclick="@(() => selectedFolder = drive.Directory.FullName)">
                         <span>@drive.Name</span>&nbsp; <span>[@drive.Volume]</span>
                     </div>
@@ -97,7 +99,9 @@
                             <i class="fa-regular fa-square"></i>
                         }
                         <div
-                            class="entry-name @(selectedFolder == sdi.FullName ? "selected" : "")"
+                            class="entry-name @(selectedFolder.StartsWith(sdi.FullName)
+                                                ? (selectedFolder == sdi.FullName ? "selected" : "selected more")
+                                                : "")"
                             @onclick="@(() => selectedFolder = sdi.FullName)">
                             <span>@sdi.Name</span>
                         </div>
@@ -125,9 +129,9 @@
         }
     }
 
-    public async Task Open() {
+    public async Task Open(string current) {
         expandedFolders.Clear();
-        selectedFolder = "";
+        selectedFolder = current;
         dialog.Open();
 
         await InvokeAsync(StateHasChanged);

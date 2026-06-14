@@ -41,7 +41,9 @@
                         <i class="fa-regular fa-square-plus"></i>
                     }
                 </div>
-                <div class="entry-name @(selected == path ? "selected" : "")"
+                <div class="entry-name @(selected.StartsWith(path)
+                                         ? (selected == path ? "selected" : "selected more")
+                                         : "")"
                      @onclick="@(() => selected = path)">
                     <span>@name</span>
                 </div>

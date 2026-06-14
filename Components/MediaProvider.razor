@@ -96,7 +96,7 @@
     private string statusMessage = "";
 
     private async Task OpenFolderBrowser() {
-        await folderBrowser.Open();
+        await folderBrowser.Open(Provider.RootDirectory);
     }
 
     // Opens the Dropbox folder tree so the user can pick the provider's root
