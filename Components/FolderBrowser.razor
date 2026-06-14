@@ -72,6 +72,7 @@
                 };
 
             default:
+                Program.Logger.LogWarning($"Unknown platform: {Runtime.Platform}");
                 return [];
         }
     }
