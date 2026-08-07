@@ -46,7 +46,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 The whole mouse support has been rewritten and works much better now
 - The code needs to be cleaned up before adding new features, especially in the Player component
   
-## Nightly Releases
+## Latest Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
 Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-04-14
