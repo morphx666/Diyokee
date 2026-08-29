@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Un4seen.Bass;
 using Un4seen.Bass.AddOn.Enc;
 using Un4seen.Bass.AddOn.EncMp3;
+using Un4seen.Bass.AddOn.Fx;
 using Un4seen.Bass.AddOn.Mix;
 
 internal class Program {
@@ -281,6 +282,18 @@ internal class Program {
         }
 
         Bass.BASS_PluginLoadDirectory(workingDirectory);
+
+        // bass_fx is an add-on rather than a plugin, so BASS_PluginLoadDirectory does not pick it
+        // up: BASS.NET loads it lazily on the first BassFx call. Until it is loaded, BASS does not
+        // recognise the BASS_FX_BFX_* effect types and BASS_ChannelSetFX fails with
+        // BASS_ERROR_ILLTYPE. Loading it here removes that ordering dependency - previously it
+        // happened to be satisfied by whichever BassFx call ran first while building the chain.
+        int bassFxVersion = BassFx.BASS_FX_GetVersion();
+        if(bassFxVersion == 0) {
+            Logger.LogError("Failed to load BASS_FX - volume, tempo, EQ and pitch controls will not work");
+        } else {
+            Logger.LogInformation($"BASS_FX version: {Utils.HighWord(bassFxVersion)}.{Utils.LowWord(bassFxVersion)}");
+        }
 
         Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_DEV_NONSTOP, 1);
         // Bass.BASS_SetConfig(BASSConfig.BASS_CONFIG_BUFFER, 30); Use BASS's default 500ms

@@ -166,7 +166,10 @@
     [JsonProperty] private BASS_BFX_PEAKEQ eqParams = new();
     [JsonProperty] private BASS_BFX_VOLUME gain = new();
     [JsonProperty] private BASS_BFX_PITCHSHIFT pitch = new();
-    private SYNCPROC loopSyncProc = null!;
+
+    // Owns the playhead. streamHandle is this engine's stream, sitting where the BASS_FX reverse
+    // stream used to be, so everything downstream of it is unchanged.
+    [JsonIgnore] private ScratchEngine? engine;
 
     [JsonProperty] private double trackGain = 1.0;
     [JsonProperty] public double trackVolume = 1.0;
@@ -185,8 +188,6 @@
     [JsonProperty] public Filters FilterControls = null!;
 
     [JsonProperty] internal int WaveformWidth { get; set; } = 0;
-    [JsonProperty] private long waveformStepLength = 0;
-    [JsonProperty] private long trackLengthBytes = 0;
     private double playbackPosition = 0;
     private bool queueAutoSnap = false;
     [JsonProperty] internal double[] Peaks { get; set; } = [];
@@ -246,12 +247,60 @@
     public long PlaybackHead {
         get => waveform?.PlaybackHead ?? 0;
         set {
-            if(waveform != null) {
-                long pos = value * waveformStepLength / WaveformBarWidth;
-                splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
-                                                                                           | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
-            }
+            if(waveform != null) SeekSeconds(WaveformHeadToSeconds(value));
         }
+    }
+
+    // The waveform is drawn one bar per Files.TimeSlice of audio, so its horizontal position
+    // converts to and from seconds without going anywhere near byte offsets. Public because
+    // callers that place things at the playhead (cue points, the downbeat) need the same
+    // conversion - they used to hardcode "/ 100.0", which is only correct at a zoom of 5.
+    public double WaveformHeadToSeconds(long head) {
+        if(WaveformBarWidth <= 0) return 0;
+        return head * Files.TimeSlice / WaveformBarWidth;
+    }
+
+    private long SecondsToWaveformHead(double seconds) {
+        return (long)(seconds / Files.TimeSlice * WaveformBarWidth);
+    }
+
+    // Track position currently being heard. The engine maps the mixer's report of how far into
+    // its output stream playback has reached back onto a position in the source file.
+    // Not serialised: it is a live reading, and SavePlayerState would otherwise call into BASS
+    // just to persist a value that is meaningless once restored.
+    [JsonIgnore]
+    public double PositionSeconds {
+        get {
+            if(engine == null || masterSplitterHandle == 0) return 0;
+            long outBytes = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle, BASSMode.BASS_POS_BYTE);
+            if(outBytes < 0) return engine.DecodeSeconds;
+            return engine.SourceSecondsAtOutputFrame(outBytes / engine.BytesPerFrame);
+        }
+    }
+
+    // The engine reports the decoded length, which is exact. Some sources cannot report a length
+    // at all, in which case fall back to the duration measured during analysis - returning 0 here
+    // would disable every loop and block the jog nudges.
+    [JsonIgnore]
+    public double LengthSeconds {
+        get {
+            double fromEngine = engine?.LengthSeconds ?? 0;
+            return fromEngine > 0 ? fromEngine : (File?.Duration ?? 0);
+        }
+    }
+
+    // Moves the playhead. The engine cannot be seeked by BASS (a STREAMPROC stream only accepts
+    // position 0), so the move happens inside the engine and the chain is then reset to 0, which
+    // flushes the FX and mixer buffers so the new position is heard straight away instead of
+    // after the buffered audio drains.
+    public void SeekSeconds(double seconds) {
+        if(engine == null) return;
+
+        engine.RequestSeek(seconds);
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, 0L, BASSMode.BASS_POS_BYTE
+                                                                                 | BASSMode.BASS_POS_MIXER_RESET
+                                                                                 | BASSMode.BASS_MIXER_CHAN_NORAMPIN
+                                                                                 | BASSMode.BASS_POS_FLUSH));
     }
 
     public bool InBeat { get; set; } = false;
@@ -305,15 +354,8 @@
                     while(true) {
                         await Task.Delay(1);
                         if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == this.InBeatIndex) {
-                            long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-                            long offset = Bass.BASS_ChannelSeconds2Bytes(streamHandle, secondsPerBeat / 10);
-
-                            splitterStreams.ForEach(h => {
-                                BassMix.BASS_Mixer_ChannelSetPosition(h, p + offset, BASSMode.BASS_POS_MIXER_RESET
-                                                                                     | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                     | BASSMode.BASS_POS_FLUSH);
-                                BassMix.BASS_Mixer_ChannelPlay(h);
-                            });
+                            SeekSeconds(PositionSeconds + secondsPerBeat / 10);
+                            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
 
                             IsPlaying = true;
                             break;
@@ -332,12 +374,8 @@
     public void Stop(bool resetToCuePoint) {
         if(masterSplitterHandle == 0) return;
 
-        splitterStreams.ForEach(h => {
-            BassMix.BASS_Mixer_ChannelPause(h);
-            BassMix.BASS_Mixer_ChannelSetPosition(h, Bass.BASS_ChannelSeconds2Bytes(h, resetToCuePoint ? cuePoint : 0), BASSMode.BASS_POS_MIXER_RESET
-                                                                                                                        | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                                                        | BASSMode.BASS_POS_FLUSH);
-        });
+        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
+        SeekSeconds(resetToCuePoint ? cuePoint : 0);
         IsPlaying = false;
 
         SavePlayerState();
@@ -517,19 +555,42 @@
         return 0;
     }
 
-    private void LoadFile() {
-        IsPlaying = false;
+    // Tears the chain down in dependency order: the splitters reference the tempo stream, which
+    // references the engine's stream, which reads from the master decode stream. The previous
+    // code freed the middle of that chain and left the tempo stream dangling, leaking one per
+    // track load; doing it in order both fixes that and keeps the engine's stream from being
+    // freed twice.
+    private void FreeStreams() {
+        // The splitters carry BASS_STREAM_AUTOFREE, so unplugging them from the mixer frees them.
+        // Freeing them here as well would risk hitting a handle BASS has already recycled.
+        foreach(int h in splitterStreams) BassMix.BASS_Mixer_ChannelRemove(h);
+        splitterStreams.Clear();
+        masterSplitterHandle = 0;
 
-        if(streamHandle != 0) {
-            BassMix.BASS_Mixer_ChannelRemove(streamHandle);
-            Bass.BASS_ChannelStop(streamHandle);
-            Bass.BASS_StreamFree(streamHandle);
-            streamHandle = 0;
+        if(tempoHandle != 0) {
+            Bass.BASS_StreamFree(tempoHandle);
+            tempoHandle = 0;
+        }
 
+        engine?.Dispose();
+        engine = null;
+        streamHandle = 0;
+
+        if(masterHandle != 0) {
             Bass.BASS_ChannelStop(masterHandle);
             Bass.BASS_StreamFree(masterHandle);
             masterHandle = 0;
         }
+
+        gainHandle = 0;
+        eqHandle = 0;
+        pitchHandle = 0;
+    }
+
+    private void LoadFile() {
+        IsPlaying = false;
+
+        FreeStreams();
 
         if(File == null) return;
         if(faderVolume == null) { // FIXME: This fixes a problem when loading the TrackProperties dialog. Why? This wasn't happening before?
@@ -554,14 +615,11 @@
         if(Loop.Enabled) ToggleLoop();
         if(!MinimalMode) ApplyFilterValues(FilterControls.FiltersValues);
 
-        trackLengthBytes = Bass.BASS_ChannelGetLength(streamHandle, BASSMode.BASS_POS_BYTE);
-        waveformStepLength = Bass.BASS_ChannelSeconds2Bytes(streamHandle, Files.TimeSlice);
-
         Task.Run(async () => {
             while(!SetParameters()) await Task.Delay(1000);
 
             if(Program.Settings.Playback.SnapToDownBeatOnLoad) {
-                Bass.BASS_ChannelSetPosition(streamHandle, Bass.BASS_ChannelSeconds2Bytes(streamHandle, File.DownbeatAt), BASSMode.BASS_POS_BYTE | BASSMode.BASS_POS_DECODE);
+                SeekSeconds(File.DownbeatAt);
                 queueAutoSnap = true;
             }
 
@@ -571,6 +629,8 @@
 
     private (BASSError Error, string Message) CreateStreams() {
         BASSError bassErrorCode = BASSError.BASS_OK;
+
+        FreeStreams();
 
         // Master Stream
         masterHandle = BassStreamFactory.CreateStreamFile(File?.Filename ?? "", 0, 0, BASSFlag.BASS_STREAM_DECODE
@@ -584,9 +644,13 @@
         BASS_CHANNELINFO channelInfo = Bass.BASS_ChannelGetInfo(masterHandle);
         isMono = channelInfo.chans == 1;
 
-        // Reverse support Stream
-        streamHandle = BassFx.BASS_FX_ReverseCreate(masterHandle, 30, BASSFlag.BASS_FX_FREESOURCE | BASSFlag.BASS_STREAM_DECODE);
-        Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
+        // Scratch engine. Replaces the BASS_FX reverse stream: it owns the playhead, applies
+        // looping against it, and from Phase 2 will drive playback speed and direction. Pinned to
+        // a Velocity of 1.0 it is a byte-for-byte pass-through of the master stream, so the audio
+        // reaching the rest of the chain is unchanged.
+        engine = new ScratchEngine(masterHandle, channelInfo.freq, channelInfo.chans, Loop);
+        streamHandle = engine.StreamHandle;
+        bassErrorCode = Bass.BASS_ErrorGetCode();
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(streamHandle));
 
         if(!MinimalMode) {
@@ -595,10 +659,11 @@
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
 
-            // Tempo Control
+            // Tempo Control.
+            // Deliberately without BASS_FX_FREESOURCE: the engine owns its own stream and frees
+            // it in FreeStreams, so letting the tempo stream free it too would be a double free.
             tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
-                                                                   | BASSFlag.BASS_STREAM_DECODE
-                                                                   | BASSFlag.BASS_FX_FREESOURCE);
+                                                                   | BASSFlag.BASS_STREAM_DECODE);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
 
@@ -848,26 +913,21 @@
 
     public void SnapToCuePoint(CuePoint cp) {
         if(File == null) return;
-        long position = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cp.Position);
         cuePoint = cp.Position;
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position, BASSMode.BASS_POS_MIXER_RESET
-                                                                                        | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                        | BASSMode.BASS_POS_FLUSH));
+        SeekSeconds(cuePoint);
     }
 
     public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && !mouseState.ShiftDown;
 
     public void SnapToClosestBeatMarker() {
         if(BeatMarkers.Count == 0) return;
-        long position = GetClosestBeatMarker();
-
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, position, BASSMode.BASS_POS_MIXER_RESET
-                                                                                        | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                        | BASSMode.BASS_POS_FLUSH));
+        SeekSeconds(GetClosestBeatMarker());
     }
 
-    private long GetClosestBeatMarker() {
-        double playbackPositionSeconds = Bass.BASS_ChannelBytes2Seconds(streamHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
+    // Returns the cue position in seconds, snapping to the nearest beat marker unless the user
+    // is holding shift, and records it as the cue point.
+    private double GetClosestBeatMarker() {
+        double playbackPositionSeconds = PositionSeconds;
 
         if(SnapToBeatMarkers) {
             int closestIndex = 0;
@@ -883,7 +943,7 @@
         }
 
         cuePoint = playbackPositionSeconds;
-        return Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, cuePoint);
+        return cuePoint;
     }
 
     public void ToggleLoop() {
@@ -912,26 +972,16 @@
         if(index != -1 && index > 0) SetJumpSize(loopSizes[index - 1].Item2);
     }
 
-    public void JogWheelForward() {
-        if(File == null) return;
-        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-        long offset = p + Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, 0.05 / beatsPerSecond);
-        if(offset > trackLengthBytes) return;
-        if(offset < 0) offset = 0;
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET
-                                                                                      | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                      | BASSMode.BASS_POS_FLUSH));
-    }
+    public void JogWheelForward() => JogWheelNudge(+1);
 
-    public void JogWheelBackward() {
+    public void JogWheelBackward() => JogWheelNudge(-1);
+
+    private void JogWheelNudge(int direction) {
         if(File == null) return;
-        long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-        long offset = p - Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, 0.05 / beatsPerSecond);
-        if(offset > trackLengthBytes) return;
-        if(offset < 0) offset = 0;
-        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET
-                                                                                      | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                      | BASSMode.BASS_POS_FLUSH));
+        double target = PositionSeconds + direction * (0.05 / beatsPerSecond);
+        if(target > LengthSeconds) return;
+        if(target < 0) target = 0;
+        SeekSeconds(target);
     }
 
     private void SetLoopSize(double size, bool resetStart) {
@@ -940,38 +990,23 @@
 
         if(File == null) return;
 
-        double position = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, GetClosestBeatMarker());
+        double position = GetClosestBeatMarker();
         if(resetStart) Loop.Start = position;
         Loop.End = Loop.Start + loopSize / beatsPerSecond;
 
-        if(Loop.BASSHandle != 0 && resetStart) {
-            Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
-            Loop.BASSHandle = 0;
-        }
-
         if(Loop.Enabled) {
-            bool resetLoop = position <= Loop.End && loopSize > 1;
-            Loop.StartBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.Start);
-            Loop.EndBytes = Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, Loop.End);
-
-            if(Loop.EndBytes > trackLengthBytes) {
+            if(Loop.End > LengthSeconds) {
                 Loop.Enabled = false;
                 return;
             }
 
-            if(resetStart || resetLoop) {
-                Loop.Reset = false;
-
-                Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                if(Loop.BASSHandle != 0) {
-                    Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
-                    Loop.BASSHandle = 0;
-                }
-                Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                Bass.BASS_ChannelLock(masterSplitterHandle, false);
-            } else {
-                Loop.Reset = true;
-            }
+            // Whether the new length applies right away or only from the next wrap. Starting a
+            // loop always arms at once; so does shortening or lengthening it while the playhead
+            // is still before the new end. Otherwise - the playhead has already run past where
+            // the new loop would end, e.g. dropping to 4 beats at beat 13 of 16 - the current
+            // pass is allowed to finish at the armed end first, and the new length takes over
+            // when it wraps.
+            if(resetStart || (position <= Loop.End && loopSize > 1)) engine?.ArmLoop(Loop.End);
         }
 
         UpdateSettings();
@@ -999,36 +1034,16 @@
         Program.Settings.Playback.EqProfile = EqControls.EqProfile.Name;
     }
 
-    private void DoLoop(int handle, int channel, int data, IntPtr user) {
-        if(Loop.Enabled) {
-            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, Loop.StartBytes, BASSMode.BASS_POS_MIXER_RESET
-                                                                                                   | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                                   | BASSMode.BASS_POS_FLUSH));
-
-            if(Loop.Reset) {
-                Loop.Reset = false;
-
-                Bass.BASS_ChannelLock(masterSplitterHandle, true);
-                Bass.BASS_ChannelRemoveSync(masterSplitterHandle, Loop.BASSHandle);
-                Loop.BASSHandle = Bass.BASS_ChannelSetSync(masterSplitterHandle, BASSSync.BASS_SYNC_POS | BASSSync.BASS_SYNC_MIXTIME, Loop.EndBytes, loopSyncProc, IntPtr.Zero);
-                Bass.BASS_ChannelLock(masterSplitterHandle, false);
-            }
-        }
-    }
-
     private void DoJump(int direction) {
         Task.Run(async () => {
             while(true) {
                 await Task.Delay(1);
                 if(InBeat) {
-                    long p = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-                    long offset = p + direction * Bass.BASS_ChannelSeconds2Bytes(masterSplitterHandle, direction * (secondsPerBeat / 10) + jumpSize / beatsPerSecond);
-                    if(offset > trackLengthBytes) return;
+                    double offset = PositionSeconds + direction * (direction * (secondsPerBeat / 10) + jumpSize / beatsPerSecond);
+                    if(offset > LengthSeconds) return;
                     if(offset < 0) offset = 0;
 
-                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, offset, BASSMode.BASS_POS_MIXER_RESET
-                                                                                                  | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                                  | BASSMode.BASS_POS_FLUSH));
+                    SeekSeconds(offset);
                     break;
                 }
             }
@@ -1165,7 +1180,7 @@
             await Task.Delay(1);
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                playbackPosition = Bass.BASS_ChannelBytes2Seconds(masterSplitterHandle, BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle));
+                playbackPosition = PositionSeconds;
 
                 InBeat = false;
                 int startIndex = BeatMarkers.FindIndex(b => b.Seconds >= File!.DownbeatAt);
@@ -1194,62 +1209,32 @@
     private async Task MonitorPlayback() {
         int intervals = 0;
         int delay = 30;
-        long lastPos = 0;
-        bool isPlayingBackwards = false;
-        bool isPaused = false;
+        long lastScrubHead = long.MinValue;
 
         while(true) {
             await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 2 : 1));
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                if(isPaused && IsPlaying) {
-                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
-                    isPaused = false;
-                }
-
                 if(waveform!.IsMouseDown) {
-                    long pos = waveform.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    long playerPos = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle);
-
-                    if(pos == lastPos) {
-                        //splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
-                        //isPaused = true;
-                    } else {
-                        // TODO: Calculate scrubbing speed based on how far the mouse is from the current playback position
-                        // and adjust the channel pitch accordingly
-
-                        // Naive scrubbing implementation
-                        splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
-                                                                                                   | BASSMode.BASS_MIXER_CHAN_NORAMPIN));
-
-                        if(pos > lastPos) {
-                            Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
-                            isPlayingBackwards = false;
-                        } else if(pos < lastPos) {
-                            Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_REVERSE);
-                            isPlayingBackwards = true;
-                        }
-                        lastPos = pos;
+                    // Still the naive seek-per-tick scrub. Phase 2 replaces this by handing the
+                    // gesture's velocity to the engine instead of teleporting the playhead.
+                    if(waveform.PlaybackHead != lastScrubHead) {
+                        SeekSeconds(WaveformHeadToSeconds(waveform.PlaybackHead));
+                        lastScrubHead = waveform.PlaybackHead;
                     }
                     waveformFull!.PlaybackHead = waveform.PlaybackHead;
                 } else if(waveformFull!.IsMouseDown) {
-                    long pos = waveformFull.PlaybackHead * waveformStepLength / WaveformBarWidth;
-                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelSetPosition(h, pos, BASSMode.BASS_POS_MIXER_RESET
-                                                                                               | BASSMode.BASS_MIXER_CHAN_NORAMPIN
-                                                                                               | BASSMode.BASS_POS_FLUSH));
+                    SeekSeconds(WaveformHeadToSeconds(waveformFull.PlaybackHead));
                     waveform.PlaybackHead = waveformFull.PlaybackHead;
                 } else {
-                    waveform.PlaybackHead = BassMix.BASS_Mixer_ChannelGetPosition(masterSplitterHandle) * WaveformBarWidth / waveformStepLength;
+                    waveform.PlaybackHead = SecondsToWaveformHead(PositionSeconds);
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
-
-                    if(isPlayingBackwards) {
-                        Bass.BASS_ChannelSetAttribute(streamHandle, BASSAttribute.BASS_ATTRIB_REVERSE_DIR, (float)BASSFXReverse.BASS_FX_RVS_FORWARD);
-                    }
+                    lastScrubHead = long.MinValue;
                 }
             } else if(IsPlaying) {
                 Stop(false);
                 CreateStreams();
-                Bass.BASS_ChannelSetPosition(streamHandle, trackLengthBytes - 1);
+                SeekSeconds(LengthSeconds);
             }
 
             if(waveform != null && intervals % 2 == 0) await waveform.Refresh();
@@ -1313,9 +1298,10 @@
 
                 crossFaderVolume = p.crossFaderVolume;
                 Loop = p.Loop;
+                // The engine holds the Loop by reference, so it has to be pointed at the restored
+                // instance rather than the one it was constructed with.
+                if(engine != null) engine.Loop = Loop;
                 WaveformWidth = p.WaveformWidth;
-                trackLengthBytes = p.trackLengthBytes;
-                waveformStepLength = p.waveformStepLength;
                 Peaks = p.Peaks;
                 MaxPeak = p.MaxPeak;
                 beatsPerSecond = p.beatsPerSecond;
@@ -1331,8 +1317,6 @@
 
     protected override void OnInitialized() {
         base.OnInitialized();
-
-        loopSyncProc = new SYNCPROC(DoLoop);
 
         SetTempoRange(Program.Settings.Playback.TempoRange);
 

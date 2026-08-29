@@ -331,7 +331,7 @@
     }
 
     private void ReSetDownbeat() {
-        File.DownbeatAt = player!.PlaybackHead / 100.0;
+        File.DownbeatAt = player!.WaveformHeadToSeconds(player.PlaybackHead);
         player!.SetParameters();
     }
 

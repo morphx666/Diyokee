@@ -32,7 +32,7 @@
     private async Task AddCuePoint() {
         Player.File!.CuePoints.Add(new CuePoint {
             Name = "New Cue Point",
-            Position = Player.PlaybackHead / 100.0
+            Position = Player.WaveformHeadToSeconds(Player.PlaybackHead)
         });
         await UpdateCuePoints();
     }
@@ -43,7 +43,7 @@
     }
 
     private async Task UpdateCuePointPosition(CuePoint cp) {
-        cp.Position = Player.PlaybackHead / 100.0;
+        cp.Position = Player.WaveformHeadToSeconds(Player.PlaybackHead);
         await UpdateCuePoints();
     }
 
