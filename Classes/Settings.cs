@@ -47,6 +47,28 @@ namespace Diyokee {
             [JsonProperty("beatmatching-display")] public bool BeatmatchingDisplay { get; set; } = false;
             [JsonProperty("enable-track-prescan")] public bool EnablePrescan { get; set; } = false;
             [JsonProperty("snap-to-downbeat-onload")] public bool SnapToDownBeatOnLoad { get; set; } = true;
+            [JsonProperty("scratch")] public ScratchSettings Scratch { get; set; } = new();
+        }
+
+        // TouchModes and ReleaseModes live in ScratchModes.cs, which has no dependencies, so the
+        // engine and its test harness can share them without pulling in the settings model.
+        public class ScratchSettings {
+            [JsonProperty("enabled")] public bool Enabled { get; set; } = true;
+            [JsonProperty("touch-mode")] public TouchModes TouchMode { get; set; } = TouchModes.Vinyl;
+            [JsonProperty("release-mode")] public ReleaseModes ReleaseMode { get; set; } = ReleaseModes.Inertia;
+
+            // Seconds for the platter to reach play speed after release, and to reach a standstill
+            // when braking. Both are time constants, not hard durations.
+            [JsonProperty("spin-up-time")] public double SpinUpTime { get; set; } = 0.25;
+            [JsonProperty("brake-time")] public double BrakeTime { get; set; } = 0.12;
+
+            // Smoothing applied to the requested speed before it reaches the audio, in seconds.
+            // Long enough to stop control-rate steps sounding like zipper noise, short enough not
+            // to blunt the attack of a scratch.
+            [JsonProperty("slew-time")] public double SlewTime { get; set; } = 0.004;
+
+            // How far the track moves per pixel of waveform drag, relative to 1:1.
+            [JsonProperty("mouse-sensitivity")] public double MouseSensitivity { get; set; } = 1.0;
         }
 
         public class PlayerSettings {

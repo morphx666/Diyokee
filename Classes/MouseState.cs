@@ -4,6 +4,12 @@
         public double Y { get; set; }
         public double DeltaX { get; set; }
         public double DeltaY { get; set; }
+
+        // Browser event timestamps, in milliseconds. Taken on the client because gestures have to
+        // be measured against the clock they happened on - server arrival times are jittered by
+        // the SignalR round trip, which is exactly the band a scratch lives in.
+        public double Timestamp { get; set; }
+        public double DeltaTime { get; set; }
         public long ButtonsDown { get; set; } = -1;
         public bool IsCaptured {get;set; }
         public double WheelDelta { get; set; }

@@ -289,6 +289,72 @@
         }
     }
 
+    // ---------------------------------------------------------------- scratching
+
+    // True while the gesture that started on a paused deck is still running. Such a deck has to
+    // end up paused again, so the release always brakes rather than spinning up to play speed.
+    private bool scratchFromPaused;
+
+    private void ApplyScratchSettings() {
+        if(engine == null) return;
+        ScratchSettings s = Program.Settings.Playback.Scratch;
+        engine.TouchMode = s.TouchMode;
+        engine.ReleaseMode = s.ReleaseMode;
+        engine.SpinUpTime = s.SpinUpTime;
+        engine.BrakeTime = s.BrakeTime;
+        engine.SlewTime = s.SlewTime;
+    }
+
+    // The platter has been grabbed. From here until EndScratch the hand sets playback speed.
+    public void BeginScratch() {
+        if(engine == null || !Program.Settings.Playback.Scratch.Enabled) return;
+
+        ApplyScratchSettings();
+
+        scratchFromPaused = !IsPlaying;
+        if(scratchFromPaused) {
+            // Let audio flow so a cued deck can be scratched, and make sure it comes to rest
+            // again afterwards rather than running away at play speed.
+            engine.ReleaseMode = ReleaseModes.Stop;
+            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
+        }
+
+        lastScratchTicks = Environment.TickCount64;
+        engine.Resume();
+        engine.Touch();
+    }
+
+    // How fast the hand is moving, in waveform pixels over milliseconds. Converted here because
+    // the pixel-to-seconds scale is a property of the waveform, not of the input device.
+    public void ScratchBy(double deltaPixels, double deltaMilliseconds) {
+        if(engine == null || !engine.IsTouched) return;
+        if(deltaMilliseconds <= 0 || WaveformBarWidth <= 0) return;
+
+        double seconds = deltaPixels * Files.TimeSlice / WaveformBarWidth;
+        double speed = seconds / (deltaMilliseconds / 1000.0);
+        lastScratchTicks = Environment.TickCount64;
+        engine.SetGestureSpeed(speed * Program.Settings.Playback.Scratch.MouseSensitivity);
+    }
+
+    // A hand held still on the platter produces no events at all, so without this the last speed
+    // would simply persist and the track would keep sliding. Going quiet means "not moving".
+    private long lastScratchTicks;
+    private const int GestureIdleMs = 60;
+
+    private void StopScratchIfHandWentQuiet() {
+        if(engine == null || !engine.IsTouched) return;
+        if(lastScratchTicks > 0 && Environment.TickCount64 - lastScratchTicks > GestureIdleMs) {
+            engine.SetGestureSpeed(0);
+        }
+    }
+
+    public void EndScratch() {
+        if(engine == null || !engine.IsTouched) return;
+        engine.Release();
+    }
+
+    public bool IsScratching => engine?.IsTouched ?? false;
+
     // Moves the playhead. The engine cannot be seeked by BASS (a STREAMPROC stream only accepts
     // position 0), so the move happens inside the engine and the chain is then reset to 0, which
     // flushes the FX and mixer buffers so the new position is heard straight away instead of
@@ -363,6 +429,7 @@
                     }
                 });
             } else {
+                engine?.Resume();          // lift any halt left by a braked release
                 splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
@@ -650,6 +717,7 @@
         // reaching the rest of the chain is unchanged.
         engine = new ScratchEngine(masterHandle, channelInfo.freq, channelInfo.chans, Loop);
         streamHandle = engine.StreamHandle;
+        ApplyScratchSettings();
         bassErrorCode = Bass.BASS_ErrorGetCode();
         if(streamHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(streamHandle));
 
@@ -1209,27 +1277,30 @@
     private async Task MonitorPlayback() {
         int intervals = 0;
         int delay = 30;
-        long lastScrubHead = long.MinValue;
 
         while(true) {
-            await Task.Delay(delay * ((waveform?.IsMouseDown ?? true) ? 2 : 1));
+            await Task.Delay(delay);
+
+            StopScratchIfHandWentQuiet();
+
+            // A braked release finishes on the audio thread; the deck is parked here.
+            if(engine != null && engine.ConsumeBrakeCompleted()) {
+                splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
+                IsPlaying = false;
+                scratchFromPaused = false;
+                await InvokeAsync(StateHasChanged);
+            }
 
             if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                if(waveform!.IsMouseDown) {
-                    // Still the naive seek-per-tick scrub. Phase 2 replaces this by handing the
-                    // gesture's velocity to the engine instead of teleporting the playhead.
-                    if(waveform.PlaybackHead != lastScrubHead) {
-                        SeekSeconds(WaveformHeadToSeconds(waveform.PlaybackHead));
-                        lastScrubHead = waveform.PlaybackHead;
-                    }
-                    waveformFull!.PlaybackHead = waveform.PlaybackHead;
-                } else if(waveformFull!.IsMouseDown) {
+                if(waveformFull!.IsMouseDown) {
+                    // The overview waveform is absolute: dragging it means "go here", not "scratch".
                     SeekSeconds(WaveformHeadToSeconds(waveformFull.PlaybackHead));
-                    waveform.PlaybackHead = waveformFull.PlaybackHead;
+                    waveform!.PlaybackHead = waveformFull.PlaybackHead;
                 } else {
-                    waveform.PlaybackHead = SecondsToWaveformHead(PositionSeconds);
+                    // Both during normal playback and during a scratch the display follows the
+                    // audio rather than the hand, so what is drawn is what is actually heard.
+                    waveform!.PlaybackHead = SecondsToWaveformHead(PositionSeconds);
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
-                    lastScrubHead = long.MinValue;
                 }
             } else if(IsPlaying) {
                 Stop(false);

@@ -3,53 +3,81 @@ using Un4seen.Bass;
 
 namespace Diyokee;
 
-// Owns playback position for a Player.
+// Owns playback position and playback speed for a Player.
 //
-// The engine is a user (STREAMPROC) stream that sits where the BASS_FX reverse stream used to
-// be: master decode stream -> ScratchEngine -> gain -> tempo -> FX -> splitters -> device mixers.
-// It pulls from the master decode stream and hands the data to BASS, tracking exactly which
-// source frame each output frame came from.
+// The engine is a user (STREAMPROC) stream sitting where the BASS_FX reverse stream used to be:
+// master decode stream -> ScratchEngine -> gain -> tempo -> FX -> splitters -> device mixers.
 //
-// Phase 1 pins Velocity at 1.0, where the engine is a byte-for-byte pass-through: the data is
-// pulled straight into BASS's own buffer with no resampling, no interpolation and no copy, so
-// the audio is bit-identical to the previous chain. Phase 2 adds the variable-rate path.
+// It keeps a fractional playhead into the source and a ring buffer of decoded source frames
+// around it, so it can render the track at any speed in either direction. Velocity is signed:
+// negative simply reads the ring backwards, which is why the reverse FX is gone.
 //
-// Why the engine has to own position at all: a STREAMPROC stream reports position as bytes
-// emitted, which only ever increases - it cannot represent a loop wrap, a seek, or (later)
-// playing backwards. So BASS's idea of "where are we" stops being usable as track position and
-// the engine has to provide it instead. See SourceSecondsAtOutputFrame.
+// At a velocity of exactly 1.0 the playhead stays on integer frames and Catmull-Rom returns the
+// sample untouched, so ordinary playback is still bit-identical to the original chain.
+//
+// Why the engine owns position: a STREAMPROC stream reports position as bytes emitted, which only
+// ever increases - it cannot represent a loop wrap, a seek, or playing backwards. BASS's idea of
+// "where are we" is therefore not usable as track position. See SourceSecondsAtOutputFrame.
 public sealed class ScratchEngine : IDisposable {
-    // Maps a point in the stream we emit to the point in the source file it came from.
-    // A new segment starts whenever playback stops being continuous - a seek or a loop wrap.
-    private struct Segment {
-        public long OutFrame;   // frame index in the stream we emit, since the last output reset
-        public long SrcFrame;   // matching frame index in the source file
+    public const int DefaultSampleRate = 44100;
+
+    // ~5.9s of source at 44.1kHz. Big enough that a scratch stays inside the ring and needs no
+    // re-seek; small enough to stay cheap (2.1 MB per stereo deck).
+    private const int RingFrames = 1 << 18;
+    private const int RingMask = RingFrames - 1;
+    private const int ChunkFrames = 4096;      // decoded per top-up
+    private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
+    private const int InterpMargin = 2;        // frames Catmull-Rom needs either side
+
+    // Below this speed the output is silenced rather than repeating a sample, which would be a
+    // DC step. A stopped record makes no sound.
+    private const double SilenceThreshold = 1e-4;
+
+    // Maps a stretch of what we emit onto where it came from in the source.
+    private struct Run {
+        public long OutFrame;     // output frame this run starts at
+        public double SrcFrame;   // source frame at that point
+        public double Slope;      // source frames per output frame across the run
     }
 
-    private const int SegmentCount = 64;        // power of two
-    private const int SegmentMask = SegmentCount - 1;
+    private const int RunCount = 128;          // power of two
+    private const int RunMask = RunCount - 1;
 
-    private readonly int source;                // master decode stream, owned by the caller
+    private readonly int source;               // master decode stream, owned by the caller
+    private readonly int channels;
     private readonly int bytesPerFrame;
     private readonly int sampleRate;
     private readonly long lengthFrames;
 
-    private readonly STREAMPROC proc;           // kept alive for as long as the stream exists
+    private readonly STREAMPROC proc;          // kept alive for as long as the stream exists
     private int stream;
 
-    private readonly Segment[] segments = new Segment[SegmentCount];
-    private long segmentHead;                   // total segments ever pushed
-    private long segmentVersion;                // seqlock: odd while being written
+    private readonly float[] ring;
+    private readonly float[] decodeBuf;
+    private readonly float[] outBuf;
+    private long ringTail, ringHead;           // source frames held: [ringTail, ringHead)
 
-    private long outputFrames;                  // frames emitted since the last output reset
-    private long sourceFrame;                   // playhead, in source frames
+    private readonly Run[] runs = new Run[RunCount];
+    private long runHead;
+    private long runVersion;                   // seqlock: odd while being written
+
+    private long outputFrames;                 // frames emitted since the last output reset
+    private double playhead;                   // fractional source frame - the authority
+    private double velocity = 1.0;             // current speed, after slewing
     private bool ended;
+    private bool sourceExhausted;
 
-    // Seek requests are applied by the callback rather than the caller, so the playhead is only
-    // ever mutated on one thread.
     private long pendingSeekFrame = -1;
     private double pendingSeekSeconds;
     private volatile bool seekPending;
+
+    // Stopped is distinct from Idle: after braking to a halt the deck must stay halted. Idle
+    // targets play speed, so without it the platter would spin straight back up in the gap before
+    // the Player notices the brake completed and pauses the deck.
+    private enum State { Idle, Touched, Releasing, Stopped }
+    private volatile State state = State.Idle;
+    private double gestureSpeed;               // requested speed while the platter is held
+    private volatile bool brakeCompleted;
 
     public Loop Loop { get; set; } = new();
 
@@ -57,32 +85,42 @@ public sealed class ScratchEngine : IDisposable {
     public int BytesPerFrame => bytesPerFrame;
     public double LengthSeconds => lengthFrames / (double)sampleRate;
 
-    // Phase 1 keeps this at 1.0. Phase 2 drives it from the jog wheel / mouse.
-    public double Velocity { get; set; } = 1.0;
+    // Speed the deck runs at when nothing is touching it. 1.0 is normal playback.
+    public double PlayVelocity { get; set; } = 1.0;
 
-    public const int DefaultSampleRate = 44100;
+    public TouchModes TouchMode { get; set; } = TouchModes.Vinyl;
+    public ReleaseModes ReleaseMode { get; set; } = ReleaseModes.Inertia;
+    public double SpinUpTime { get; set; } = 0.25;
+    public double BrakeTime { get; set; } = 0.12;
+    public double SlewTime { get; set; } = 0.004;
+
+    public bool IsTouched => state == State.Touched;
+    public double Velocity => Volatile.Read(ref velocity);
 
     public ScratchEngine(int sourceHandle, int sampleRate, int channels, Loop loop) {
         source = sourceHandle;
         this.sampleRate = sampleRate <= 0 ? DefaultSampleRate : sampleRate;
-        bytesPerFrame = Math.Max(1, channels) * sizeof(float);
+        this.channels = Math.Max(1, channels);
+        bytesPerFrame = this.channels * sizeof(float);
         Loop = loop;
+
+        ring = new float[RingFrames * this.channels];
+        decodeBuf = new float[ChunkFrames * this.channels];
+        outBuf = new float[ChunkFrames * this.channels];
 
         long lengthBytes = Bass.BASS_ChannelGetLength(sourceHandle, BASSMode.BASS_POS_BYTE);
         lengthFrames = lengthBytes > 0 ? lengthBytes / bytesPerFrame : 0;
 
-        sourceFrame = PositionOf(sourceHandle);
-        PushSegment(0, sourceFrame);
+        long pos = Bass.BASS_ChannelGetPosition(sourceHandle, BASSMode.BASS_POS_BYTE);
+        playhead = pos > 0 ? pos / bytesPerFrame : 0;
+        ringTail = ringHead = (long)playhead;
+
+        PushRun(0, playhead, 1.0);
 
         proc = StreamProc;
-        stream = Bass.BASS_StreamCreate(this.sampleRate, Math.Max(1, channels),
+        stream = Bass.BASS_StreamCreate(this.sampleRate, this.channels,
                                         BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_DECODE,
                                         proc, IntPtr.Zero);
-    }
-
-    private long PositionOf(int handle) {
-        long pos = Bass.BASS_ChannelGetPosition(handle, BASSMode.BASS_POS_BYTE);
-        return pos > 0 ? pos / bytesPerFrame : 0;
     }
 
     // ---------------------------------------------------------------- control side
@@ -100,93 +138,81 @@ public sealed class ScratchEngine : IDisposable {
         seekPending = true;
     }
 
-    // Track position that is currently being *heard*, given the mixer's report of how far into
-    // our emitted stream playback has reached. BASS_Mixer_ChannelGetPosition already compensates
-    // for downstream buffering, so this stays honest without the engine having to model latency.
+    // The platter has been grabbed. Playback speed is handed over to SetGestureSpeed.
+    public void Touch() {
+        Volatile.Write(ref gestureSpeed, 0);
+        brakeCompleted = false;
+        state = State.Touched;
+    }
+
+    // Speed the hand is asking for, as a multiple of normal playback: 1.0 is play speed, -2.0 is
+    // twice as fast backwards, 0 is held still.
+    public void SetGestureSpeed(double speed) {
+        if(double.IsNaN(speed) || double.IsInfinity(speed)) speed = 0;
+        Volatile.Write(ref gestureSpeed, speed);
+    }
+
+    // The platter has been let go. What happens next is up to ReleaseMode.
+    public void Release() {
+        if(state == State.Touched) state = State.Releasing;
+    }
+
+    // Lifts the halt left behind by a braked release, so the deck runs again. Called when
+    // playback is (re)started.
+    public void Resume() {
+        if(state == State.Stopped) state = State.Idle;
+    }
+
+    // True once after a braked release has actually reached a standstill, so the Player can stop
+    // the deck. Reading it clears it.
+    public bool ConsumeBrakeCompleted() {
+        if(!brakeCompleted) return false;
+        brakeCompleted = false;
+        return true;
+    }
+
+    // Track position that is currently being heard, given the mixer's report of how far into our
+    // emitted stream playback has reached. BASS_Mixer_ChannelGetPosition already compensates for
+    // downstream buffering, so this stays honest without the engine modelling latency itself.
     public double SourceSecondsAtOutputFrame(long outFrame) {
         if(seekPending) return pendingSeekSeconds;
 
         for(int attempt = 0; attempt < 8; attempt++) {
-            long before = Volatile.Read(ref segmentVersion);
-            if((before & 1) != 0) continue;              // a write is in progress
+            long before = Volatile.Read(ref runVersion);
+            if((before & 1) != 0) continue;                  // a write is in progress
 
-            long head = Volatile.Read(ref segmentHead);
-            long best = -1;
-            long start = Math.Max(0, head - SegmentCount);
+            long head = Volatile.Read(ref runHead);
+            double best = -1;
+            long start = Math.Max(0, head - RunCount);
             for(long i = head - 1; i >= start; i--) {
-                Segment s = segments[i & SegmentMask];
-                if(s.OutFrame <= outFrame) {
-                    best = s.SrcFrame + (outFrame - s.OutFrame);
+                Run r = runs[i & RunMask];
+                if(r.OutFrame <= outFrame) {
+                    best = r.SrcFrame + (outFrame - r.OutFrame) * r.Slope;
                     break;
                 }
             }
 
-            if(Volatile.Read(ref segmentVersion) == before) {
+            if(Volatile.Read(ref runVersion) == before) {
                 if(best < 0) return 0;
-                // A stale output position read across a reset could otherwise project past the
-                // end of the track.
                 if(lengthFrames > 0 && best > lengthFrames) best = lengthFrames;
-                return best / (double)sampleRate;
+                return best / sampleRate;
             }
         }
 
-        return Volatile.Read(ref sourceFrame) / (double)sampleRate;
+        return Volatile.Read(ref playhead) / sampleRate;
     }
 
     // The playhead as the engine sees it - ahead of what is being heard by the pipeline's
     // buffering. Used only where the decode position is genuinely what is wanted.
-    public double DecodeSeconds => Volatile.Read(ref sourceFrame) / (double)sampleRate;
+    public double DecodeSeconds => Volatile.Read(ref playhead) / sampleRate;
 
-    // ---------------------------------------------------------------- audio thread
-
-    private int StreamProc(int handle, IntPtr buffer, int length, IntPtr user) {
-        if(seekPending) ApplySeek();
-
-        int produced = 0;
-        length -= length % bytesPerFrame;
-
-        while(produced < length) {
-            int want = length - produced;
-
-            // Never read past the loop end in one pull: the wrap has to land exactly on the
-            // boundary for the loop to be sample-accurate.
-            long loopEndFrame = LoopEndFrame();
-            if(loopEndFrame > 0) {
-                long bytesLeft = (loopEndFrame - sourceFrame) * bytesPerFrame;
-                if(bytesLeft < want) want = (int)bytesLeft;
-            }
-
-            want -= want % bytesPerFrame;
-            if(want <= 0) break;
-
-            int got = Bass.BASS_ChannelGetData(source, IntPtr.Add(buffer, produced), want);
-            if(got <= 0) {
-                // Only a genuine BASS_ERROR_ENDED means the track is over. The master stream is
-                // opened with BASS_ASYNCFILE, so a short read just means the file buffer has not
-                // caught up yet - returning less than asked for is allowed, and treating it as the
-                // end would stop playback at random points.
-                if(got < 0 && Bass.BASS_ErrorGetCode() == BASSError.BASS_ERROR_ENDED) ended = true;
-                break;
-            }
-
-            produced += got;
-            sourceFrame += got / bytesPerFrame;
-            outputFrames += got / bytesPerFrame;
-
-            if(loopEndFrame > 0 && sourceFrame >= loopEndFrame) WrapToLoopStart();
-
-            if(got < want) break;                        // source had less than asked for
-        }
-
-        if(ended) return produced | unchecked((int)0x80000000);  // BASS_STREAMPROC_END
-        return produced;
-    }
+    // ---------------------------------------------------------------- loop
 
     // The boundary this pass through the loop will wrap at, which is not necessarily the loop
     // length currently configured. Resizing a loop while the playhead is already past the new end
-    // must not cut the pass short: playback runs to the armed end, wraps, and only then adopts
-    // the new length. This mirrors the BASS_SYNC_POS it replaced, which sat at a fixed byte
-    // position until it was deliberately re-armed.
+    // must not cut the pass short: playback runs to the armed end, wraps, and only then adopts the
+    // new length. This mirrors the BASS_SYNC_POS it replaced, which sat at a fixed byte position
+    // until it was deliberately re-armed.
     private long armedEndFrame;
 
     // Arms the wrap boundary immediately. Called by the Player when a loop is started, or when a
@@ -195,29 +221,222 @@ public sealed class ScratchEngine : IDisposable {
         Volatile.Write(ref armedEndFrame, (long)(endSeconds * sampleRate));
     }
 
-    // The frame the current pull must stop at, or 0 when the loop places no constraint.
-    // Sitting at or past the armed end means the loop does not apply - matching the old sync,
-    // which simply never fired if playback was already beyond the sync position. That is what
-    // lets a seek out of a loop play on instead of being yanked back.
-    private long LoopEndFrame() {
+    private bool LoopBounds(out double startFrame, out double endFrame) {
+        startFrame = 0;
+        endFrame = 0;
+
         Loop loop = Loop;
-        if(loop == null || !loop.Enabled) return 0;
+        if(loop == null || !loop.Enabled) return false;
 
         long armed = Volatile.Read(ref armedEndFrame);
-        if(armed <= 0) armed = (long)(loop.End * sampleRate);   // never armed: use as configured
-        if(armed <= (long)(loop.Start * sampleRate)) return 0;
+        if(armed <= 0) armed = (long)(loop.End * sampleRate);
 
-        return sourceFrame < armed ? armed : 0;
+        startFrame = loop.Start * sampleRate;
+        endFrame = armed;
+        return endFrame > startFrame;
     }
 
-    private void WrapToLoopStart() {
-        SeekSource((long)(Loop.Start * sampleRate));
+    // ---------------------------------------------------------------- audio thread
 
-        // Adopt whatever length is configured now. A resize that arrived mid-pass takes effect
-        // here, at the wrap, rather than truncating the pass it arrived during.
-        Volatile.Write(ref armedEndFrame, (long)(Loop.End * sampleRate));
+    private int StreamProc(int handle, IntPtr buffer, int length, IntPtr user) {
+        if(seekPending) ApplySeek();
 
-        PushSegment(outputFrames, sourceFrame);
+        int framesWanted = length / bytesPerFrame;
+        if(framesWanted > outBuf.Length / channels) framesWanted = outBuf.Length / channels;
+        if(framesWanted <= 0) return 0;
+
+        double target = TargetVelocity();
+        double alpha = SlewAlpha();
+
+        long outCursor = outputFrames;
+        long runOutStart = outCursor;
+        double runSrcStart = playhead;
+
+        bool haveLoop = LoopBounds(out double loopStart, out double loopEnd);
+        double loopLength = loopEnd - loopStart;
+
+        int produced = 0;
+        while(produced < framesWanted) {
+            velocity += (target - velocity) * alpha;
+
+            double previous = playhead;
+
+            if(Math.Abs(velocity) < SilenceThreshold) {
+                int at = produced * channels;
+                for(int c = 0; c < channels; c++) outBuf[at + c] = 0f;
+            } else if(!RenderFrame(produced)) {
+                // Only a genuinely exhausted source ends the stream. Anything else is a short read
+                // that has not caught up yet, and returning less than asked for is allowed.
+                if(sourceExhausted) ended = true;
+                break;
+            }
+
+            produced++;
+            outCursor++;
+            playhead += velocity;
+            double unwrapped = playhead;
+
+            // Direction-aware wrap, triggered by the crossing rather than by the position, so that
+            // seeking outside an active loop plays on instead of being yanked back into it.
+            if(haveLoop) {
+                bool wrapped = false;
+                if(velocity > 0 && previous < loopEnd && playhead >= loopEnd) {
+                    playhead -= loopLength;
+                    wrapped = true;
+                } else if(velocity < 0 && previous >= loopStart && playhead < loopStart) {
+                    playhead += loopLength;
+                    wrapped = true;
+                }
+
+                if(wrapped) {
+                    long span = outCursor - runOutStart;
+                    if(span > 0) PushRun(runOutStart, runSrcStart, (unwrapped - runSrcStart) / span);
+                    runOutStart = outCursor;
+                    runSrcStart = playhead;
+
+                    // Adopt whatever length is configured now: a resize that arrived mid-pass
+                    // takes effect here, at the wrap, rather than truncating the pass.
+                    Volatile.Write(ref armedEndFrame, (long)(Loop.End * sampleRate));
+                    haveLoop = LoopBounds(out loopStart, out loopEnd);
+                    loopLength = loopEnd - loopStart;
+                }
+            }
+
+            if(playhead < 0) {
+                playhead = 0;
+                velocity = 0;
+            }
+            if(lengthFrames > 0 && playhead >= lengthFrames) {
+                playhead = lengthFrames;
+                if(velocity > 0) {
+                    ended = true;
+                    break;
+                }
+            }
+        }
+
+        long finalSpan = outCursor - runOutStart;
+        if(finalSpan > 0) PushRun(runOutStart, runSrcStart, (playhead - runSrcStart) / finalSpan);
+        outputFrames = outCursor;
+
+        if(state == State.Releasing && Math.Abs(velocity - target) < 1e-3) {
+            velocity = target;
+            if(ReleaseMode == ReleaseModes.Stop) {
+                brakeCompleted = true;
+                state = State.Stopped;
+            } else {
+                state = State.Idle;
+            }
+        }
+
+        if(produced > 0) System.Runtime.InteropServices.Marshal.Copy(outBuf, 0, buffer, produced * channels);
+
+        int bytes = produced * bytesPerFrame;
+        if(ended) return bytes | unchecked((int)0x80000000);   // BASS_STREAMPROC_END
+        return bytes;
+    }
+
+    private double TargetVelocity() {
+        switch(state) {
+            case State.Touched:
+                double gesture = Volatile.Read(ref gestureSpeed);
+                return TouchMode == TouchModes.Vinyl ? gesture : PlayVelocity + gesture;
+            case State.Releasing:
+                return ReleaseMode == ReleaseModes.Stop ? 0.0 : PlayVelocity;
+            case State.Stopped:
+                return 0.0;
+            default:
+                return PlayVelocity;
+        }
+    }
+
+    private double SlewAlpha() {
+        double tau = state switch {
+            State.Releasing => ReleaseMode == ReleaseModes.Stop ? BrakeTime : SpinUpTime,
+            _ => SlewTime
+        };
+        if(tau <= 0) return 1.0;                              // no smoothing at all
+        return 1.0 - Math.Exp(-1.0 / (tau * sampleRate));
+    }
+
+    // Writes one interpolated frame. Returns false if the source could not supply the data.
+    private bool RenderFrame(int outIndex) {
+        long i = (long)Math.Floor(playhead);
+        double t = playhead - i;
+
+        if(!Cover(i - 1, i + InterpMargin)) return false;
+
+        int at = outIndex * channels;
+        for(int c = 0; c < channels; c++) {
+            float p0 = Sample(i - 1, c);
+            float p1 = Sample(i, c);
+            float p2 = Sample(i + 1, c);
+            float p3 = Sample(i + 2, c);
+
+            // Catmull-Rom. At t == 0 this collapses to exactly p1, which is what keeps ordinary
+            // playback bit-identical to reading the source directly.
+            double a = p1;
+            double b = 0.5 * (p2 - p0);
+            double cc = p0 - 2.5 * p1 + 2.0 * p2 - 0.5 * p3;
+            double d = -0.5 * p0 + 1.5 * p1 - 1.5 * p2 + 0.5 * p3;
+
+            outBuf[at + c] = (float)(((d * t + cc) * t + b) * t + a);
+        }
+        return true;
+    }
+
+    private float Sample(long frame, int channel) {
+        if(frame < 0) frame = 0;
+        return ring[((frame & RingMask) * channels) + channel];
+    }
+
+    // Makes sure [first, last] is present in the ring, decoding or re-seeking as needed.
+    private bool Cover(long first, long last) {
+        if(first < 0) first = 0;
+        if(first >= ringTail && last < ringHead) return true;
+
+        if(first < ringTail || first > ringHead) {
+            // Discontinuous. Reaching backwards past what the ring holds is the expensive case,
+            // so pull back a block's worth of history in one go rather than re-seeking per frame.
+            long windowStart = first < ringTail ? first - BackfillFrames : first;
+            if(windowStart < 0) windowStart = 0;
+            RepositionSource(windowStart);
+        }
+
+        while(ringHead <= last) {
+            if(!DecodeChunk()) return false;
+        }
+        return true;
+    }
+
+    private void RepositionSource(long frame) {
+        Bass.BASS_ChannelSetPosition(source, frame * bytesPerFrame, BASSMode.BASS_POS_BYTE);
+        ringTail = ringHead = frame;
+        sourceExhausted = false;
+    }
+
+    private bool DecodeChunk() {
+        if(sourceExhausted) return false;
+
+        int wantFrames = Math.Min(ChunkFrames, decodeBuf.Length / channels);
+        int bytes = Bass.BASS_ChannelGetData(source, decodeBuf, wantFrames * bytesPerFrame);
+        if(bytes <= 0) {
+            // Only a genuine BASS_ERROR_ENDED means the track is over. The master stream is opened
+            // with BASS_ASYNCFILE, so a short read just means the file buffer has not caught up.
+            if(bytes < 0 && Bass.BASS_ErrorGetCode() == BASSError.BASS_ERROR_ENDED) sourceExhausted = true;
+            return false;
+        }
+
+        int got = bytes / bytesPerFrame;
+        int at = (int)(ringHead & RingMask);
+        int firstPart = Math.Min(got, RingFrames - at);
+
+        Array.Copy(decodeBuf, 0, ring, at * channels, firstPart * channels);
+        if(got > firstPart) Array.Copy(decodeBuf, firstPart * channels, ring, 0, (got - firstPart) * channels);
+
+        ringHead += got;
+        if(ringHead - ringTail > RingFrames) ringTail = ringHead - RingFrames;
+        return true;
     }
 
     private void ApplySeek() {
@@ -227,34 +446,31 @@ public sealed class ScratchEngine : IDisposable {
             return;
         }
 
-        SeekSource(frame);
+        if(lengthFrames > 0 && frame > lengthFrames) frame = lengthFrames;
+        if(frame < 0) frame = 0;
+
+        RepositionSource(frame);
+        playhead = frame;
+        velocity = TargetVelocity();
         ended = false;
 
         // The caller flushes the chain, which resets BASS's byte counter for this stream back to
-        // zero, so the output-frame origin has to move with it.
+        // zero, so the output-frame origin moves with it.
         outputFrames = 0;
-        Volatile.Write(ref segmentHead, 0);
-        PushSegment(0, sourceFrame);
+        Volatile.Write(ref runHead, 0);
+        PushRun(0, playhead, velocity);
 
         // Cleared last: until the map has been rebuilt, readers are served the requested position
         // rather than a stale or half-built answer.
         seekPending = false;
     }
 
-    private void SeekSource(long frame) {
-        if(frame < 0) frame = 0;
-        if(lengthFrames > 0 && frame > lengthFrames) frame = lengthFrames;
-
-        Bass.BASS_ChannelSetPosition(source, frame * bytesPerFrame, BASSMode.BASS_POS_BYTE);
-        sourceFrame = frame;
-    }
-
-    private void PushSegment(long outFrame, long srcFrame) {
-        Volatile.Write(ref segmentVersion, Volatile.Read(ref segmentVersion) + 1);   // odd: writing
-        long head = Volatile.Read(ref segmentHead);
-        segments[head & SegmentMask] = new Segment { OutFrame = outFrame, SrcFrame = srcFrame };
-        Volatile.Write(ref segmentHead, head + 1);
-        Volatile.Write(ref segmentVersion, Volatile.Read(ref segmentVersion) + 1);   // even: stable
+    private void PushRun(long outFrame, double srcFrame, double slope) {
+        Volatile.Write(ref runVersion, Volatile.Read(ref runVersion) + 1);   // odd: writing
+        long head = Volatile.Read(ref runHead);
+        runs[head & RunMask] = new Run { OutFrame = outFrame, SrcFrame = srcFrame, Slope = slope };
+        Volatile.Write(ref runHead, head + 1);
+        Volatile.Write(ref runVersion, Volatile.Read(ref runVersion) + 1);   // even: stable
     }
 
     // ---------------------------------------------------------------- teardown

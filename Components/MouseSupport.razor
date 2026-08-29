@@ -18,12 +18,12 @@
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'none';
-        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button);
+        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button, e.timeStamp);
     }
 
     handleMouseMove = (e) => {
         if(parentElement != null) {
-            parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button);
+            parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button, e.timeStamp);
         }
     }
 
@@ -31,7 +31,7 @@
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'auto';
-        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, -1);
+        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, -1, e.timeStamp);
         parentElement = null;
     }
 </script>
@@ -55,6 +55,7 @@
         lastMouseState.X = e.ClientX;
         lastMouseState.Y = e.ClientY;
         lastMouseState.ButtonsDown = e.Button;
+        lastMouseState.Timestamp = 0;   // the first move establishes the baseline
 
         var dotNetReference = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("handleMouseDown", e, dotNetReference);
@@ -71,18 +72,21 @@
     }
 
     [JSInvokable]
-    public async Task UpdateMousePositionAsync(double x, double y, long button) {
+    public async Task UpdateMousePositionAsync(double x, double y, long button, double timestamp) {
         mouseState.X = x;
         mouseState.Y = y;
         mouseState.ButtonsDown = button;
+        mouseState.Timestamp = timestamp;
 
         mouseState.DeltaX = mouseState.X - lastMouseState.X;
         mouseState.DeltaY = mouseState.Y - lastMouseState.Y;
+        mouseState.DeltaTime = lastMouseState.Timestamp > 0 ? timestamp - lastMouseState.Timestamp : 0;
 
         await OnMouseEvent.InvokeAsync(mouseState);
 
         lastMouseState.X = mouseState.X;
         lastMouseState.Y = mouseState.Y;
         lastMouseState.ButtonsDown = mouseState.ButtonsDown;
+        lastMouseState.Timestamp = timestamp;
     }
 }

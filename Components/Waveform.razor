@@ -28,6 +28,7 @@
     private Canvas2DContext? ctx;
 
     public bool IsMouseDown { get; internal set; } = false;
+    private bool scratching = false;
 
     private long canvasWidth = 0;
     private long canvasHeight = 0;
@@ -89,13 +90,37 @@
     }
 
     private async Task HandleMouseEvent() {
-        IsMouseDown = mouseState.ButtonsDown == 0;
+        bool isDown = mouseState.ButtonsDown == 0;
+
+        // The synced waveform is the platter: grabbing it hands playback speed to the hand, and
+        // letting go returns it. The overview waveform stays a plain "go here" seek.
+        if(isDown != IsMouseDown) {
+            IsMouseDown = isDown;
+
+            if(Mode == Modes.AudioSynced) {
+                if(isDown) {
+                    // A press on the zoom buttons is a click on a control, not a grab of the
+                    // platter - otherwise zooming would stop the record for a moment. The bounds
+                    // are computed either way, so only consult them when the buttons are shown.
+                    bool onZoomButtons = EnableZoomControls
+                                         && (zoomControlsBounds?.Contains(mouseState.X, mouseState.Y) ?? false);
+                    if(!onZoomButtons) {
+                        scratching = true;
+                        Player.BeginScratch();
+                    }
+                } else if(scratching) {
+                    scratching = false;
+                    Player.EndScratch();
+                }
+            }
+        }
+
         if(!IsMouseDown) return;
 
-        double sensitivity = 0.60;
         switch(Mode) {
             case Modes.AudioSynced:
-                PlaybackHead -= (long)(mouseState.DeltaX * sensitivity);
+                // Dragging right pulls the record backwards, hence the negated delta.
+                if(scratching) Player.ScratchBy(-mouseState.DeltaX, mouseState.DeltaTime);
                 break;
             case Modes.Full:
                 PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);

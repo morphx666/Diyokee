@@ -75,6 +75,49 @@
         </div>
 
         <div class="field">
+            <label for="scratch-enabled">Scratching</label>
+            <InputCheckbox id="scratch-enabled" @bind-value="settings.Playback.Scratch.Enabled" />
+            <span class="info">(drag the synced waveform)</span>
+        </div>
+
+        @if(settings.Playback.Scratch.Enabled) {
+            <div class="field">
+                <label for="scratch-touch-mode">On touch</label>
+                <div class="select-container">
+                    <InputSelect id="scratch-touch-mode" @bind-value="settings.Playback.Scratch.TouchMode">
+                        <option value="@TouchModes.Vinyl">Vinyl - the hand takes over</option>
+                        <option value="@TouchModes.Bend">Bend - offset play speed</option>
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="scratch-release-mode">On release</label>
+                <div class="select-container">
+                    <InputSelect id="scratch-release-mode" @bind-value="settings.Playback.Scratch.ReleaseMode">
+                        <option value="@ReleaseModes.Inertia">Inertia - spin back up to speed</option>
+                        <option value="@ReleaseModes.Stop">Stop - brake to a standstill</option>
+                    </InputSelect>
+                </div>
+            </div>
+
+            <div class="field">
+                <label for="scratch-spin-up">@(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop ? "Brake time" : "Spin-up time")</label>
+                @if(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop) {
+                    <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.BrakeTime" />
+                } else {
+                    <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.SpinUpTime" />
+                }
+                <span class="info">seconds (0 = instant)</span>
+            </div>
+
+            <div class="field">
+                <label for="scratch-sensitivity">Mouse sensitivity</label>
+                <InputNumber id="scratch-sensitivity" step="0.1" @bind-value="settings.Playback.Scratch.MouseSensitivity" />
+            </div>
+        }
+
+        <div class="field">
             <label for="tempo-range">Tempo Range -/+</label>
             <div class="select-container">
                 <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
