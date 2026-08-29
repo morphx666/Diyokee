@@ -5,7 +5,11 @@ using Un4seen.Bass.AddOn.Midi;
 namespace Diyokee {
     public class MidiTools {
         public delegate void MidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent);
-        public MidiEvent OnMidiEvent = default!;
+
+        // Declared nullable because "-=" compiles to Delegate.Remove, which returns null once the
+        // last handler is removed - assigning that back to a non-nullable field is what produced
+        // the CS8601 warning that previously made unsubscribing look impossible.
+        public event MidiEvent? OnMidiEvent;
 
         private MIDIINPROC midiProc = default!;
         private int midiStream = -1;
