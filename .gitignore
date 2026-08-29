@@ -371,3 +371,7 @@ PrepareReleases/
 MonitorChannels/
 publish.bat
 .DS_Store
+
+# AI assistant working notes
+CLAUDE.md
+docs/

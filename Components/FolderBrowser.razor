@@ -54,14 +54,15 @@
             switch(Runtime.Platform) {
                 case Runtime.Platforms.Windows:
                     return DriveInfo.GetDrives()
-                        .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, d.VolumeLabel))
+                        .Where(d => d.IsReady)
+                        .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, GetVolumeLabel(d)))
                         .ToArray();
 
                 case Runtime.Platforms.MacApple:
                 case Runtime.Platforms.MacIntel:
                     return DriveInfo.GetDrives()
-                        .Where(d => d.RootDirectory.FullName.StartsWith("/Volumes/"))
-                        .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, d.VolumeLabel))
+                        .Where(d => d.IsReady && d.RootDirectory.FullName.StartsWith("/Volumes/"))
+                        .Select(d => (new DirectoryInfo(d.RootDirectory.FullName), d.Name, GetVolumeLabel(d)))
                         .Append(new(new DirectoryInfo("/"), "Root", "System Root"))
                         .Append(new(new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "Home", Environment.UserName))
                         .ToArray();
@@ -82,6 +83,17 @@
         } catch(Exception ex) {
             Program.Logger.LogError(ex, "Error getting drives");
             return [];
+        }
+    }
+
+    // VolumeLabel throws when a drive stops being ready between the IsReady check above and this
+    // call - a disc ejected, a network mapping dropped. Without this the exception would escape to
+    // the catch above and cost us every other drive too, so fall back to the drive type instead.
+    private static string GetVolumeLabel(DriveInfo drive) {
+        try {
+            return drive.VolumeLabel;
+        } catch {
+            return drive.DriveType.ToString();
         }
     }
 
