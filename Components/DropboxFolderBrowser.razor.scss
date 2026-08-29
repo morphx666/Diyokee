@@ -16,11 +16,20 @@
         }
 
         .entry-name {
-            border-bottom: 1px solid transparent;
+            padding: 0.2rem 0.2rem;
             cursor: pointer;
 
             &.selected {
-                border-bottom: 1px solid var(--ctrl-highlight-soft);
+                font-weight: 600;
+                background-color: var(--ctrl-highlight-soft);
+                border-radius: 4px;
+                padding-inline: 0.6rem;
+
+                &.more::after {
+                    content: " \f107";
+                    font-family: "FontAwesome Solid";
+                    padding-left: 0.5rem;
+                }
             }
         }
     }

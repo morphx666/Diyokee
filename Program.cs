@@ -116,11 +116,11 @@ internal class Program {
             Logger.LogInformation(
                 $"""
 
-                    {line}
-                    You may now open your browser and navigate to: {Settings.WebHostUrl}
-                    {line}
+                {line}
+                You may now open your browser and navigate to: {Settings.WebHostUrl}
+                {line}
 
-                """);
+            """);
 
             if(autoStart && Settings.WebHostUrl != "") {
                 Process.Start(new ProcessStartInfo {
