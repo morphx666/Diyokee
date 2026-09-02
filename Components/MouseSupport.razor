@@ -18,7 +18,10 @@
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
         document.body.style.userSelect = 'none';
-        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button, e.timeStamp);
+        // "e" here is the .NET MouseEventArgs serialized back out to us, not a DOM event, so it
+        // carries no timeStamp. performance.now() shares its time origin with event.timeStamp,
+        // which keeps the deltas measured against the moves that follow valid.
+        parentElement.invokeMethodAsync("UpdateMousePositionAsync", e.clientX, e.clientY, e.button, performance.now());
     }
 
     handleMouseMove = (e) => {
@@ -55,7 +58,7 @@
         lastMouseState.X = e.ClientX;
         lastMouseState.Y = e.ClientY;
         lastMouseState.ButtonsDown = e.Button;
-        lastMouseState.Timestamp = 0;   // the first move establishes the baseline
+        lastMouseState.Timestamp = 0;   // the press itself establishes the baseline
 
         var dotNetReference = DotNetObjectReference.Create(this);
         await JS.InvokeVoidAsync("handleMouseDown", e, dotNetReference);
