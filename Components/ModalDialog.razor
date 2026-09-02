@@ -82,10 +82,14 @@
         lastMouseState.Y = mouseState.Y;
     }
 
+    // IsOpen drives the "show" class on both the backdrop and the container, so toggling it has
+    // no visible effect until something re-renders. Callers open dialogs from background tasks,
+    // where nothing does - hence the explicit render request rather than relying on the caller.
     public void Open() {
         if(!IsOpen) {
             IsOpen = true;
             OnOpen.InvokeAsync();
+            _ = InvokeAsync(StateHasChanged);
         }
     }
 
@@ -93,6 +97,7 @@
         if(IsOpen) {
             IsOpen = false;
             OnClose.InvokeAsync();
+            _ = InvokeAsync(StateHasChanged);
         }
     }
 

@@ -74,10 +74,26 @@
 
     [JSInvokable]
     public async Task OnResize() {
+        await ResizeCanvas();
+    }
+
+    // Returns true when the canvas actually changed size, which means a render is now pending to
+    // bring the Width/Height attributes in line with what JS already applied to the element.
+    // Writing either attribute wipes the canvas, so nothing may be painted until that lands.
+    private async Task<bool> ResizeCanvas() {
         double[] canvasSize = (await JS.InvokeAsync<double[]>("resizeCanvas", canvas!.CanvasReference));
-        canvasWidth = (long)canvasSize[0];
-        canvasHeight = (long)canvasSize[1];
+        long newWidth = (long)canvasSize[0];
+        long newHeight = (long)canvasSize[1];
         canvasRatio = canvasSize[2];
+
+        bool sizeChanged = newWidth != canvasWidth || newHeight != canvasHeight;
+        canvasWidth = newWidth;
+        canvasHeight = newHeight;
+
+        if(sizeChanged) {
+            forceReRender = true;
+            await InvokeAsync(StateHasChanged);
+        }
 
         canvasBounds = new Bounds(await JS.InvokeAsync<double[]>("getElementBounds", canvas.CanvasReference));
         zoomControlsBounds = new(new double[] { // FIXME: This will fail if the browser is zoomed in/out
@@ -87,6 +103,8 @@
             46
     });
         if(Mode == Modes.Full) forceReRender = true;
+
+        return sizeChanged;
     }
 
     private async Task HandleMouseEvent() {
@@ -130,11 +148,18 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if(firstRender || canvasWidth == 0 || canvasHeight == 0) {
-            await OnResize();
+            bool resized = await ResizeCanvas();
+
+            // A canvas inside a hidden container (a modal that has not been opened yet) measures
+            // zero, so keep re-measuring on later renders until it has a size to draw on.
             if(canvasWidth == 0 || canvasHeight == 0) return;
 
             var dotNetReference = DotNetObjectReference.Create(this);
             await JS.InvokeVoidAsync("Diyokee.monitorResize", dotNetReference);
+
+            // Let the render queued above patch the canvas attributes first - painting now would
+            // be erased by that patch. forceReRender is still set, so the next pass draws.
+            if(resized) return;
         }
 
         if(forceReRender) {
