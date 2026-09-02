@@ -95,8 +95,8 @@
             double newValue = default;
             if(mouseState.X >= 0) {
                 newValue = Orientation == Orientations.Vertical
-                                    ? 1.0 - (mouseState.Y - gutterOffsetTop - gutterOffsetBottom - faderBounds!.Y) / faderSize
-                                    : 1.0 - (mouseState.X - gutterOffsetTop - faderBounds!.X) / faderSize;
+                                    ? 1.0 - (mouseState.Y - gutterOffsetTop / 2 - gutterOffsetBottom - faderBounds!.Y) / faderSize
+                                    : 1.0 - (mouseState.X - gutterOffsetTop / 2 - faderBounds!.X) / faderSize;
             } else {
                 newValue = Value + mouseState.DeltaY / 20.0 * (Orientation == Orientations.Vertical ? -1 : 1);
             }
