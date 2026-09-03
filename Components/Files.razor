@@ -76,7 +76,7 @@
     private string lastRelativePath = "-";
     private IMediaProvider? lastProvider = null;
     private string selectedFile = "";
-    private Task analyzingTask = default!;
+    private Task? analyzingTask = null;
     private KeyTools keyTools = new();
     private string searchText = "";
     private CancellationTokenSource cancellationTokenSource = default!;
@@ -140,12 +140,23 @@
 
         if(cancellationTokenSource != null) {
             await cancellationTokenSource.CancelAsync();
-            while(analyzingTask == null || analyzedFilesCount > 0) await Task.Delay(10); // Sometimes AnalyzeFiles() gets called before analyzingTask is assigned; so we wait for it...
-            // TODO: Why not use analyzingTask.Wait()? Because that would cause a deadlock in Blazor...
+
+            // Waiting for the previous pass to actually finish is what stops two passes over the
+            // same folder from both missing the cache and both inserting. analyzingTask.Wait()
+            // would deadlock, because it blocks the very dispatcher thread the task posts its
+            // StateHasChanged calls back to - awaiting yields it instead, so they can run.
+            if(analyzingTask != null) {
+                try {
+                    await analyzingTask;
+                } catch(OperationCanceledException) {
+                    // Expected - we just cancelled it
+                }
+            }
 
             cancellationTokenSource.Dispose();
         }
         cancellationTokenSource = new CancellationTokenSource();
+        CancellationToken cancellationToken = cancellationTokenSource.Token; // The field is about to be replaced by the next call
 
         files.Clear();
         if(doSearch) {
@@ -174,37 +185,36 @@
         });
 
         analyzedFilesCount = 0;
-        CacheDbContext? cache = null;
-        analyzingTask = await Task.Run(async () => {
-            cache ??= await CacheDbContextFactory.CreateDbContextAsync();
+        analyzingTask = Task.Run(async () => {
+            // One file at a time, on one context. This used to hand an async lambda to
+            // List.ForEach, which binds to Action<T> - so every file was analyzed at once, with
+            // nothing awaiting any of them, against a DbContext that is not thread safe. The
+            // teardown then ran and disposed that context while they were all still in flight,
+            // and a second pass over the same folder would miss the cache and insert again.
+            await using CacheDbContext cache = await CacheDbContextFactory.CreateDbContextAsync();
 
             try {
-                files.ForEach(async file => {
-                    if(cancellationTokenSource.IsCancellationRequested) return;
+                foreach(DFile file in files.ToList()) { // Snapshot: SortFilesList() replaces the list
+                    if(cancellationToken.IsCancellationRequested) break;
 
                     await AnalyzeFile(file, cache, false);
 
-                    if(++analyzedFilesCount % 10 == 0) await cache!.SaveChangesAsync();
+                    if(++analyzedFilesCount % 10 == 0) await cache.SaveChangesAsync();
                     await InvokeAsync(StateHasChanged);
-                });
-            } catch (InvalidOperationException) {
-                // Ignore if collection was modified during enumeration
+                }
+
+                await cache.SaveChangesAsync(); // Whatever the last batch of 10 did not cover
             } catch(Exception ex) {
                 Program.Logger.LogError($"Error analyzing files: {ex.Message}");
-            }
-        }, cancellationTokenSource.Token).ContinueWith(async _ => {
-            isSearching = false;
-            searchButtonIcon = "fa-magnifying-glass";
-            analyzedFilesCount = 0;
+            } finally {
+                isSearching = false;
+                searchButtonIcon = "fa-magnifying-glass";
+                analyzedFilesCount = 0;
 
-            SortFilesList();
-
-            await InvokeAsync(StateHasChanged);
-            if(cache != null) {
-                await cache.SaveChangesAsync();
-                await cache.DisposeAsync();
+                SortFilesList();
+                await InvokeAsync(StateHasChanged);
             }
-        });
+        }, cancellationToken);
 
         if(files.Count > 0 && selectedFile == "") {
             await ChangeSelectedFile(files[0]);
