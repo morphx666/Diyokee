@@ -303,6 +303,9 @@
                 cache.Files.Add(file);
             }
         } else {
+            // Without this the list entry keeps Id 0 even though it maps to a real row, which is
+            // what let UpdateFile insert a second row for it.
+            file.Id = cachedFile.Id;
             file.Artist = cachedFile.Artist;
             file.Title = cachedFile.Title;
             file.Genre = cachedFile.Genre;
@@ -356,19 +359,20 @@
     }
 
     public async Task UpdateFile(DFile file) {
-        CacheDbContext? cache = await CacheDbContextFactory.CreateDbContextAsync();
-        DFile? fileFromCache = await cache.Files.Include(f => f.CuePoints).FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        await using CacheDbContext cache = await CacheDbContextFactory.CreateDbContextAsync();
+
+        DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(fileFromCache == null) throw new Exception($"File {file.Filename} not found in cache");
 
-        cache.Files.Remove(fileFromCache);
-        await cache.Files.AddAsync(file);
+        // Update the row in place. Removing it and adding "file" back left EF tracking two
+        // entities for the same row: while file.Id was still 0 that inserted a duplicate, and once
+        // it was not, Add threw "another instance with the same key value is already being
+        // tracked". Cue points belong to CuePoints.UpdateCuePoints(), so they are left alone.
+        fileFromCache.ApplyEditsFrom(file);
+        await cache.SaveChangesAsync();
 
         int index = files.FindIndex(f => f.Filename == file.Filename);
-        files.RemoveAt(index);
-        files.Insert(index, file);
-
-        await cache.SaveChangesAsync();
-        await cache.DisposeAsync();
+        if(index >= 0) files[index] = file;
 
         await InvokeAsync(StateHasChanged);
         await SelectedFileChanged.InvokeAsync(file);

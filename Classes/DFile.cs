@@ -63,8 +63,32 @@ namespace Diyokee {
             return $"{Artist} - {Title} ({Album}, {Year})";
         }
 
+        // Applies another file's user-editable values onto this instance rather than replacing it:
+        // players hold a reference to this very object, so swapping it out would leave them
+        // pointing at the old values. Identity and analysis results (Id, Filename, Duration,
+        // Waveform, CuePoints) are not the dialog's to change.
+        public void ApplyEditsFrom(DFile other) {
+            Artist = other.Artist;
+            Title = other.Title;
+            Genre = other.Genre;
+            Album = other.Album;
+            Year = other.Year;
+            BPM = other.BPM;
+            DownbeatAt = other.DownbeatAt;
+            Key = other.Key;
+        }
+
         public object Clone() {
-            return this.MemberwiseClone();
+            DFile clone = (DFile)this.MemberwiseClone();
+
+            // MemberwiseClone is shallow, so without this the copy would share the original's cue
+            // point list and edits to it would still reach the loaded track.
+            clone.CuePoints = [];
+            foreach(CuePoint cuePoint in CuePoints) {
+                clone.CuePoints.Add(new CuePoint { Id = cuePoint.Id, Position = cuePoint.Position, Name = cuePoint.Name });
+            }
+
+            return clone;
         }
     }
 }

@@ -12,12 +12,12 @@
     Movable=true>
     <div class="field">
         <label for="artist">Artist</label>
-        <InputText id="artist" @bind-value="File.Artist" />
+        <InputText id="artist" @bind-value="edit.Artist" />
     </div>
 
     <div class="field">
         <label for="title">Title</label>
-        <InputText id="title" @bind-value="File.Title" />
+        <InputText id="title" @bind-value="edit.Title" />
     </div>
 
     <div class="row">
@@ -34,15 +34,15 @@
                     await JS.InvokeVoidAsync("scrollToSelectedItem");
                 })">
                 <InputText id="album"
-                    @bind-value="File.Album"
+                    @bind-value="edit.Album"
                 />
                 <div class="autocomplete scroller @(albumsAcVisible ? "show" : "")">
                     @foreach(var album in albums) {
                         <div
-                            class="item @(album == File.Album ? "selected" : "")"
+                            class="item @(album == edit.Album ? "selected" : "")"
                             @onclick:stopPropagation="true"
                             @onclick="@(async () => {
-                                    File.Album = album;
+                                    edit.Album = album;
                                     albumsAcVisible = false;
                                 })">
                             @album
@@ -65,15 +65,15 @@
                     await JS.InvokeVoidAsync("scrollToSelectedItem");
                 })">
                 <InputText id="genre"
-                    @bind-value="File.Genre"
+                    @bind-value="edit.Genre"
                 />
                 <div class="autocomplete scroller @(genresAcVisible ? "show" : "")">
                     @foreach(var genre in genres) {
                         <div
-                            class="item @(genre == File.Genre ? "selected" : "")"
+                            class="item @(genre == edit.Genre ? "selected" : "")"
                             @onclick:stopPropagation="true"
                             @onclick="@(async () => {
-                                    File.Genre = genre;
+                                    edit.Genre = genre;
                                     genresAcVisible = false;
                                 })">
                             @genre
@@ -85,7 +85,7 @@
 
         <div class="field year">
             <label for="year" class="no-min-size">Year</label>
-            <InputNumber id="year" @bind-value="File.Year" />
+            <InputNumber id="year" @bind-value="edit.Year" />
         </div>
     </div>
 
@@ -133,10 +133,10 @@
                         <div class="autocomplete scroller @(keysAcVisible ? "show" : "")">
                             @foreach(var key in KeyTools.NotationToKeysMap[selectedNotation]) {
                                 <div
-                                    class="item @(key == keyTools.ConvertTo(File.Key, selectedNotation) ? "selected" : "")"
+                                    class="item @(key == keyTools.ConvertTo(edit.Key, selectedNotation) ? "selected" : "")"
                                     @onclick:stopPropagation="true"
                                     @onclick="@(async () => {
-                                            File.Key = key;
+                                            edit.Key = key;
                                             keysAcVisible = false;
                                         })">
                                     @key
@@ -183,7 +183,7 @@
         </div>
 
         <Player
-            File="@File"
+            File="@edit"
             Settings="@(new() {
                 Name = "Preview",
                 Color = "#82871f"
@@ -192,7 +192,7 @@
             @ref="player" />
     </div>
 
-    <div class="filename ellipsis">@File.Filename</div>
+    <div class="filename ellipsis">@edit.Filename</div>
 </ModalDialog>
 
 <script>
@@ -244,9 +244,24 @@
     [Parameter]
     public DFile File { get; set; } = default!;
 
+    // The browser hands us the very same DFile instance that gets loaded into a deck, so editing
+    // it directly would reach the player on every keystroke - visibly so for the downbeat, which
+    // the waveform redraws from continuously. Everything here binds to a clone instead, and only
+    // Save folds the result back into the real file. Same shape as Settings.razor.
+    private DFile? source;
+    private DFile edit = new();
+
+    protected override void OnParametersSet() {
+        if(!ReferenceEquals(source, File)) {
+            source = File;
+            edit = File == null ? new() : (DFile)File.Clone();
+        }
+    }
+
     public bool IsOpen { get => dialog.IsOpen; }
 
     private async Task Save() {
+        File.ApplyEditsFrom(edit);
         await FilesComponent.UpdateFile(File);
         Close();
     }
@@ -260,70 +275,70 @@
     }
 
     private int DownbeatAtHours {
-        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[0]);
+        get => int.Parse(DFile.FormatTime(edit.DownbeatAt, true).Split(':')[0]);
         set {
             if(lastHrValue == value) return;
             lastHrValue = value;
-            File.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMilliSeconds);
+            edit.DownbeatAt = DFile.ParseTime(value, DownbeatAtMinutes, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtMinutes {
-        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[1]);
+        get => int.Parse(DFile.FormatTime(edit.DownbeatAt, true).Split(':')[1]);
         set {
             if(lastMinValue == value) return;
             lastMinValue = value;
-            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMilliSeconds);
+            edit.DownbeatAt = DFile.ParseTime(DownbeatAtHours, value, DownbeatAtSeconds, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtSeconds {
-        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[2].Split('.')[0]);
+        get => int.Parse(DFile.FormatTime(edit.DownbeatAt, true).Split(':')[2].Split('.')[0]);
         set {
             if(lastSecValue == value) return;
             lastSecValue = value;
-            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMilliSeconds);
+            edit.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, value, DownbeatAtMilliSeconds);
             player!.SetParameters();
         }
     }
 
     private int DownbeatAtMilliSeconds {
-        get => int.Parse(DFile.FormatTime(File.DownbeatAt, true).Split(':')[2].Split('.')[1]);
+        get => int.Parse(DFile.FormatTime(edit.DownbeatAt, true).Split(':')[2].Split('.')[1]);
         set {
             if(lastMsValue == value) return;
             lastMsValue = value;
-            File.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, DownbeatAtSeconds, value);
+            edit.DownbeatAt = DFile.ParseTime(DownbeatAtHours, DownbeatAtMinutes, DownbeatAtSeconds, value);
             player!.SetParameters();
         }
     }
 
     private float BPM {
-        get => File.BPM;
+        get => edit.BPM;
         set {
-            File.BPM = value;
+            edit.BPM = value;
             player!.SetParameters();
         }
     }
 
     private async void ReCalcBpm() {
-        BPM = FilesComponent.CalcBpm(File);
+        BPM = FilesComponent.CalcBpm(edit);
         await InvokeAsync(StateHasChanged);
     }
 
     private async void ReCalcDownbeat() {
-        File.DownbeatAt = FilesComponent.CalcDownbeat(File);
+        edit.DownbeatAt = FilesComponent.CalcDownbeat(edit);
         await InvokeAsync(StateHasChanged);
     }
 
     private async void ReCalcKey() {
         await Task.Run(() => {
-            int handle = Diyokee.MediaProviders.BassStreamFactory.CreateStreamFile(File.Filename, 0, 0, Un4seen.Bass.BASSFlag.BASS_STREAM_DECODE
+            int handle = Diyokee.MediaProviders.BassStreamFactory.CreateStreamFile(edit.Filename, 0, 0, Un4seen.Bass.BASSFlag.BASS_STREAM_DECODE
                                                                                       | Un4seen.Bass.BASSFlag.BASS_SAMPLE_MONO
                                                                                       | Un4seen.Bass.BASSFlag.BASS_STREAM_PRESCAN);
             if(handle != 0) {
-                File.Key = Krumhansl_Schmuckler.DetectKey(handle, selectedNotation);
+                edit.Key = Krumhansl_Schmuckler.DetectKey(handle, selectedNotation);
                 Un4seen.Bass.Bass.BASS_StreamFree(handle);
             }
         });
@@ -331,7 +346,7 @@
     }
 
     private void ReSetDownbeat() {
-        File.DownbeatAt = player!.WaveformHeadToSeconds(player.PlaybackHead);
+        edit.DownbeatAt = player!.WaveformHeadToSeconds(player.PlaybackHead);
         player!.SetParameters();
     }
 
@@ -349,8 +364,8 @@
     }
 
     private string FileKeyInSelectedNotation {
-        get => keyTools.ConvertTo(File.Key, selectedNotation);
-        set => File.Key = value;
+        get => keyTools.ConvertTo(edit.Key, selectedNotation);
+        set => edit.Key = value;
     }
 
     protected override void OnAfterRender(bool firstRender) {
