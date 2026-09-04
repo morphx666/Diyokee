@@ -37,6 +37,8 @@ public class MediaProviderLocal : MediaProviderBase {
         string path = Path.Combine(RootPath, relativePath);
         if(!Directory.Exists(path)) return [];
 
+        if(relativePath == "") relativePath = RootPath;
+
         return [.. new DirectoryInfo(path)
                         .EnumerateFiles("*" + query + "*", recursive ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly)
                         .Where(f => supportedExtensions.Contains(f.Extension))
