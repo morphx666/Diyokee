@@ -27,6 +27,7 @@ internal static class EngineTest {
     // Summed from every engine the run creates. Non-zero means the STREAMPROC seeked or decoded
     // the source, which is exactly what the producer thread exists to prevent - see check 22.
     static long audioThreadOps;
+    static long silencePadded;
 
     static void Check(string what, bool ok, string detail = "") {
         Console.WriteLine($"  [{(ok ? "PASS" : "FAIL")}] {what}{(detail == "" ? "" : "   " + detail)}");
@@ -568,6 +569,7 @@ internal static class EngineTest {
 
         engine.Release();
         audioThreadOps += engine.AudioThreadSourceOps;
+        silencePadded += engine.SilencePaddedFrames;
         engine.Dispose();
         Bass.BASS_StreamFree(source);
 
@@ -597,6 +599,7 @@ internal static class EngineTest {
             Bass.BASS_ChannelGetData(e.StreamHandle, tone, 4096 * BYTES_PER_FRAME);       // settle
             int frames = Bass.BASS_ChannelGetData(e.StreamHandle, tone, 16384 * BYTES_PER_FRAME) / BYTES_PER_FRAME;
             audioThreadOps += e.AudioThreadSourceOps;
+            silencePadded += e.SilencePaddedFrames;
             e.Dispose();
 
             double ideal = toneHz * rate;
@@ -670,6 +673,7 @@ internal static class EngineTest {
             w.SetGestureSpeed(warmRate);
             for(int i = 0; i < 8; i++) Bass.BASS_ChannelGetData(w.StreamHandle, tone, 8192 * BYTES_PER_FRAME);
             audioThreadOps += w.AudioThreadSourceOps;
+            silencePadded += w.SilencePaddedFrames;
             w.Dispose();
         }
 
@@ -690,6 +694,7 @@ internal static class EngineTest {
             }
             sw.Stop();
             audioThreadOps += b.AudioThreadSourceOps;
+            silencePadded += b.SilencePaddedFrames;
             b.Dispose();
 
             double realtime = (pulled / (double)RATE) / sw.Elapsed.TotalSeconds;
@@ -703,9 +708,19 @@ internal static class EngineTest {
 
         Bass.BASS_Free();
 
-        Console.WriteLine("\n[22] The audio thread never touches the source");
+        Console.WriteLine("\n[22] The audio thread never touches the source, and never returns short");
         Check("no seek or decode happened inside the STREAMPROC, across every check above",
               audioThreadOps == 0, $"{audioThreadOps} operation(s)");
+
+        // A short read makes a mixer source report BASS_ACTIVE_STALLED, which Player reads as the
+        // end of the track: it stops the deck, rebuilds the chain and jumps to the end of the
+        // file. The STREAMPROC pads with silence rather than ever returning short, so this counter
+        // is the only thing left that can show the producer failing to keep up.
+        //
+        // Note this harness pulls as fast as it can rather than at realtime, so it starves the
+        // producer far harder than the app ever will. Padding here is a real signal.
+        Check("the producer kept up, so nothing had to be padded with silence",
+              silencePadded == 0, $"{silencePadded} frame(s) padded");
 
         Console.WriteLine($"\n{(failures == 0 ? "ALL CHECKS PASSED" : $"{failures} CHECK(S) FAILED")}");
         Environment.Exit(failures == 0 ? 0 : 1);

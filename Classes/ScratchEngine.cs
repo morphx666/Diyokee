@@ -28,9 +28,11 @@ namespace Diyokee;
 // ever increases - it cannot represent a loop wrap, a seek, or playing backwards. BASS's idea of
 // "where are we" is therefore not usable as track position. See SourceSecondsAtOutputFrame.
 public sealed class ScratchEngine : IDisposable {
-    // ~5.9s of source at 44.1kHz. Big enough that a scratch stays inside the ring and needs no
-    // re-seek; small enough to stay cheap (2.1 MB per stereo deck).
-    private const int RingFrames = 1 << 18;
+    // ~23.8s of source at 44.1kHz, 8.4 MB per stereo deck. Sized by the longest LOOP worth keeping
+    // resident rather than by the longest scratch: a loop wrap jumps the playhead to the far end of
+    // the loop, and the only way to make that free is to hold the whole loop. At 5.9s it did not
+    // even cover 16 beats at 120 BPM.
+    private const int RingFrames = 1 << 20;
     private const int RingMask = RingFrames - 1;
     private const int ChunkFrames = 4096;      // decoded per top-up
     private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
@@ -47,9 +49,12 @@ public sealed class ScratchEngine : IDisposable {
     // locking: the tail is only ever dragged up to HistoryFrames behind the playhead, so the
     // producer cannot overwrite what is being played even if it is working from a stale reading
     // of where the playhead is.
-    private const int LookaheadFrames = RingFrames / 2;    // kept ahead in the direction of travel
-    private const int HistoryFrames = RingFrames / 4;      // kept behind it
-    private const int ScratchWindow = RingFrames * 3 / 8;  // ...but both, once a hand is on it
+    // Frame counts, calibrated at 44.1kHz. Lookahead has to exceed what one callback can consume
+    // at MaxScratchSpeed (ChunkFrames * 32 = 131072) or a single callback could outrun the ring.
+    private const int LookaheadFrames = 176400;            // 4s, kept ahead in the direction of travel
+    private const int HistoryFrames = 44100;               // 1s, kept behind it
+    private const int ScratchWindow = 132300;              // 3s of both, once a hand is on it
+    private const int MaxResident = RingFrames - ChunkFrames * 4;   // most the ring can safely hold
     private const int PrefillChunks = 2;                   // decoded inline on load and on seek
     private const int ProducerWaitMs = 2;                  // one wait; the budget is a few of these
     private const int ProducerWaitTries = 64;              // ...but only while it is making progress
@@ -143,6 +148,10 @@ public sealed class ScratchEngine : IDisposable {
     public long FramesDecoded { get; private set; }
     public long AudioThreadSourceOps { get; private set; }
 
+    // Frames the STREAMPROC had to pad with silence because the ring had not reached them. Should
+    // be zero: anything else means the producer is not keeping up.
+    public long SilencePaddedFrames { get; private set; }
+
     private int renderingOn;                   // thread id currently inside StreamProc, 0 if none
 
     private void NoteSourceIo() {
@@ -209,6 +218,12 @@ public sealed class ScratchEngine : IDisposable {
     // more tightly and passes more of the input's quantisation through as velocity ripple; longer
     // is smoother and further behind. It is wall-clock lag, the same at any scratch speed.
     public double FollowTime { get; set; } = 0.040;
+
+    // Clamped at the point of use rather than trusted. The settings dialog exposes FollowTime as a
+    // plain number, and zero is its one genuinely dangerous value: the gain becomes one whole
+    // playback speed per frame of error and the derived slew becomes instant, which turns the loop
+    // into a bang-bang controller slamming between the speed limits.
+    private double Follow => Math.Clamp(FollowTime, 0.005, 0.5);
 
     // How long the output takes to fade in or out as the record passes SilenceThreshold.
     public double SilenceFadeTime { get; set; } = 0.005;
@@ -446,7 +461,7 @@ public sealed class ScratchEngine : IDisposable {
         double offsetStep = servo
             ? (Volatile.Read(ref gestureOffsetSeconds) * sampleRate - appliedOffsetFrames) / framesWanted
             : 0;
-        double followGain = FollowTime > 0 ? 1.0 / (FollowTime * sampleRate) : 1.0;
+        double followGain = 1.0 / (Follow * sampleRate);
 
         long outCursor = outputFrames;
         long runOutStart = outCursor;
@@ -549,6 +564,25 @@ public sealed class ScratchEngine : IDisposable {
 
         long finalSpan = outCursor - runOutStart;
         if(finalSpan > 0) PushRun(runOutStart, runSrcStart, (playhead - runSrcStart) / finalSpan);
+
+        // Never hand back less than was asked for. A mixer source that gets a short read reports
+        // BASS_ACTIVE_STALLED, and MonitorPlayback treats anything but PLAYING as the end of the
+        // track: it stops the deck, rebuilds the chain and jumps to the end of the file. It also
+        // stops MonitorBeats dead, which is what drives InBeat and therefore sync playback. A few
+        // milliseconds of silence is an enormously smaller thing than any of that.
+        //
+        // The playhead stays where it is, so the padding is a zero-slope run and the position map
+        // stays truthful across it.
+        if(!ended && produced < framesWanted) {
+            int pad = framesWanted - produced;
+            Array.Clear(outBuf, produced * channels, pad * channels);
+            PushRun(outCursor, playhead, 0);
+
+            SilencePaddedFrames += pad;
+            outCursor += pad;
+            produced = framesWanted;
+        }
+
         outputFrames = outCursor;
 
         if(state == State.Releasing && Math.Abs(velocity - blockTarget) < 1e-3) {
@@ -600,7 +634,7 @@ public sealed class ScratchEngine : IDisposable {
     // overshoot here would be the record audibly rocking past where the hand is.
     private double SlewAlpha() => Alpha(state switch {
         State.Releasing => ReleaseMode == ReleaseModes.Stop ? BrakeTime : SpinUpTime,
-        State.Touched when servoActive => FollowTime / 4.0,
+        State.Touched when servoActive => Follow / 4.0,
         _ => SlewTime
     });
 
@@ -793,49 +827,81 @@ public sealed class ScratchEngine : IDisposable {
     private void ProducerLoop() {
         while(!disposed) {
             wake.WaitOne(ProducerIdleMs);
-            if(disposed) return;
-
-            lock(sourceLock) {
-                if(disposed) return;
-                Fill();
-            }
+            while(!disposed && FillStep()) { }
         }
     }
 
-    // Keeps the ring covering the playhead. One pass; the reader signals for another whenever it
-    // gets close to an edge, and the idle timeout catches anything that slips through.
-    private void Fill() {
-        // While a seek is pending the playhead is still at the old position, so aim at where the
-        // audio thread is about to jump to instead - otherwise this would undo the prefill that
-        // RequestSeek just did.
-        long pending = Volatile.Read(ref pendingSeekFrame);
-        long here = seekPending && pending >= 0 ? pending : (long)Volatile.Read(ref playhead);
+    // One lock-hold's worth of filling; returns true if there is more to do.
+    //
+    // Taking the lock per STEP rather than around the whole window is deliberate. A seek prefills
+    // on the caller's thread, and the beat-sync loop in Player.Play polls every 1ms and seeks the
+    // instant the other deck hits a beat - so queueing that seek behind three seconds of decoding
+    // put a multi-millisecond stall exactly where alignment is decided. One chunk is a few hundred
+    // microseconds, and the whole window still fills in the same number of decodes.
+    private bool FillStep() {
+        lock(sourceLock) {
+            if(disposed) return false;
 
-        // A window biased along the direction of travel is right for playback and wrong for a
-        // scratch, where the direction reverses several times a second: each reversal would throw
-        // away one side and re-fetch the other. While the platter is held it is symmetric, so a
-        // stroke crossing back and forth costs nothing after the first pass.
-        bool scratching = state != State.Idle;
-        bool forward = Volatile.Read(ref velocity) >= 0;
-        long ahead = scratching ? ScratchWindow : forward ? LookaheadFrames : HistoryFrames;
-        long behind = scratching ? ScratchWindow : forward ? HistoryFrames : LookaheadFrames;
+            // While a seek is pending the playhead is still at the old position, so aim at where
+            // the audio thread is about to jump to instead - otherwise this would undo the prefill
+            // that RequestSeek just did.
+            long pending = Volatile.Read(ref pendingSeekFrame);
+            long here = seekPending && pending >= 0 ? pending : (long)Volatile.Read(ref playhead);
 
-        // Outside the ring entirely: a scratch that outran us, or a seek nobody prefilled. The
-        // reader is already emitting nothing, so there is nothing here worth preserving.
-        if(here < ringTail || here > ringHead) RepositionSource(Math.Max(0, here));
+            // A window biased along the direction of travel is right for playback and wrong for a
+            // scratch, where the direction reverses several times a second: each reversal would
+            // throw away one side and re-fetch the other. While the platter is held it is
+            // symmetric, so a stroke crossing back and forth costs nothing after the first pass.
+            bool scratching = state != State.Idle;
+            bool forward = Volatile.Read(ref velocity) >= 0;
+            long ahead = scratching ? ScratchWindow : forward ? LookaheadFrames : HistoryFrames;
+            long behind = scratching ? ScratchWindow : forward ? HistoryFrames : LookaheadFrames;
 
-        long wantHead = here + ahead;
-        if(lengthFrames > 0 && wantHead > lengthFrames) wantHead = lengthFrames;
-        while(!disposed && ringHead < wantHead && DecodeChunk()) { }
+            long wantTail = Math.Max(0, here - behind);
+            long wantHead = here + ahead;
 
-        long wantTail = Math.Max(0, here - behind);
-        if(wantTail > ringTail) {
-            Volatile.Write(ref ringTail, wantTail);        // let go of history we have run past
-        } else if(scratching && here - ringTail < behind) {
-            // History is only fetched once the platter is in play, because only a scratch running
-            // backwards ever reads it. Fetching it after every seek would mean decoding a second
-            // of audio per scrub tick that nothing would ever look at.
-            while(!disposed && ringTail > wantTail && Backfill(wantTail)) { }
+            // A loop wrap teleports the playhead to the far end of the loop - which a window that
+            // follows the playhead has, by definition, just let go of. So while a loop is running,
+            // pin the window to the LOOP rather than to the playhead: every wrap is then free, in
+            // both directions, because both ends are already resident. A loop too long for the
+            // ring falls back to the moving window and pays a refill once per pass.
+            if(LoopBounds(out double loopStart, out double loopEnd)) {
+                long ls = Math.Max(0, (long)loopStart - EdgeMargin);
+                long le = (long)loopEnd + EdgeMargin;
+                if(le - ls <= MaxResident && here >= ls && here <= le) {
+                    wantTail = ls;
+                    wantHead = le;
+                }
+            }
+
+            if(lengthFrames > 0 && wantHead > lengthFrames) wantHead = lengthFrames;
+
+            // Only reposition when decoding cannot reach the playhead: a big seek forward, or so
+            // far back that the history will not fit alongside what is already decoded ahead.
+            // Anything closer is covered below without discarding the ring.
+            //
+            // This used to test "outside [ringTail, ringHead]", which looks equivalent and is not:
+            // RepositionSource starts the ring EdgeMargin BEHIND the target, so the playhead was
+            // still past the head afterwards and the next pass repositioned again - a livelock
+            // that decoded nothing at all. Every loop wrap fell into it.
+            if(here > ringHead + ahead || ringHead - here > MaxResident) {
+                RepositionSource(here);
+                return true;
+            }
+
+            if(ringHead < wantHead && DecodeChunk()) return true;
+
+            // Below the tail the playhead itself is missing, so this is not optional history and
+            // runs whatever the state. Above it, history is only worth fetching while the platter
+            // is held, since only a scratch running backwards ever reads it - pulling it in after
+            // every seek would decode a second of audio per scrub tick that nothing looks at.
+            if(here < ringTail) return Backfill(Math.Min(wantTail, here - EdgeMargin));
+
+            if(wantTail > ringTail) {
+                Volatile.Write(ref ringTail, wantTail);    // let go of history we have run past
+                return false;
+            }
+            return scratching && here - ringTail < behind && Backfill(wantTail);
         }
     }
 
