@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Correctness harness for Classes/ScratchEngine.cs. Not part of Diyokee.sln and not shipped;
+    see the header of Program.cs for how to run it.
+
+    It compiles the real engine sources rather than a copy, so it always tests what ships.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>enginetest</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Un4seen.Bass" Version="2.4.18.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Classes\ScratchEngine.cs" Link="ScratchEngine.cs" />
+    <Compile Include="..\..\Classes\Loop.cs" Link="Loop.cs" />
+    <Compile Include="..\..\Classes\ScratchModes.cs" Link="ScratchModes.cs" />
+  </ItemGroup>
+
+  <!--
+    Native BASS, picked the same way Classes/Runtime.cs picks it for the app. Only the 64-bit
+    builds are covered - add an x86 or arm condition here if the harness ever needs to run on one.
+  -->
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="..\..\bass\windows\x64\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
+    <Content Include="..\..\bass\linux\x64\*.so" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <Content Include="..\..\bass\mac\arm64\*.dylib" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

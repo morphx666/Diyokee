@@ -15,7 +15,7 @@
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'" />
 
 	<PropertyGroup>
-		<DefaultItemExcludes>$(DefaultItemExcludes);PrepareReleases\**;</DefaultItemExcludes>
+		<DefaultItemExcludes>$(DefaultItemExcludes);PrepareReleases\**;tools\**;</DefaultItemExcludes>
 		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>
 		<PackageIcon>app-icon.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
