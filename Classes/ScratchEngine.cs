@@ -12,6 +12,10 @@ namespace Diyokee;
 // around it, so it can render the track at any speed in either direction. Velocity is signed:
 // negative simply reads the ring backwards, which is why the reverse FX is gone.
 //
+// While the platter is held, velocity is not commanded - it is whatever it takes to close the gap
+// between the playhead and where the hand says the record should be. See the servo fields below;
+// that indirection is what stops the input's quantisation and burstiness reaching the audio.
+//
 // Two resampling paths, which is deliberate rather than leftover. At or below play speed there is
 // nothing to band-limit, so Catmull-Rom interpolates: cheap, and at exactly 1.0 the playhead stays
 // on integer frames and it returns the sample untouched, keeping ordinary playback bit-identical
@@ -127,6 +131,24 @@ public sealed class ScratchEngine : IDisposable {
     private double gestureSpeed;               // requested speed while the platter is held
     private volatile bool brakeCompleted;
 
+    // Position servo. The hand's POSITION is the input, not its speed: the engine steers the
+    // playhead toward where the hand says the record should be, and whatever velocity that takes
+    // is the velocity you hear.
+    //
+    // Differentiating the hand's position was the root of this whole class of artifact. One
+    // waveform pixel is 12.5ms of source, the browser reports integer pixels, and events arrive
+    // in bursts over the circuit, so any speed computed from them is quantised, noisy, and simply
+    // wrong whenever delivery is uneven. A servo never differentiates: three events arriving at
+    // once move the target three pixels, and the error term absorbs the timing.
+    //
+    // The price is that the record lags the hand by FollowTime, which is the same thing as the
+    // smoothing. It is wall-clock lag and stays constant at any scratch speed.
+    private double gestureOffsetSeconds;       // hand displacement since Touch(), control thread
+    private double appliedOffsetFrames;        // how much of it the audio thread has folded in
+    private double targetFrame;                // where the hand says the record should be
+    private volatile bool servoActive;
+    private volatile bool anchorPending;
+
     public Loop Loop { get; set; }
 
     public int StreamHandle => stream;
@@ -141,7 +163,15 @@ public sealed class ScratchEngine : IDisposable {
     public ReleaseModes ReleaseMode { get; set; } = ReleaseModes.Inertia;
     public double SpinUpTime { get; set; } = 0.25;
     public double BrakeTime { get; set; } = 0.12;
+    // Smoothing on a speed that was handed to us rather than derived from a position. Only the
+    // speed-commanded path uses it - while the servo is running the slew comes from FollowTime.
     public double SlewTime { get; set; } = 0.004;
+
+    // How far behind the hand the record is allowed to sit while being scratched - the servo's
+    // one tuning knob, and the only scratch-feel setting that now exists. Shorter tracks the hand
+    // more tightly and passes more of the input's quantisation through as velocity ripple; longer
+    // is smoother and further behind. It is wall-clock lag, the same at any scratch speed.
+    public double FollowTime { get; set; } = 0.040;
 
     // How long the output takes to fade in or out as the record passes SilenceThreshold.
     public double SilenceFadeTime { get; set; } = 0.005;
@@ -190,9 +220,13 @@ public sealed class ScratchEngine : IDisposable {
         seekPending = true;
     }
 
-    // The platter has been grabbed. Playback speed is handed over to SetGestureSpeed.
+    // The platter has been grabbed. From here the hand decides where the record is, through
+    // SetGestureTarget - or, for a caller that knows a speed, through SetGestureSpeed.
     public void Touch() {
         Volatile.Write(ref gestureSpeed, 0);
+        Volatile.Write(ref gestureOffsetSeconds, 0);
+        servoActive = false;
+        anchorPending = true;                  // the audio thread pins the target to the playhead
         brakeCompleted = false;
         state = State.Touched;
     }
@@ -209,6 +243,16 @@ public sealed class ScratchEngine : IDisposable {
         else if(speed < -MaxScratchSpeed) speed = -MaxScratchSpeed;
 
         Volatile.Write(ref gestureSpeed, speed);
+    }
+
+    // Where the hand has taken the record, as a signed displacement in source seconds since the
+    // platter was grabbed. This is what the Player feeds; SetGestureSpeed above stays for callers
+    // that genuinely know a speed, which is how the test harness drives exact rates.
+    public void SetGestureTarget(double offsetSeconds) {
+        if(double.IsNaN(offsetSeconds) || double.IsInfinity(offsetSeconds)) return;
+
+        Volatile.Write(ref gestureOffsetSeconds, offsetSeconds);
+        servoActive = true;
     }
 
     // The platter has been let go. What happens next is up to ReleaseMode.
@@ -316,9 +360,24 @@ public sealed class ScratchEngine : IDisposable {
         if(framesWanted > outBuf.Length / channels) framesWanted = outBuf.Length / channels;
         if(framesWanted <= 0) return 0;
 
-        double target = TargetVelocity();
+        double blockTarget = TargetVelocity();
         double alpha = SlewAlpha();
         double fadeAlpha = Alpha(SilenceFadeTime);
+
+        // Servo input. Pinning the target happens here rather than in Touch() so it lands on the
+        // playhead the audio thread actually has, and the block's worth of hand movement is
+        // spread across the frames instead of stepping once per callback.
+        if(anchorPending) {
+            anchorPending = false;
+            targetFrame = playhead;
+            appliedOffsetFrames = 0;
+        }
+
+        bool servo = state == State.Touched && servoActive;
+        double offsetStep = servo
+            ? (Volatile.Read(ref gestureOffsetSeconds) * sampleRate - appliedOffsetFrames) / framesWanted
+            : 0;
+        double followGain = FollowTime > 0 ? 1.0 / (FollowTime * sampleRate) : 1.0;
 
         long outCursor = outputFrames;
         long runOutStart = outCursor;
@@ -329,6 +388,23 @@ public sealed class ScratchEngine : IDisposable {
 
         int produced = 0;
         while(produced < framesWanted) {
+            double target = blockTarget;
+            if(servo) {
+                appliedOffsetFrames += offsetStep;
+                targetFrame += offsetStep;
+
+                // Bend mode: the record keeps turning under the hand, so the target advances on
+                // its own and the hand only displaces it.
+                if(TouchMode == TouchModes.Bend) targetFrame += PlayVelocity;
+
+                if(targetFrame < 0) targetFrame = 0;
+                else if(lengthFrames > 0 && targetFrame > lengthFrames) targetFrame = lengthFrames;
+
+                target = (targetFrame - playhead) * followGain;
+                if(target > MaxScratchSpeed) target = MaxScratchSpeed;
+                else if(target < -MaxScratchSpeed) target = -MaxScratchSpeed;
+            }
+
             velocity += (target - velocity) * alpha;
 
             // Fade across SilenceThreshold rather than gating on it: the jump in and out of
@@ -372,6 +448,10 @@ public sealed class ScratchEngine : IDisposable {
                 }
 
                 if(wrapped) {
+                    // The servo target has to wrap with the playhead, or the error term would
+                    // immediately try to unwind the whole loop.
+                    targetFrame += playhead - unwrapped;
+
                     long span = outCursor - runOutStart;
                     if(span > 0) PushRun(runOutStart, runSrcStart, (unwrapped - runSrcStart) / span);
                     runOutStart = outCursor;
@@ -402,8 +482,8 @@ public sealed class ScratchEngine : IDisposable {
         if(finalSpan > 0) PushRun(runOutStart, runSrcStart, (playhead - runSrcStart) / finalSpan);
         outputFrames = outCursor;
 
-        if(state == State.Releasing && Math.Abs(velocity - target) < 1e-3) {
-            velocity = target;
+        if(state == State.Releasing && Math.Abs(velocity - blockTarget) < 1e-3) {
+            velocity = blockTarget;
             if(ReleaseMode == ReleaseModes.Stop) {
                 brakeCompleted = true;
                 state = State.Stopped;
@@ -436,8 +516,17 @@ public sealed class ScratchEngine : IDisposable {
     // One-pole coefficient reaching ~63% of a step per tau seconds. Zero tau means no smoothing.
     private double Alpha(double tau) => tau <= 0 ? 1.0 : 1.0 - Math.Exp(-1.0 / (tau * sampleRate));
 
+    // While the servo is driving, the slew is the second pole of the loop rather than an
+    // independent smoother, so it is derived instead of configured. The loop is
+    //
+    //     v' = (e/FollowTime - v) / slew,   e' = hand - v
+    //
+    // which is a second-order system with damping ratio 0.5 * sqrt(FollowTime / slew). At a
+    // quarter of FollowTime that is exactly 1: the fastest response that cannot overshoot, and
+    // overshoot here would be the record audibly rocking past where the hand is.
     private double SlewAlpha() => Alpha(state switch {
         State.Releasing => ReleaseMode == ReleaseModes.Stop ? BrakeTime : SpinUpTime,
+        State.Touched when servoActive => FollowTime / 4.0,
         _ => SlewTime
     });
 
@@ -681,6 +770,11 @@ public sealed class ScratchEngine : IDisposable {
         playhead = frame;
         velocity = TargetVelocity();
         ended = false;
+
+        // A seek re-defines where the record is, so the servo re-anchors there and drops whatever
+        // hand movement had accumulated but not yet been applied.
+        targetFrame = frame;
+        appliedOffsetFrames = Volatile.Read(ref gestureOffsetSeconds) * sampleRate;
 
         // The caller flushes the chain, which resets BASS's byte counter for this stream back to
         // zero, so the output-frame origin moves with it.

@@ -112,6 +112,12 @@
             </div>
 
             <div class="field">
+                <label for="scratch-follow">Follow time</label>
+                <InputNumber id="scratch-follow" step="0.005" @bind-value="settings.Playback.Scratch.FollowTime" />
+                <span class="info">seconds behind the hand - lower is tighter, higher is smoother</span>
+            </div>
+
+            <div class="field">
                 <label for="scratch-sensitivity">Mouse sensitivity</label>
                 <InputNumber id="scratch-sensitivity" step="0.1" @bind-value="settings.Playback.Scratch.MouseSensitivity" />
             </div>

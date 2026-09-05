@@ -24,7 +24,8 @@ internal static class ScratchSim {
     const int RATE = 44100, CHANS = 2, BPF = CHANS * 4;
     const double SECONDS_PER_PIXEL = 0.05 / 4.0;      // TimeSlice / WaveformBarWidth
 
-    record Variant(string Name, double SlewMs, int FitEvents);
+    // FollowMs > 0 renders through the position servo instead of a fitted speed.
+    record Variant(string Name, double SlewMs, int FitEvents, double FollowMs = 0);
 
     static void Main(string[] args) {
         Directory.SetCurrentDirectory(AppContext.BaseDirectory);
@@ -36,10 +37,13 @@ internal static class ScratchSim {
         string outDir = args.Length > 1 ? args[1] : AppContext.BaseDirectory;
 
         Bass.BASS_Init(0, RATE, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);
-        // The two defects that were actually audible, and the fix, rendered side by side.
+        // How it sounded, how commanding a fitted speed sounds, and how following the hand's
+        // position sounds at three different amounts of lag.
         Render(src, new Variant("1 - as it was: 4ms slew, two-sample speed", 4, 1), outDir);
-        Render(src, new Variant("2 - slew tracking the event interval", 20, 1), outDir);
-        Render(src, new Variant("3 - and speed fitted over 5 samples (shipped)", 20, 5), outDir);
+        Render(src, new Variant("2 - fitted speed over 5 samples", 20, 5), outDir);
+        Render(src, new Variant("3 - servo, 25ms behind the hand", 0, 0, 25), outDir);
+        Render(src, new Variant("4 - servo, 40ms behind the hand", 0, 0, 40), outDir);
+        Render(src, new Variant("5 - servo, 60ms behind the hand", 0, 0, 60), outDir);
         Bass.BASS_Free();
         Console.WriteLine("\ndone");
     }
@@ -51,6 +55,7 @@ internal static class ScratchSim {
         int source = Bass.BASS_StreamCreateFile(src, 0, 0,
             BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_PRESCAN);
         ScratchEngine engine = new(source, RATE, CHANS, new Loop()) { SlewTime = v.SlewMs / 1000.0 };
+        if(v.FollowMs > 0) engine.FollowTime = v.FollowMs / 1000.0;
 
         engine.RequestSeek(11.0);
         float[] buf = new float[4096 * CHANS];
@@ -60,14 +65,20 @@ internal static class ScratchSim {
         List<float> outp = new();
         Random rng = new(7);
         double t = 0, nextEvent = 0, quietUntil = 0;
-        long lastPx = (long)Math.Round(HandPixels(0)), lastMs = 0;
+        long startPx = (long)Math.Round(HandPixels(0));
+        long lastPx = startPx, lastMs = 0;
         Queue<(double ms, long px)> history = new();
 
         while(t < 8.0) {
             if(t >= quietUntil && t >= nextEvent) {
                 long px = (long)Math.Round(HandPixels(t));      // integer pixels, as the browser reports
                 long ms = (long)Math.Round(t * 1000.0);         // ~1ms timestamp resolution
-                if(ms > lastMs) {
+                if(ms > lastMs && v.FollowMs > 0) {
+                    // The servo is told WHERE the hand is. No timestamps, no division, so the
+                    // uneven arrival modelled above cannot turn into a wrong speed.
+                    engine.SetGestureTarget((px - startPx) * SECONDS_PER_PIXEL);
+                    lastPx = px; lastMs = ms;
+                } else if(ms > lastMs) {
                     history.Enqueue((ms, px));
                     while(history.Count > v.FitEvents + 1) history.Dequeue();
 

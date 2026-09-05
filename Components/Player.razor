@@ -302,7 +302,7 @@
         engine.ReleaseMode = s.ReleaseMode;
         engine.SpinUpTime = s.SpinUpTime;
         engine.BrakeTime = s.BrakeTime;
-        engine.SlewTime = s.SlewTime;
+        engine.FollowTime = s.FollowTime;
     }
 
     // The platter has been grabbed. From here until EndScratch the hand sets playback speed.
@@ -324,102 +324,32 @@
             splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
         }
 
-        lastScratchTicks = Environment.TickCount64;
-        gestureMs = 0;
-        gesturePixels = 0;
-        gestureSamples = 0;
+        gestureOffsetSeconds = 0;
         engine.Resume();
         engine.Touch();
     }
 
-    // Where the hand is, in waveform pixels over milliseconds. Accumulated rather than used as a
-    // one-shot delta, because speed is estimated across several samples below.
-    public void ScratchBy(double deltaPixels, double deltaMilliseconds) {
-        if(engine == null || !engine.IsTouched) return;
-        if(deltaMilliseconds <= 0 || WaveformBarWidth <= 0) return;
-
-        gestureMs += deltaMilliseconds;
-        gesturePixels += deltaPixels;
-        PushGestureSample();
-
-        lastScratchTicks = Environment.TickCount64;
-        ApplyGestureSpeed(deltaMilliseconds);
-    }
-
-    // Speed is fitted across the last few samples instead of differentiating the newest pair.
+    // How far the hand has dragged the record since it was grabbed, in source seconds. The engine
+    // follows this position; nothing here turns it into a speed.
     //
-    // The browser reports INTEGER pixel positions, and one waveform pixel is
-    // Files.TimeSlice / WaveformBarWidth of audio - 12.5ms at the default zoom. So a single-pixel
-    // delta over one ~16ms event is already 0.78x, and speed can only ever come out as a multiple
-    // of that. Differentiating one pair turns that quantisation straight into playback rate; a
-    // least-squares slope over a short window averages it out instead.
-    private const int GestureFitSamples = 5;
-    private readonly double[] gestureSampleMs = new double[GestureFitSamples];
-    private readonly double[] gestureSamplePixels = new double[GestureFitSamples];
-    private int gestureSamples;
+    // Differentiating it is what used to make scratching sound wrong. One waveform pixel is
+    // Files.TimeSlice / WaveformBarWidth of audio - 12.5ms at the default zoom - and the browser
+    // reports whole pixels, so a speed derived from one event was always a multiple of ~0.78x.
+    // Events also arrive in bursts over the circuit, which no amount of fitting can undo: a speed
+    // estimated across a burst is wrong for the whole burst. A position has neither problem, and
+    // it self-corrects, because the record ends up wherever the hand actually put it.
+    //
+    // There is deliberately no time argument: how long the hand took to get here is exactly the
+    // quantity that used to be divided by, and the engine does not need it.
+    public void ScratchBy(double deltaPixels) {
+        if(engine == null || !engine.IsTouched || WaveformBarWidth <= 0) return;
 
-    private long lastScratchTicks;
-    private double gestureMs;
-    private double gesturePixels;
-
-    private void PushGestureSample() {
-        int at = Math.Min(gestureSamples, GestureFitSamples - 1);
-        if(gestureSamples >= GestureFitSamples) {
-            Array.Copy(gestureSampleMs, 1, gestureSampleMs, 0, GestureFitSamples - 1);
-            Array.Copy(gestureSamplePixels, 1, gestureSamplePixels, 0, GestureFitSamples - 1);
-        }
-        gestureSampleMs[at] = gestureMs;
-        gestureSamplePixels[at] = gesturePixels;
-        if(gestureSamples < GestureFitSamples) gestureSamples++;
+        gestureOffsetSeconds += deltaPixels * Files.TimeSlice / WaveformBarWidth
+                                * Program.Settings.Playback.Scratch.MouseSensitivity;
+        engine.SetGestureTarget(gestureOffsetSeconds);
     }
 
-    private void ApplyGestureSpeed(double intervalMilliseconds) {
-        if(engine == null || gestureSamples < 2) return;
-
-        double meanMs = 0, meanPx = 0;
-        for(int i = 0; i < gestureSamples; i++) { meanMs += gestureSampleMs[i]; meanPx += gestureSamplePixels[i]; }
-        meanMs /= gestureSamples;
-        meanPx /= gestureSamples;
-
-        double num = 0, den = 0;
-        for(int i = 0; i < gestureSamples; i++) {
-            double dt = gestureSampleMs[i] - meanMs;
-            num += dt * (gestureSamplePixels[i] - meanPx);
-            den += dt * dt;
-        }
-        if(den <= 0) return;
-
-        double pixelsPerSecond = num / den * 1000.0;
-        double speed = pixelsPerSecond * Files.TimeSlice / WaveformBarWidth;
-
-        // Slew across roughly one event interval rather than a fixed 4ms. At 4ms the rate reached
-        // each new value almost at once and then sat flat until the next event - a staircase, and
-        // a staircase in playback rate is frequency modulation at the event rate.
-        // The configured slew time becomes the floor rather than the value, so the setting still
-        // means something without being able to reintroduce the staircase.
-        engine.SlewTime = Math.Clamp(intervalMilliseconds / 1000.0,
-                                     Program.Settings.Playback.Scratch.SlewTime, 0.040);
-        engine.SetGestureSpeed(speed * Program.Settings.Playback.Scratch.MouseSensitivity);
-    }
-
-    // A hand held still on the platter produces no events at all - and neither does a hand moving
-    // too slowly to cross a pixel, which is why inferring "stopped" from a timeout misfired and
-    // stalled the record mid-stroke. Instead, record the fact that no movement was reported: the
-    // fit above then decays toward zero on its own, with no timeout and no decay constant, and it
-    // recovers the moment the next pixel is crossed.
-    private const int GestureQuietTickMs = 25;
-
-    private void TrackGestureWhileQuiet() {
-        if(engine == null || !engine.IsTouched) return;
-
-        long quiet = Environment.TickCount64 - lastScratchTicks;
-        if(lastScratchTicks <= 0 || quiet < GestureQuietTickMs) return;
-
-        gestureMs += quiet;                    // time passed, pixels did not
-        PushGestureSample();
-        lastScratchTicks = Environment.TickCount64;
-        ApplyGestureSpeed(quiet);
-    }
+    private double gestureOffsetSeconds;
 
     public void EndScratch() {
         if(engine == null || !engine.IsTouched) return;
@@ -1353,8 +1283,6 @@
 
         while(true) {
             await Task.Delay(delay);
-
-            TrackGestureWhileQuiet();
 
             // A braked release finishes on the audio thread; the deck is parked here.
             if(engine != null && engine.ConsumeBrakeCompleted()) {

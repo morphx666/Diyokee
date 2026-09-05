@@ -62,10 +62,10 @@ namespace Diyokee {
             [JsonProperty("spin-up-time")] public double SpinUpTime { get; set; } = 0.25;
             [JsonProperty("brake-time")] public double BrakeTime { get; set; } = 0.12;
 
-            // Smoothing applied to the requested speed before it reaches the audio, in seconds.
-            // Long enough to stop control-rate steps sounding like zipper noise, short enough not
-            // to blunt the attack of a scratch.
-            [JsonProperty("slew-time")] public double SlewTime { get; set; } = 0.004;
+            // How far behind the hand the record is allowed to sit, in seconds. The engine follows
+            // the hand's position rather than being told a speed, so this is the whole of the
+            // smoothing: short is tight and rougher, long is smooth and further behind.
+            [JsonProperty("follow-time")] public double FollowTime { get; set; } = 0.040;
 
             // How far the track moves per pixel of waveform drag, relative to 1:1.
             [JsonProperty("mouse-sensitivity")] public double MouseSensitivity { get; set; } = 1.0;

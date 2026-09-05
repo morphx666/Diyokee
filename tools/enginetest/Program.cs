@@ -494,6 +494,64 @@ internal static class EngineTest {
         Check("the boundary is crossed without re-seeking each pass", sweepSeeks <= 6,
               $"{sweepSeeks} seeks over 6 sweeps");
 
+        // ------------------------------------------------------------------ 21
+        // The servo. The hand's POSITION is the input and the engine works out the speed, which
+        // is what stops the input's quantisation and bursty delivery reaching the audio.
+        // See docs/scratch-audio-quality.md.
+        Console.WriteLine("\n[21] Position servo follows the hand rather than being told a speed");
+        const double FOLLOW = 0.040;
+        const double PIXEL = 0.05 / 4.0;                   // Files.TimeSlice / WaveformBarWidth
+        loop.Enabled = false;
+        engine.SilenceFadeTime = 0;
+        engine.TouchMode = TouchModes.Vinyl;
+        engine.FollowTime = FOLLOW;
+
+        // A hand moving steadily at 2x, sampled every 16ms as the browser does.
+        var steady = Drag(engine, buf, 12.0, 2.0);
+        Console.WriteLine($"      2x steady:   {steady.Lag * 1000,5:F1}ms behind, mean {steady.Speed:F3}x,"
+                        + $" worst excursion {steady.Ripple:F3}x");
+        Check("settles at the hand's speed", Math.Abs(steady.Speed - 2.0) < 0.02, $"{steady.Speed:F4}x");
+        Check("sits FollowTime's worth of travel behind the hand",
+              Math.Abs(steady.Lag - 2.0 * FOLLOW) < 0.020, $"{steady.Lag * 1000:F1}ms of source");
+
+        // The same hand, sampled at irregular intervals with gaps - which is what bursty delivery
+        // looks like to the engine. Dividing a distance by an interval makes this the dominant
+        // error term; a servo divides by nothing, so uneven sampling can only cost what it
+        // genuinely takes away, which is knowing where the hand was in the gaps.
+        var uneven = Drag(engine, buf, 12.0, 2.0, jitter: true);
+        Console.WriteLine($"      2x jittered: {uneven.Lag * 1000,5:F1}ms behind, mean {uneven.Speed:F3}x,"
+                        + $" worst excursion {uneven.Ripple:F3}x");
+        Check("irregular sampling does not change the speed it settles at",
+              Math.Abs(uneven.Speed - 2.0) < 0.02, $"{uneven.Speed:F4}x");
+        // The extra distance is the age of the newest sample, not a servo error: sampled every
+        // 6-56ms instead of every 16ms, the hand's reported position is simply older.
+        Check("and costs only the staleness of the samples themselves",
+              uneven.Lag - steady.Lag < 2.0 * 0.056, $"{(uneven.Lag - steady.Lag) * 1000:F1}ms further back");
+
+        // Whole-pixel reporting, which is the quantisation that used to become playback rate.
+        // 1x is the worst case: the slowest pixel-crossing rate the loop has to smooth.
+        //
+        // An ISOLATED target step of A seconds drives the critically damped loop to a peak
+        // velocity excursion of 2A/(e*FollowTime), so the ripple is set by the input's quantum
+        // against FollowTime and the only way to shrink it is to sit further behind the hand.
+        // That closed form is an upper bound here: the loop peaks 20ms after a step and pixels
+        // arrive every 12.5ms at 1x, so consecutive responses average each other down.
+        var pixels = Drag(engine, buf, 12.0, 1.0, quantum: PIXEL);
+        double predicted = 2 * PIXEL / (Math.E * FOLLOW);
+        Console.WriteLine($"      1x whole-pixel: worst excursion {pixels.Ripple:F3}x"
+                        + $" (predicted {predicted:F3}x for a {PIXEL / 0.016:F2}x quantum)");
+        Check("whole-pixel input stays under the isolated-step bound",
+              pixels.Ripple < predicted, $"{pixels.Ripple:F3}x vs {predicted:F3}x");
+        Check("and it still averages out to the hand's speed",
+              Math.Abs(pixels.Speed - 1.0) < 0.02, $"{pixels.Speed:F4}x");
+
+        // A hand that stops moving stops the record, with no timeout and no decay constant: the
+        // target simply stops moving and the error runs out.
+        for(int i = 0; i < 40; i++) Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
+        Check("a hand that stops moving brings the record to rest", Math.Abs(engine.Velocity) < 0.01,
+              $"v={engine.Velocity:F4}");
+
+        engine.Release();
         engine.Dispose();
         Bass.BASS_StreamFree(source);
 
@@ -631,6 +689,44 @@ internal static class EngineTest {
     }
 
     // 32-bit float WAV where sample value == frame index, so output can be traced to its source.
+    // Drags the platter at a constant speed for two seconds and reports what the servo did with
+    // it, measured over the second half once the loop has settled: the mean distance the record
+    // sits behind the hand, its mean speed, and the worst velocity excursion.
+    //
+    // The hand moves continuously and is SAMPLED, which is what a browser does. "jitter" makes
+    // that sampling irregular with occasional gaps, as the real one is. "quantum" rounds the
+    // reported position, as whole-pixel reporting does.
+    static (double Lag, double Speed, double Ripple) Drag(ScratchEngine engine, float[] buf,
+                                                          double from, double speed,
+                                                          bool jitter = false, double quantum = 0) {
+        const int BLOCK = 256;                             // ~5.8ms, fine enough to see the ripple
+        Random rng = new(11);
+
+        engine.RequestSeek(from);
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 64 * BYTES_PER_FRAME);
+        engine.Touch();
+
+        double t = 0, nextSample = 0, lagSum = 0, speedSum = 0, ripple = 0;
+        int taken = 0;
+        while(t < 2.0) {
+            if(t >= nextSample) {
+                double at = t * speed;
+                engine.SetGestureTarget(quantum > 0 ? Math.Round(at / quantum) * quantum : at);
+                nextSample = t + (jitter ? 0.006 + rng.NextDouble() * 0.05 : 0.016);
+            }
+
+            Bass.BASS_ChannelGetData(engine.StreamHandle, buf, BLOCK * BYTES_PER_FRAME);
+            t += BLOCK / (double)RATE;
+
+            if(t <= 1.0) continue;
+            lagSum += (from + t * speed) - engine.DecodeSeconds;
+            speedSum += engine.Velocity;
+            ripple = Math.Max(ripple, Math.Abs(engine.Velocity - speed));
+            taken++;
+        }
+        return (lagSum / taken, speedSum / taken, ripple);
+    }
+
     static void WriteRampWav(string path) {
         using FileStream fs = new(path, FileMode.Create, FileAccess.Write);
         using BinaryWriter w = new(fs);

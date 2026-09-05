@@ -138,7 +138,7 @@
         switch(Mode) {
             case Modes.AudioSynced:
                 // Dragging right pulls the record backwards, hence the negated delta.
-                if(scratching) Player.ScratchBy(-mouseState.DeltaX, mouseState.DeltaTime);
+                if(scratching) Player.ScratchBy(-mouseState.DeltaX);
                 break;
             case Modes.Full:
                 PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
