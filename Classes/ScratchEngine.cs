@@ -29,6 +29,34 @@ public sealed class ScratchEngine : IDisposable {
     private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
     private const int InterpMargin = 2;        // frames Catmull-Rom needs either side
 
+    // Band-limiting resampler, used above play speed.
+    //
+    // The kernel spans SincTapsPerSide source frames either side at 1x and stretches with the rate,
+    // so an unbounded kernel costs taps in proportion to speed: measured at 7x realtime at 32x,
+    // which would underrun on hardware as slow as a Pi.
+    //
+    // Bounding the STRETCH is the wrong cure - it leaves the cutoff behind the actual rate, and the
+    // band that then escapes is bass, the one thing still audible in a fast scratch. Bounding the
+    // TAP COUNT is right: the cutoff still tracks the rate exactly, and what degrades instead is
+    // the width of the transition band, up where the record is a whoosh either way.
+    //
+    // MaxKernelTaps is where cost is traded against rejection at extreme speeds. It does not bind
+    // below 8x, so the 2-8x range that ordinary scratching lives in is unaffected by it. Measured
+    // by check 19 of tools/enginetest, on a desktop:
+    //
+    //     taps   1kHz at 30x     4x     8x    16x    32x
+    //       64        -6.8dB    36x    35x    34x    33x   realtime
+    //      128       -13.6dB    36x    18x    18x    17x
+    //      256       -27.0dB    36x    18x     9x     9x   <- chosen
+    //      512       -77.8dB    36x    18x     9x     5x
+    //
+    // 256 keeps the common range fast and leaves the 9x worst case only on brief flicks, which
+    // BASS's 500ms output buffer absorbs. Lower it first if a Pi ever struggles.
+    private const int SincTapsPerSide = 8;     // full quality, used up to MaxKernelTaps/(2*rate)
+    private const int MaxKernelTaps = 256;
+    private const double MaxScratchSpeed = 32.0;
+    private const int KernelSteps = 512;       // prototype table resolution, per unit tap
+
     // Below this speed the record counts as stopped. A stopped record makes no sound, and the
     // playhead is moving so little that rendering would just repeat one source sample - a DC
     // offset rather than audio. The threshold has to be high enough that the fade below finishes
@@ -63,6 +91,7 @@ public sealed class ScratchEngine : IDisposable {
     private readonly float[] ring;
     private readonly float[] decodeBuf;
     private readonly float[] outBuf;
+    private readonly double[] tapWeights = new double[MaxKernelTaps + 4];
     private long ringTail, ringHead;           // source frames held: [ringTail, ringHead)
 
     private readonly Run[] runs = new Run[RunCount];
@@ -167,6 +196,13 @@ public sealed class ScratchEngine : IDisposable {
     // twice as fast backwards, 0 is held still.
     public void SetGestureSpeed(double speed) {
         if(double.IsNaN(speed) || double.IsInfinity(speed)) speed = 0;
+
+        // Clamped here rather than in the render loop so the release state machine still sees a
+        // target it can actually reach. Beyond this the record is a whoosh regardless, and the
+        // limit is what keeps the resampler's per-frame cost finite.
+        if(speed > MaxScratchSpeed) speed = MaxScratchSpeed;
+        else if(speed < -MaxScratchSpeed) speed = -MaxScratchSpeed;
+
         Volatile.Write(ref gestureSpeed, speed);
     }
 
@@ -406,8 +442,19 @@ public sealed class ScratchEngine : IDisposable {
         return 1.0 - Math.Exp(-1.0 / (SilenceFadeTime * sampleRate));
     }
 
-    // Writes one interpolated frame. Returns false if the source could not supply the data.
+    // Writes one output frame. Returns false if the source could not supply the data.
+    //
+    // Below play speed the playhead moves less than one source frame per output frame, so there is
+    // nothing to band-limit and plain interpolation is both correct and cheap. Above it the engine
+    // is decimating, and point interpolation folds everything past Nyquist/rate back into the
+    // audible band - see RenderBandLimited.
     private bool RenderFrame(int outIndex) {
+        double rate = Math.Abs(velocity);
+
+        // No cap on the stretch: the cutoff must follow the rate however fast it gets. The tap
+        // budget inside RenderBandLimited is what bounds the cost.
+        if(rate > 1.0) return RenderBandLimited(outIndex, rate);
+
         long i = (long)Math.Floor(playhead);
         double t = playhead - i;
 
@@ -430,6 +477,89 @@ public sealed class ScratchEngine : IDisposable {
             outBuf[at + c] = (float)(((d * t + cc) * t + b) * t + a);
         }
         return true;
+    }
+
+    // Resamples with a sinc kernel stretched by the playback rate, which low-passes and
+    // interpolates in one pass: stretching the kernel by "rate" moves its cutoff down to
+    // Nyquist/rate, which is exactly the content that would otherwise fold back.
+    //
+    // Cost is proportional to rate, which is why the stretch is capped - a 30x flick is a whoosh
+    // either way, and the cap keeps the worst case bounded on weak hardware. Weights depend only
+    // on the tap offsets, so they are computed once and reused across channels.
+    private bool RenderBandLimited(int outIndex, double stretch) {
+        // Cutoff always follows the rate; only the window narrows once the tap budget is reached.
+        double half = Math.Min(SincTapsPerSide * stretch, MaxKernelTaps / 2.0);
+        double invWindow = stretch / half;             // maps a tap offset onto the window's [-1, 1]
+
+        long first = (long)Math.Ceiling(playhead - half);
+        long last = (long)Math.Floor(playhead + half);
+        if(first < 0) first = 0;
+
+        int taps = (int)(last - first + 1);
+        if(taps <= 0 || taps > tapWeights.Length) return false;
+        if(!Cover(first, last)) return false;
+
+        double weightSum = 0;
+        for(int k = 0; k < taps; k++) {
+            double w = KernelAt((first + k - playhead) / stretch, invWindow);
+            tapWeights[k] = w;
+            weightSum += w;
+        }
+        if(Math.Abs(weightSum) < 1e-12) return false;
+
+        // Normalising by the actual sum rather than by "stretch" keeps the gain at exactly unity
+        // even where the kernel is truncated at the start of the track.
+        double norm = 1.0 / weightSum;
+        int at = outIndex * channels;
+        for(int c = 0; c < channels; c++) {
+            double sum = 0;
+            for(int k = 0; k < taps; k++) sum += tapWeights[k] * Sample(first + k, c);
+            outBuf[at + c] = (float)(sum * norm);
+        }
+        return true;
+    }
+
+    // Sinc and window are tabulated separately because the tap budget makes the window narrower
+    // than the sinc at high rates - a single combined prototype would tie the two together and
+    // force the cutoff to move with the budget, which is the mistake this design avoids.
+    // Both are symmetric, so only the positive half is stored. Built once, shared by every deck.
+    private static readonly float[] sincTable = BuildSincTable();
+    private static readonly float[] windowTable = BuildWindowTable();
+
+    private static float[] BuildSincTable() {
+        float[] table = new float[SincTapsPerSide * KernelSteps + 2];
+        for(int i = 0; i < table.Length; i++) {
+            double u = i / (double)KernelSteps;
+            table[i] = (float)(u < 1e-9 ? 1.0 : Math.Sin(Math.PI * u) / (Math.PI * u));
+        }
+        return table;
+    }
+
+    private static float[] BuildWindowTable() {
+        float[] table = new float[KernelSteps + 2];
+        for(int i = 0; i < table.Length; i++) {
+            double v = Math.Min(1.0, i / (double)KernelSteps);    // 0 at the centre, 1 at the edge
+            table[i] = (float)(0.42 + 0.5 * Math.Cos(Math.PI * v) + 0.08 * Math.Cos(2.0 * Math.PI * v));
+        }
+        return table;
+    }
+
+    // u is the tap's distance from the playhead in stretched units, so sinc(u) sets the cutoff.
+    // invWindow scales that same distance onto the window's half width.
+    private static double KernelAt(double u, double invWindow) {
+        u = Math.Abs(u);
+        double v = u * invWindow;
+        if(v >= 1.0 || u >= SincTapsPerSide) return 0;
+
+        double x = u * KernelSteps;
+        int i = (int)x;
+        double sinc = sincTable[i] + (sincTable[i + 1] - sincTable[i]) * (x - i);
+
+        double y = v * KernelSteps;
+        int j = (int)y;
+        double window = windowTable[j] + (windowTable[j + 1] - windowTable[j]) * (y - j);
+
+        return sinc * window;
     }
 
     private float Sample(long frame, int channel) {

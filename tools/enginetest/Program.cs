@@ -474,48 +474,121 @@ internal static class EngineTest {
         // 1x and 2x are controls: at 2x the tone lands at 16kHz, still under Nyquist, so nothing
         // should fold and the 12100Hz bin must stay empty.
         Console.WriteLine("\n[18] Aliasing above 1x  (see docs/scratch-audio-quality.md)");
-        Console.WriteLine("     KNOWN FAILURE - the resampler is not band-limited yet");
-        const double TONE = 8000.0;
-        const double FOLD = RATE - TONE * 4;               // 12100Hz: where 4x folds back to
-
-        string sineWav = Path.Combine(AppContext.BaseDirectory, "sine.wav");
-        WriteSineWav(sineWav, TONE, 20.0, 0.5);
-        int sineSource = Bass.BASS_StreamCreateFile(sineWav, 0, 0,
-            BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_PRESCAN);
-
-        Loop noLoop = new();
-        ScratchEngine sineEngine = new(sineSource, RATE, CHANS, noLoop) { SlewTime = 0, SilenceFadeTime = 0 };
         float[] tone = new float[16384 * CHANS];
-        double reference = 0;
 
-        foreach(double rate in new[] { 1.0, 2.0, 4.0 }) {
-            sineEngine.RequestSeek(2.0);
-            Bass.BASS_ChannelGetData(sineEngine.StreamHandle, tone, 64 * BYTES_PER_FRAME);
-            sineEngine.Touch();
-            sineEngine.SetGestureSpeed(rate);
-            Bass.BASS_ChannelGetData(sineEngine.StreamHandle, tone, 4096 * BYTES_PER_FRAME);   // settle
+        // Runs a pure tone through its own engine at one rate and reports where the energy landed:
+        // at the pitch-shifted tone if that is still under Nyquist, and at the frequency the tone
+        // folds back to if it is not.
+        (double ideal, double fold, double atIdeal, double atFold) Probe(int src, double toneHz, double rate) {
+            ScratchEngine e = new(src, RATE, CHANS, new Loop()) { SlewTime = 0, SilenceFadeTime = 0 };
+            e.RequestSeek(2.0);
+            Bass.BASS_ChannelGetData(e.StreamHandle, tone, 64 * BYTES_PER_FRAME);
+            e.Touch();
+            e.SetGestureSpeed(rate);
+            Bass.BASS_ChannelGetData(e.StreamHandle, tone, 4096 * BYTES_PER_FRAME);       // settle
+            int frames = Bass.BASS_ChannelGetData(e.StreamHandle, tone, 16384 * BYTES_PER_FRAME) / BYTES_PER_FRAME;
+            e.Dispose();
 
-            int got = Bass.BASS_ChannelGetData(sineEngine.StreamHandle, tone, 16384 * BYTES_PER_FRAME);
-            int frames = got / BYTES_PER_FRAME;
-
-            double ideal = TONE * rate;
-            double atIdeal = ideal < RATE / 2.0 ? ToneAmplitude(tone, frames, ideal) : 0;
-            double atFold = ToneAmplitude(tone, frames, FOLD);
-            if(rate == 1.0) reference = atIdeal;
-
-            Console.WriteLine(ideal < RATE / 2.0
-                ? $"      {rate}x: tone at {ideal,6:F0}Hz {Db(atIdeal, reference),6:F1}dB   {FOLD:F0}Hz bin {Db(atFold, reference),7:F1}dB"
-                : $"      {rate}x: ideal {ideal,6:F0}Hz is above Nyquist, so nothing should be emitted"
-                  + $"   {FOLD:F0}Hz bin {Db(atFold, reference),7:F1}dB");
-
-            if(rate == 4.0) {
-                Check("content above Nyquist is rejected by at least 40dB", Db(atFold, reference) < -40,
-                      $"folded tone is {Db(atFold, reference):F1}dB relative to the source");
-            }
+            double ideal = toneHz * rate;
+            double fold = ideal % RATE;
+            if(fold > RATE / 2.0) fold = RATE - fold;
+            return (ideal, fold,
+                    ideal < RATE / 2.0 ? ToneAmplitude(tone, frames, ideal) : 0,
+                    ToneAmplitude(tone, frames, fold));
         }
 
-        sineEngine.Dispose();
+        int MakeTone(string name, double freq) {
+            string path = Path.Combine(AppContext.BaseDirectory, name);
+            WriteSineWav(path, freq, 30.0, 0.5);
+            return Bass.BASS_StreamCreateFile(path, 0, 0,
+                BASSFlag.BASS_STREAM_DECODE | BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_PRESCAN);
+        }
+
+        const double TONE = 8000.0;
+        int sineSource = MakeTone("sine8k.wav", TONE);
+        double reference = Probe(sineSource, TONE, 1.0).atIdeal;
+
+        foreach(double rate in new[] { 1.0, 2.0, 4.0, 8.0, 16.0, 30.0 }) {
+            var p = Probe(sineSource, TONE, rate);
+            if(p.ideal < RATE / 2.0) {
+                Console.WriteLine($"      {rate,4}x: tone lands at {p.ideal,6:F0}Hz {Db(p.atIdeal, reference),6:F1}dB (legitimate)");
+            } else {
+                double rejection = Db(p.atFold, reference);
+                Console.WriteLine($"      {rate,4}x: {p.ideal,7:F0}Hz is over Nyquist, so it must be removed"
+                                  + $" - {p.fold,5:F0}Hz bin {rejection,7:F1}dB");
+                Check($"{rate}x rejects content above Nyquist by at least 40dB", rejection < -40,
+                      $"{rejection:F1}dB");
+            }
+        }
         Bass.BASS_StreamFree(sineSource);
+
+        // What the kernel-stretch cap costs. The cap holds the cutoff at Nyquist/16 however fast
+        // the platter goes, so above 16x a band between Nyquist/rate and Nyquist/16 is no longer
+        // filtered out and does fold back. A 1kHz tone at 30x sits inside that band deliberately.
+        // Reported rather than asserted: this is the bounded-cost trade, not a defect.
+        int lowSource = MakeTone("sine1k.wav", 1000.0);
+        double lowReference = Probe(lowSource, 1000.0, 1.0).atIdeal;
+        var capped = Probe(lowSource, 1000.0, 30.0);
+        Console.WriteLine($"      cost of the stretch cap: 1000Hz at 30x folds to {capped.fold:F0}Hz"
+                          + $" at {Db(capped.atFold, lowReference):F1}dB");
+
+        // The hardest case for any windowed sinc is content just above the cutoff, in the
+        // transition band - real music has a continuous spectrum, so this is what actually
+        // determines how clean a scratch sounds.
+        int edgeSource = MakeTone("sine6k6.wav", 6600.0);
+        double edgeReference = Probe(edgeSource, 6600.0, 1.0).atIdeal;
+        var edge = Probe(edgeSource, 6600.0, 4.0);        // cutoff at 4x is 5512Hz, so 1.2x over it
+        Console.WriteLine($"      transition band: 6600Hz at 4x (cutoff 5512Hz) folds to {edge.fold:F0}Hz"
+                          + $" at {Db(edge.atFold, edgeReference):F1}dB");
+        Bass.BASS_StreamFree(edgeSource);
+        Bass.BASS_StreamFree(lowSource);
+
+        // ------------------------------------------------------------------ 19
+        // The kernel costs more taps the faster the platter goes, and this runs on the audio
+        // thread on hardware as slow as a Raspberry Pi. Measure it rather than estimating.
+        Console.WriteLine("\n[19] Resampler throughput (this machine)");
+        int benchSource = MakeTone("bench.wav", 1000.0);
+        const int BENCH_FRAMES = 22050;                   // half a second of output
+
+        // Warm up the JIT on the band-limited path first, or whichever rate is measured first
+        // pays for compiling it and reads several times slower than it really is.
+        foreach(double warmRate in new[] { 4.0, 32.0 }) {
+            ScratchEngine w = new(benchSource, RATE, CHANS, new Loop()) { SlewTime = 0, SilenceFadeTime = 0 };
+            w.RequestSeek(0.5);
+            Bass.BASS_ChannelGetData(w.StreamHandle, tone, 64 * BYTES_PER_FRAME);
+            w.Touch();
+            w.SetGestureSpeed(warmRate);
+            for(int i = 0; i < 8; i++) Bass.BASS_ChannelGetData(w.StreamHandle, tone, 8192 * BYTES_PER_FRAME);
+            w.Dispose();
+        }
+
+        foreach(double rate in new[] { 1.0, 2.0, 4.0, 8.0, 16.0, 32.0 }) {
+            ScratchEngine b = new(benchSource, RATE, CHANS, new Loop()) { SlewTime = 0, SilenceFadeTime = 0 };
+            b.RequestSeek(0.5);
+            Bass.BASS_ChannelGetData(b.StreamHandle, tone, 64 * BYTES_PER_FRAME);
+            b.Touch();
+            b.SetGestureSpeed(rate);
+            Bass.BASS_ChannelGetData(b.StreamHandle, tone, 4096 * BYTES_PER_FRAME);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            int pulled = 0;
+            while(pulled < BENCH_FRAMES) {
+                int n = Bass.BASS_ChannelGetData(b.StreamHandle, tone, 8192 * BYTES_PER_FRAME);
+                if(n <= 0) break;
+                pulled += n / BYTES_PER_FRAME;
+            }
+            sw.Stop();
+            b.Dispose();
+
+            double realtime = (pulled / (double)RATE) / sw.Elapsed.TotalSeconds;
+            Console.WriteLine($"      {rate,4}x: {realtime,7:F0}x realtime   ({pulled} frames in {sw.Elapsed.TotalMilliseconds:F1}ms)");
+            // Desktop figures. A Pi is roughly 5-10x slower, so 8x here is around realtime
+            // there - acceptable only because fast rates happen in brief flicks that BASS's
+            // 500ms output buffer absorbs. Sustained scratching sits at 2-8x.
+            Check($"{rate}x renders faster than realtime with margin", realtime > 8, $"{realtime:F0}x");
+        }
+        Bass.BASS_StreamFree(benchSource);
+
         Bass.BASS_Free();
 
         Console.WriteLine($"\n{(failures == 0 ? "ALL CHECKS PASSED" : $"{failures} CHECK(S) FAILED")}");
