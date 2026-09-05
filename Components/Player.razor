@@ -417,28 +417,56 @@
         if(IsPlaying) {
             splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPause(h));
             IsPlaying = false;
+        } else if(waitingForSync) {
+            waitingForSync = false;        // a second click abandons the wait rather than stacking one
         } else {
-            if(autoSync && (OtherPlayer?.IsPlaying ?? false)) {
-                Task.Run(async () => {
-                    while(true) {
-                        await Task.Delay(1);
-                        if(OtherPlayer.InBeat && OtherPlayer.InBeatIndex == this.InBeatIndex) {
-                            SeekSeconds(PositionSeconds + secondsPerBeat / 10);
-                            splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
+            // Lift any halt left by a braked release before EITHER path starts the deck. The
+            // synced path used to skip this, so a deck that had been scratched while paused came
+            // back in the engine's Stopped state - which targets zero velocity. It played: it
+            // crept for as long as the slew took and then sat still, with the transport running.
+            engine?.Resume();
 
-                            IsPlaying = true;
-                            break;
-                        }
-                    }
-                });
+            if(autoSync && (OtherPlayer?.IsPlaying ?? false)) {
+                StartSynced();
             } else {
-                engine?.Resume();          // lift any halt left by a braked release
                 splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
                 IsPlaying = true;
             }
         }
 
         SavePlayerState();
+    }
+
+    // Waits for the other deck to reach a beat of the same index, then drops in on it.
+    private bool waitingForSync;
+
+    private void StartSynced() {
+        waitingForSync = true;
+
+        Task.Run(async () => {
+            try {
+                while(waitingForSync) {
+                    await Task.Delay(1);
+
+                    // Nothing left to sync to. Without this the loop spun at 1ms for the rest of
+                    // the session, and every further click added another one.
+                    if(OtherPlayer == null || !OtherPlayer.IsPlaying) return;
+                    if(!OtherPlayer.InBeat || OtherPlayer.InBeatIndex != InBeatIndex) continue;
+
+                    SeekSeconds(PositionSeconds + secondsPerBeat / 10);
+                    splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
+                    IsPlaying = true;
+
+                    // This runs off the renderer, so it has to ask for its own re-render. Without
+                    // it the deck played with the button's LED still dark, until some unrelated
+                    // render happened to come along.
+                    await InvokeAsync(StateHasChanged);
+                    return;
+                }
+            } finally {
+                waitingForSync = false;
+            }
+        });
     }
 
     public void Stop(bool resetToCuePoint) {

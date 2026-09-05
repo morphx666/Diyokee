@@ -414,6 +414,23 @@ internal static class EngineTest {
         for(int i = 0; i < 40; i++) Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
         Check("Resume() lifts the halt", Math.Abs(engine.Velocity - 1.0) < 0.01, $"v={engine.Velocity:F4}");
 
+        // Pressing play while the brake is still running has to CANCEL it. The brake finishes on
+        // the audio thread and the Player only notices up to 30ms later, so a completion left
+        // armed here would pause the deck again just after it started - it crept forward and
+        // stopped, apparently by itself.
+        engine.RequestSeek(12.0);
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 64 * BYTES_PER_FRAME);
+        engine.Touch();
+        engine.SetGestureSpeed(1.0);
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
+        engine.Release();
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 512 * BYTES_PER_FRAME);   // mid-brake
+        engine.Resume();
+        for(int i = 0; i < 40; i++) Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
+        Check("play during a brake cancels it rather than being undone by it",
+              Math.Abs(engine.Velocity - 1.0) < 0.01 && !engine.ConsumeBrakeCompleted(),
+              $"v={engine.Velocity:F4}");
+
         // ------------------------------------------------------------------ 16
         Console.WriteLine("\n[16] Scratching backwards out of a loop wraps to the end");
         engine.ReleaseMode = ReleaseModes.Inertia;

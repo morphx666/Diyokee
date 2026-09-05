@@ -55,9 +55,10 @@ public sealed class ScratchEngine : IDisposable {
     private const int HistoryFrames = 44100;               // 1s, kept behind it
     private const int ScratchWindow = 132300;              // 3s of both, once a hand is on it
     private const int MaxResident = RingFrames - ChunkFrames * 4;   // most the ring can safely hold
-    private const int PrefillChunks = 2;                   // decoded inline on load and on seek
+    private const int PrefillChunks = 2;                   // decoded inline when a track is loaded
     private const int ProducerWaitMs = 2;                  // one wait; the budget is a few of these
     private const int ProducerWaitTries = 64;              // ...but only while it is making progress
+    private const int ProducerQuietWaits = 3;              // consecutive silent waits that mean stalled
     private const int ProducerIdleMs = 250;                // re-check even if nobody asked
 
     // Band-limiting resampler, used above play speed - see docs/scratch-audio-quality.md.
@@ -276,20 +277,19 @@ public sealed class ScratchEngine : IDisposable {
         double max = LengthSeconds;
         if(max > 0 && seconds > max) seconds = max;
 
-        long frame = (long)(seconds * sampleRate);
-
-        // Moved here on purpose: a seek has to be audible at once, so the ring is repositioned and
-        // primed on the CALLER's thread rather than left for the producer to notice. This is the
-        // only source I/O outside the producer, and it is why a dropbox:// seek now stalls the
-        // thread that asked for it instead of the audio device.
-        lock(sourceLock) {
-            if(disposed) return;
-            RepositionSource(frame);
-            for(int i = 0; i < PrefillChunks && DecodeChunk(); i++) { }
-        }
-
+        // Deliberately does no I/O and takes no lock. This is called from the UI thread, from the
+        // 30ms scrub loop, and from the 1ms loop in Player.Play that waits for the other deck's
+        // beat before seeking and starting - so anything that can block here lands squarely on the
+        // paths where latency shows.
+        //
+        // Repositioning the ring here was tried, on the reasoning that a seek should be audible at
+        // once, and it was exactly that mistake: the producer re-acquires sourceLock once per
+        // chunk, so a caller waiting on it can be starved for as long as a whole window takes to
+        // decode. Nothing here needs to be synchronous - FillStep aims at pendingSeekFrame while a
+        // seek is outstanding, so the producer retargets within one chunk, and the audio thread
+        // waits for it rather than stalling.
         pendingSeekSeconds = seconds;
-        Interlocked.Exchange(ref pendingSeekFrame, frame);
+        Interlocked.Exchange(ref pendingSeekFrame, (long)(seconds * sampleRate));
         seekPending = true;
         wake.Set();
     }
@@ -337,8 +337,17 @@ public sealed class ScratchEngine : IDisposable {
 
     // Lifts the halt left behind by a braked release, so the deck runs again. Called when
     // playback is (re)started.
+    //
+    // It also CANCELS a brake still in progress, and drops any completion the Player has not
+    // collected yet. Both matter because the brake finishes on the audio thread while the Player
+    // notices it up to 30ms later, in MonitorPlayback - so pressing play in that window used to
+    // start the deck and then have the late completion pause it again a moment afterwards. The
+    // deck crept forward and stopped, seemingly on its own.
     public void Resume() {
-        if(state == State.Stopped) state = State.Idle;
+        if(state == State.Stopped || (state == State.Releasing && ReleaseMode == ReleaseModes.Stop)) {
+            state = State.Idle;
+        }
+        brakeCompleted = false;
     }
 
     // Asks for the next audio to fade up from silence rather than starting at full level. Used
@@ -642,9 +651,16 @@ public sealed class ScratchEngine : IDisposable {
     // rendered from whatever part of its window the ring holds, which costs a little filtering;
     // or nothing, which costs a gap. The waiting in between is what usually avoids both.
     private bool RenderOne(int outIndex) {
+        int quiet = 0;
         for(int attempt = 0; attempt < ProducerWaitTries; attempt++) {
             if(RenderFrame(outIndex, degrade: false)) return true;
-            if(sourceExhausted || !WaitForData()) break;
+            if(sourceExhausted) break;
+
+            // A ring that has not moved is not proof of a stall - right after a seek the producer
+            // may simply not have been scheduled yet. Only several quiet waits in a row mean it is
+            // stuck on something, and only then is spending the rest of the budget pointless.
+            if(WaitForData()) quiet = 0;
+            else if(++quiet >= ProducerQuietWaits) break;
         }
         return RenderFrame(outIndex, degrade: true);
     }
@@ -827,7 +843,10 @@ public sealed class ScratchEngine : IDisposable {
     private void ProducerLoop() {
         while(!disposed) {
             wake.WaitOne(ProducerIdleMs);
-            while(!disposed && FillStep()) { }
+            // Yield between steps. The lock is released and re-taken per chunk, and .NET's monitor
+            // is not fair: without this a producer working through a long window can keep winning
+            // the re-acquire and starve Dispose behind it.
+            while(!disposed && FillStep()) Thread.Yield();
         }
     }
 
