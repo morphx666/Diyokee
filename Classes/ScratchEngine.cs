@@ -29,9 +29,17 @@ public sealed class ScratchEngine : IDisposable {
     private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
     private const int InterpMargin = 2;        // frames Catmull-Rom needs either side
 
-    // Below this speed the output is silenced rather than repeating a sample, which would be a
-    // DC step. A stopped record makes no sound.
-    private const double SilenceThreshold = 1e-4;
+    // Below this speed the record counts as stopped. A stopped record makes no sound, and the
+    // playhead is moving so little that rendering would just repeat one source sample - a DC
+    // offset rather than audio. The threshold has to be high enough that the fade below finishes
+    // before that repetition is audible: at 1e-4 the engine held a single sample for ~10000 frames
+    // before silencing, which is the DC step this was supposed to avoid.
+    private const double SilenceThreshold = 0.02;
+
+    // Gain snaps to exactly 0 or 1 within this much of either end. The upper snap is what keeps
+    // unity playback bit-identical, since it lets the multiply be skipped entirely; the lower one
+    // stops the one-pole's inaudible tail from rendering for another 20ms. -80dB either way.
+    private const double GainSnap = 1e-4;
 
     // Maps a stretch of what we emit onto where it came from in the source.
     private struct Run {
@@ -67,6 +75,13 @@ public sealed class ScratchEngine : IDisposable {
     private bool ended;
     private bool sourceExhausted;
 
+    // Output level, faded in and out around SilenceThreshold. Cutting straight to zero was a step
+    // at whatever amplitude the waveform happened to be at - the click at the start and end of
+    // every stroke, and why scratching a paused deck sounded worse than scratching a playing one:
+    // paused, every stroke both begins and ends at zero velocity.
+    private double silenceGain = 1.0;
+    private volatile bool fadeInRequested;
+
     private long pendingSeekFrame = -1;
     private double pendingSeekSeconds;
     private volatile bool seekPending;
@@ -93,6 +108,9 @@ public sealed class ScratchEngine : IDisposable {
     public double SpinUpTime { get; set; } = 0.25;
     public double BrakeTime { get; set; } = 0.12;
     public double SlewTime { get; set; } = 0.004;
+
+    // How long the output takes to fade in or out as the record passes SilenceThreshold.
+    public double SilenceFadeTime { get; set; } = 0.005;
 
     public bool IsTouched => state == State.Touched;
     public double Velocity => Volatile.Read(ref velocity);
@@ -161,6 +179,14 @@ public sealed class ScratchEngine : IDisposable {
     // playback is (re)started.
     public void Resume() {
         if(state == State.Stopped) state = State.Idle;
+    }
+
+    // Asks for the next audio to fade up from silence rather than starting at full level. Used
+    // when a paused deck is un-paused to be scratched: its mixer channels carry
+    // BASS_MIXER_CHAN_NORAMPIN, so nothing downstream will ramp it in for us and the first sample
+    // would step straight from silence to wherever the waveform happened to be.
+    public void FadeInFromSilence() {
+        fadeInRequested = true;
     }
 
     // True once after a braked release has actually reached a standstill, so the Player can stop
@@ -240,6 +266,10 @@ public sealed class ScratchEngine : IDisposable {
 
     private int StreamProc(int handle, IntPtr buffer, int length, IntPtr user) {
         if(seekPending) ApplySeek();
+        if(fadeInRequested) {
+            fadeInRequested = false;
+            silenceGain = 0.0;
+        }
 
         int framesWanted = length / bytesPerFrame;
         if(framesWanted > outBuf.Length / channels) framesWanted = outBuf.Length / channels;
@@ -247,6 +277,7 @@ public sealed class ScratchEngine : IDisposable {
 
         double target = TargetVelocity();
         double alpha = SlewAlpha();
+        double fadeAlpha = FadeAlpha();
 
         long outCursor = outputFrames;
         long runOutStart = outCursor;
@@ -259,9 +290,16 @@ public sealed class ScratchEngine : IDisposable {
         while(produced < framesWanted) {
             velocity += (target - velocity) * alpha;
 
+            // Fade across SilenceThreshold rather than gating on it: the jump in and out of
+            // silence was the click, not the silence itself.
+            double gainTarget = Math.Abs(velocity) < SilenceThreshold ? 0.0 : 1.0;
+            silenceGain += (gainTarget - silenceGain) * fadeAlpha;
+            if(silenceGain > 1.0 - GainSnap) silenceGain = 1.0;
+            else if(silenceGain < GainSnap) silenceGain = 0.0;
+
             double previous = playhead;
 
-            if(Math.Abs(velocity) < SilenceThreshold) {
+            if(silenceGain == 0.0) {
                 int at = produced * channels;
                 for(int c = 0; c < channels; c++) outBuf[at + c] = 0f;
             } else if(!RenderFrame(produced)) {
@@ -269,6 +307,10 @@ public sealed class ScratchEngine : IDisposable {
                 // that has not caught up yet, and returning less than asked for is allowed.
                 if(sourceExhausted) ended = true;
                 break;
+            } else if(silenceGain != 1.0) {
+                // Skipped entirely at unity, which is what keeps normal playback bit-identical.
+                int at = produced * channels;
+                for(int c = 0; c < channels; c++) outBuf[at + c] = (float)(outBuf[at + c] * silenceGain);
             }
 
             produced++;
@@ -357,6 +399,11 @@ public sealed class ScratchEngine : IDisposable {
         };
         if(tau <= 0) return 1.0;                              // no smoothing at all
         return 1.0 - Math.Exp(-1.0 / (tau * sampleRate));
+    }
+
+    private double FadeAlpha() {
+        if(SilenceFadeTime <= 0) return 1.0;                  // cut instead of fade
+        return 1.0 - Math.Exp(-1.0 / (SilenceFadeTime * sampleRate));
     }
 
     // Writes one interpolated frame. Returns false if the source could not supply the data.

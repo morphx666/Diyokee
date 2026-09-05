@@ -316,10 +316,16 @@
             // Let audio flow so a cued deck can be scratched, and make sure it comes to rest
             // again afterwards rather than running away at play speed.
             engine.ReleaseMode = ReleaseModes.Stop;
+
+            // These channels are added with BASS_MIXER_CHAN_NORAMPIN, so resuming them steps
+            // straight from silence to whatever the deck was left sitting on. Ask the engine to
+            // fade in, since nothing downstream will.
+            engine.FadeInFromSilence();
             splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
         }
 
         lastScratchTicks = Environment.TickCount64;
+        lastGestureSpeed = 0;
         engine.Resume();
         engine.Touch();
     }
@@ -333,19 +339,29 @@
         double seconds = deltaPixels * Files.TimeSlice / WaveformBarWidth;
         double speed = seconds / (deltaMilliseconds / 1000.0);
         lastScratchTicks = Environment.TickCount64;
-        engine.SetGestureSpeed(speed * Program.Settings.Playback.Scratch.MouseSensitivity);
+        lastGestureSpeed = speed * Program.Settings.Playback.Scratch.MouseSensitivity;
+        engine.SetGestureSpeed(lastGestureSpeed);
     }
 
     // A hand held still on the platter produces no events at all, so without this the last speed
-    // would simply persist and the track would keep sliding. Going quiet means "not moving".
+    // would simply persist and the track would keep sliding. Going quiet means "not moving" - but
+    // mouse moves reach us over the SignalR circuit in bursts, and a delivery gap looks exactly
+    // like a still hand. Slamming the speed to zero on every gap stopped the record mid-stroke.
+    // So: a longer grace, then a decay. A stalled burst costs a slight slowdown, while a hand
+    // genuinely held still still brings the record to rest within a few ticks.
     private long lastScratchTicks;
-    private const int GestureIdleMs = 60;
+    private double lastGestureSpeed;
+    private const int GestureIdleMs = 120;
+    private const double GestureDecayPerTick = 0.5;
 
     private void StopScratchIfHandWentQuiet() {
         if(engine == null || !engine.IsTouched) return;
-        if(lastScratchTicks > 0 && Environment.TickCount64 - lastScratchTicks > GestureIdleMs) {
-            engine.SetGestureSpeed(0);
-        }
+        if(lastScratchTicks <= 0 || lastGestureSpeed == 0) return;
+        if(Environment.TickCount64 - lastScratchTicks <= GestureIdleMs) return;
+
+        lastGestureSpeed *= GestureDecayPerTick;
+        if(Math.Abs(lastGestureSpeed) < 0.02) lastGestureSpeed = 0;   // the engine's stopped threshold
+        engine.SetGestureSpeed(lastGestureSpeed);
     }
 
     public void EndScratch() {
