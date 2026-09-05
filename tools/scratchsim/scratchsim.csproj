@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Renders a scratch gesture offline, the way the real mouse path delivers it: integer pixel
+    positions, ~1ms timestamps, bursty SignalR arrival. Not part of Diyokee.sln; see the header of
+    Program.cs. This is the tool that found the input-path defect after three wrong guesses at the
+    audio path, so it is worth keeping.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AssemblyName>scratchsim</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Un4seen.Bass" Version="2.4.18.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Classes\ScratchEngine.cs" Link="ScratchEngine.cs" />
+    <Compile Include="..\..\Classes\Loop.cs" Link="Loop.cs" />
+    <Compile Include="..\..\Classes\ScratchModes.cs" Link="ScratchModes.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Content Include="..\..\bass\windows\x64\*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
