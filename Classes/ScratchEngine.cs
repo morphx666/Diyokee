@@ -1,4 +1,4 @@
-using System.Threading;
+﻿using System.Threading;
 using Un4seen.Bass;
 
 namespace Diyokee;
@@ -103,6 +103,12 @@ public sealed class ScratchEngine : IDisposable {
     private double velocity = 1.0;             // current speed, after slewing
     private bool ended;
     private bool sourceExhausted;
+    private long sourceNextFrame;              // frame the source will decode next
+
+    // Counters for tools/enginetest. Seeking and decoding happen on the audio thread, so how
+    // OFTEN they happen is a correctness concern, not just a performance one.
+    public long SourceSeeks { get; private set; }
+    public long FramesDecoded { get; private set; }
 
     // Output level, faded in and out around SilenceThreshold. Cutting straight to zero was a step
     // at whatever amplitude the waveform happened to be at - the click at the start and end of
@@ -160,7 +166,7 @@ public sealed class ScratchEngine : IDisposable {
 
         long pos = Bass.BASS_ChannelGetPosition(sourceHandle, BASSMode.BASS_POS_BYTE);
         playhead = pos > 0 ? pos / bytesPerFrame : 0;
-        ringTail = ringHead = (long)playhead;
+        ringTail = ringHead = sourceNextFrame = (long)playhead;
 
         PushRun(0, playhead, 1.0);
 
@@ -572,12 +578,10 @@ public sealed class ScratchEngine : IDisposable {
         if(first < 0) first = 0;
         if(first >= ringTail && last < ringHead) return true;
 
-        if(first < ringTail || first > ringHead) {
-            // Discontinuous. Reaching backwards past what the ring holds is the expensive case,
-            // so pull back a block's worth of history in one go rather than re-seeking per frame.
-            long windowStart = first < ringTail ? first - BackfillFrames : first;
-            if(windowStart < 0) windowStart = 0;
-            RepositionSource(windowStart);
+        if(first < ringTail) {
+            Backfill(first);
+        } else if(first > ringHead) {
+            RepositionSource(first);           // jumped forward out of the ring entirely
         }
 
         while(ringHead <= last) {
@@ -586,30 +590,84 @@ public sealed class ScratchEngine : IDisposable {
         return true;
     }
 
-    private void RepositionSource(long frame) {
-        Bass.BASS_ChannelSetPosition(source, frame * bytesPerFrame, BASSMode.BASS_POS_BYTE);
-        ringTail = ringHead = frame;
-        sourceExhausted = false;
+    // Reaching backwards past what the ring holds. Pulls in a block of history in one go rather
+    // than re-seeking per frame, and stops at the old tail so that everything already decoded
+    // AHEAD of the playhead survives.
+    //
+    // Keeping the forward half is the point: discarding it left only BackfillFrames of history and
+    // nothing in front, so a scratch oscillating across this boundary re-seeked and re-decoded on
+    // every pass - a file seek plus a chunk of decoding, on the audio thread, several times a
+    // second. Preserving both ends means crossing it once is enough.
+    private void Backfill(long first) {
+        long windowStart = Math.Max(0, first - BackfillFrames);
+
+        // Both ends have to fit in the ring at once, or there is no point trying to keep them.
+        if(ringHead - windowStart > RingFrames) {
+            RepositionSource(windowStart);
+            return;
+        }
+
+        long fillTo = ringTail;
+        SeekSource(windowStart);
+
+        while(sourceNextFrame < fillTo) {
+            int want = (int)Math.Min(ChunkFrames, fillTo - sourceNextFrame);
+            if(DecodeInto(sourceNextFrame, want) <= 0) {
+                RepositionSource(windowStart);   // could not fill the gap, so start clean
+                return;
+            }
+        }
+
+        ringTail = windowStart;
     }
 
-    private bool DecodeChunk() {
-        if(sourceExhausted) return false;
+    private void SeekSource(long frame) {
+        Bass.BASS_ChannelSetPosition(source, frame * bytesPerFrame, BASSMode.BASS_POS_BYTE);
+        sourceNextFrame = frame;
+        sourceExhausted = false;
+        SourceSeeks++;
+    }
 
-        int wantFrames = Math.Min(ChunkFrames, decodeBuf.Length / channels);
+    private void RepositionSource(long frame) {
+        SeekSource(frame);
+        ringTail = ringHead = frame;
+    }
+
+    // Decodes at most maxFrames into the ring at an absolute frame position, leaving ringTail and
+    // ringHead alone. Returns the number of frames written.
+    private int DecodeInto(long frame, int maxFrames) {
+        if(sourceExhausted) return 0;
+
+        int wantFrames = Math.Min(maxFrames, decodeBuf.Length / channels);
+        if(wantFrames <= 0) return 0;
+
         int bytes = Bass.BASS_ChannelGetData(source, decodeBuf, wantFrames * bytesPerFrame);
         if(bytes <= 0) {
             // Only a genuine BASS_ERROR_ENDED means the track is over. The master stream is opened
             // with BASS_ASYNCFILE, so a short read just means the file buffer has not caught up.
             if(bytes < 0 && Bass.BASS_ErrorGetCode() == BASSError.BASS_ERROR_ENDED) sourceExhausted = true;
-            return false;
+            return 0;
         }
 
         int got = bytes / bytesPerFrame;
-        int at = (int)(ringHead & RingMask);
+        int at = (int)(frame & RingMask);
         int firstPart = Math.Min(got, RingFrames - at);
 
         Array.Copy(decodeBuf, 0, ring, at * channels, firstPart * channels);
         if(got > firstPart) Array.Copy(decodeBuf, firstPart * channels, ring, 0, (got - firstPart) * channels);
+
+        sourceNextFrame = frame + got;
+        FramesDecoded += got;
+        return got;
+    }
+
+    private bool DecodeChunk() {
+        // A backfill leaves the source parked at the old tail, so the forward path has to put it
+        // back before reading on. Tracking the position explicitly is what makes that safe.
+        if(sourceNextFrame != ringHead) SeekSource(ringHead);
+
+        int got = DecodeInto(ringHead, ChunkFrames);
+        if(got <= 0) return false;
 
         ringHead += got;
         if(ringHead - ringTail > RingFrames) ringTail = ringHead - RingFrames;

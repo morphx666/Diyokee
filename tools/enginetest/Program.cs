@@ -459,6 +459,41 @@ internal static class EngineTest {
         Check("climbs back to full level", last17 > level17 * 0.5f,
               $"last sample {last17:F0}");
 
+        // ------------------------------------------------------------------ 20
+        // Seeking the source and decoding both happen on the audio thread, so how often they
+        // happen matters. Backfilling used to discard everything decoded ahead of the playhead,
+        // leaving only BackfillFrames of history and nothing in front - so a scratch oscillating
+        // across that boundary paid a file seek plus a chunk of decoding on every single pass.
+        Console.WriteLine("\n[20] Scratching across the backfill boundary does not re-seek every pass");
+        loop.Enabled = false;
+        engine.SlewTime = 0;
+        engine.SilenceFadeTime = 0;
+        engine.RequestSeek(12.0);
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 64 * BYTES_PER_FRAME);
+        engine.Touch();
+
+        long seeksBefore = engine.SourceSeeks;
+        long decodedBefore = engine.FramesDecoded;
+        bool sweepExact = true;
+        for(int sweep = 0; sweep < 6; sweep++) {
+            engine.SetGestureSpeed(sweep % 2 == 0 ? -8.0 : 8.0);
+            for(int block = 0; block < 6; block++) {
+                int n = Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
+                if(n <= 0) break;
+                int fr = n / BYTES_PER_FRAME;
+                for(int f = 1; f < fr; f++) {
+                    double step = buf[f * CHANS] - buf[(f - 1) * CHANS];
+                    if(Math.Abs(Math.Abs(step) - 8.0) > 0.01) sweepExact = false;
+                }
+            }
+        }
+        long sweepSeeks = engine.SourceSeeks - seeksBefore;
+        long sweepDecoded = engine.FramesDecoded - decodedBefore;
+        Console.WriteLine($"      6 sweeps at 8x: {sweepSeeks} source seeks, {sweepDecoded} frames decoded");
+        Check("audio stays sample-exact across the boundary", sweepExact);
+        Check("the boundary is crossed without re-seeking each pass", sweepSeeks <= 6,
+              $"{sweepSeeks} seeks over 6 sweeps");
+
         engine.Dispose();
         Bass.BASS_StreamFree(source);
 
