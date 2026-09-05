@@ -12,15 +12,18 @@ namespace Diyokee;
 // around it, so it can render the track at any speed in either direction. Velocity is signed:
 // negative simply reads the ring backwards, which is why the reverse FX is gone.
 //
-// At a velocity of exactly 1.0 the playhead stays on integer frames and Catmull-Rom returns the
-// sample untouched, so ordinary playback is still bit-identical to the original chain.
+// Two resampling paths, which is deliberate rather than leftover. At or below play speed there is
+// nothing to band-limit, so Catmull-Rom interpolates: cheap, and at exactly 1.0 the playhead stays
+// on integer frames and it returns the sample untouched, keeping ordinary playback bit-identical
+// to the original chain. Above play speed the engine is decimating, so it switches to a sinc
+// kernel stretched by the rate, which low-passes and interpolates in one pass. Using the sinc for
+// both was tried: it costs twice as much at 1x and loses the bit-identity, because sin(pi*k) is
+// not exactly zero in floating point.
 //
 // Why the engine owns position: a STREAMPROC stream reports position as bytes emitted, which only
 // ever increases - it cannot represent a loop wrap, a seek, or playing backwards. BASS's idea of
 // "where are we" is therefore not usable as track position. See SourceSecondsAtOutputFrame.
 public sealed class ScratchEngine : IDisposable {
-    public const int DefaultSampleRate = 44100;
-
     // ~5.9s of source at 44.1kHz. Big enough that a scratch stays inside the ring and needs no
     // re-seek; small enough to stay cheap (2.1 MB per stereo deck).
     private const int RingFrames = 1 << 18;
@@ -29,20 +32,16 @@ public sealed class ScratchEngine : IDisposable {
     private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
     private const int InterpMargin = 2;        // frames Catmull-Rom needs either side
 
-    // Band-limiting resampler, used above play speed.
+    // Band-limiting resampler, used above play speed - see docs/scratch-audio-quality.md.
     //
     // The kernel spans SincTapsPerSide source frames either side at 1x and stretches with the rate,
-    // so an unbounded kernel costs taps in proportion to speed: measured at 7x realtime at 32x,
-    // which would underrun on hardware as slow as a Pi.
+    // so an unbounded kernel costs taps in proportion to speed. Cost is bounded by capping the TAP
+    // COUNT rather than the stretch: capping the stretch would leave the cutoff behind the actual
+    // rate, and the band that then escapes is bass, the one thing still audible in a fast scratch.
+    // Capping taps instead keeps the cutoff exact and widens the transition band instead.
     //
-    // Bounding the STRETCH is the wrong cure - it leaves the cutoff behind the actual rate, and the
-    // band that then escapes is bass, the one thing still audible in a fast scratch. Bounding the
-    // TAP COUNT is right: the cutoff still tracks the rate exactly, and what degrades instead is
-    // the width of the transition band, up where the record is a whoosh either way.
-    //
-    // MaxKernelTaps is where cost is traded against rejection at extreme speeds. It does not bind
-    // below 8x, so the 2-8x range that ordinary scratching lives in is unaffected by it. Measured
-    // by check 19 of tools/enginetest, on a desktop:
+    // MaxKernelTaps does not bind below 8x, so ordinary scratching is unaffected by it. Measured by
+    // check 19 of tools/enginetest, on a desktop:
     //
     //     taps   1kHz at 30x     4x     8x    16x    32x
     //       64        -6.8dB    36x    35x    34x    33x   realtime
@@ -50,8 +49,7 @@ public sealed class ScratchEngine : IDisposable {
     //      256       -27.0dB    36x    18x     9x     9x   <- chosen
     //      512       -77.8dB    36x    18x     9x     5x
     //
-    // 256 keeps the common range fast and leaves the 9x worst case only on brief flicks, which
-    // BASS's 500ms output buffer absorbs. Lower it first if a Pi ever struggles.
+    // Lower it first if a Pi ever struggles.
     private const int SincTapsPerSide = 8;     // full quality, used up to MaxKernelTaps/(2*rate)
     private const int MaxKernelTaps = 256;
     private const double MaxScratchSpeed = 32.0;
@@ -129,14 +127,15 @@ public sealed class ScratchEngine : IDisposable {
     private double gestureSpeed;               // requested speed while the platter is held
     private volatile bool brakeCompleted;
 
-    public Loop Loop { get; set; } = new();
+    public Loop Loop { get; set; }
 
     public int StreamHandle => stream;
     public int BytesPerFrame => bytesPerFrame;
     public double LengthSeconds => lengthFrames / (double)sampleRate;
 
-    // Speed the deck runs at when nothing is touching it. 1.0 is normal playback.
-    public double PlayVelocity { get; set; } = 1.0;
+    // Speed the deck runs at when nothing is touching it. Not configurable: tempo and pitch are
+    // handled downstream by the BASS_FX tempo stream, so the engine always plays at natural speed.
+    private const double PlayVelocity = 1.0;
 
     public TouchModes TouchMode { get; set; } = TouchModes.Vinyl;
     public ReleaseModes ReleaseMode { get; set; } = ReleaseModes.Inertia;
@@ -152,7 +151,7 @@ public sealed class ScratchEngine : IDisposable {
 
     public ScratchEngine(int sourceHandle, int sampleRate, int channels, Loop loop) {
         source = sourceHandle;
-        this.sampleRate = sampleRate <= 0 ? DefaultSampleRate : sampleRate;
+        this.sampleRate = sampleRate <= 0 ? 44100 : sampleRate;
         this.channels = Math.Max(1, channels);
         bytesPerFrame = this.channels * sizeof(float);
         Loop = loop;
@@ -203,9 +202,9 @@ public sealed class ScratchEngine : IDisposable {
     public void SetGestureSpeed(double speed) {
         if(double.IsNaN(speed) || double.IsInfinity(speed)) speed = 0;
 
-        // Clamped here rather than in the render loop so the release state machine still sees a
-        // target it can actually reach. Beyond this the record is a whoosh regardless, and the
-        // limit is what keeps the resampler's per-frame cost finite.
+        // A sanity bound, not a cost bound - MaxKernelTaps handles cost. This only stops a wild
+        // delta from asking for a speed no hand could produce. Clamped here rather than in the
+        // render loop so the release state machine still sees a target it can reach.
         if(speed > MaxScratchSpeed) speed = MaxScratchSpeed;
         else if(speed < -MaxScratchSpeed) speed = -MaxScratchSpeed;
 
@@ -319,7 +318,7 @@ public sealed class ScratchEngine : IDisposable {
 
         double target = TargetVelocity();
         double alpha = SlewAlpha();
-        double fadeAlpha = FadeAlpha();
+        double fadeAlpha = Alpha(SilenceFadeTime);
 
         long outCursor = outputFrames;
         long runOutStart = outCursor;
@@ -434,19 +433,13 @@ public sealed class ScratchEngine : IDisposable {
         }
     }
 
-    private double SlewAlpha() {
-        double tau = state switch {
-            State.Releasing => ReleaseMode == ReleaseModes.Stop ? BrakeTime : SpinUpTime,
-            _ => SlewTime
-        };
-        if(tau <= 0) return 1.0;                              // no smoothing at all
-        return 1.0 - Math.Exp(-1.0 / (tau * sampleRate));
-    }
+    // One-pole coefficient reaching ~63% of a step per tau seconds. Zero tau means no smoothing.
+    private double Alpha(double tau) => tau <= 0 ? 1.0 : 1.0 - Math.Exp(-1.0 / (tau * sampleRate));
 
-    private double FadeAlpha() {
-        if(SilenceFadeTime <= 0) return 1.0;                  // cut instead of fade
-        return 1.0 - Math.Exp(-1.0 / (SilenceFadeTime * sampleRate));
-    }
+    private double SlewAlpha() => Alpha(state switch {
+        State.Releasing => ReleaseMode == ReleaseModes.Stop ? BrakeTime : SpinUpTime,
+        _ => SlewTime
+    });
 
     // Writes one output frame. Returns false if the source could not supply the data.
     //
