@@ -96,6 +96,14 @@ internal static class EngineTest {
               Math.Abs(engine.SourceSecondsAtOutputFrame(4410) - 10.1) < 1e-9,
               $"{engine.SourceSecondsAtOutputFrame(4410):F6}");
 
+        // Two seeks before the audio thread gets a chance at either - the jump and snap buttons do
+        // exactly this - must land on the second, not the first, and must not lose both.
+        engine.RequestSeek(3.0);
+        engine.RequestSeek(20.0);
+        Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 64 * BYTES_PER_FRAME);
+        Check("back-to-back seeks land on the last one", (long)buf[0] == 20L * RATE,
+              $"frame {(long)buf[0]}, expected {20L * RATE}");
+
         // ------------------------------------------------------------------ 4
         Console.WriteLine("\n[4] Loop wraps exactly on the boundary");
         engine.RequestSeek(5.0);

@@ -975,7 +975,7 @@
 
     public bool SetParameters() {
         Peaks = [];
-        BeatMarkers.Clear();
+        BeatMarkers = [];
 
         if(File == null) return false;
         Peaks = File.WaveformUnZipped.Split('|').Select(p => double.TryParse(p, out var result) ? result : 0).ToArray();
@@ -993,21 +993,28 @@
         return true;
     }
 
+    // Builds into a local list and publishes it by assignment rather than filling the live one.
+    // MonitorBeats walks these every millisecond, now on a paused deck too - which is exactly when
+    // a track is being loaded - and a reader indexing a list that is being cleared and refilled
+    // underneath it throws, killing that loop for good.
     private void GenerateBeatMarkers() {
         if(File.DownbeatAt == -1) return;
 
+        List<(double X, double Seconds)> markers = new();
         double t1 = File.DownbeatAt;
         double t2 = t1 - secondsPerBeat;
         while(t1 < File!.Duration || t2 >= 0) {
             if(t1 < File.Duration) {
-                BeatMarkers.Add((t1 * SecondsToPosX, t1));
+                markers.Add((t1 * SecondsToPosX, t1));
                 t1 += secondsPerBeat;
             }
             if(t2 >= 0) {
-                BeatMarkers.Insert(0, (t2 * SecondsToPosX, t2));
+                markers.Insert(0, (t2 * SecondsToPosX, t2));
                 t2 -= secondsPerBeat;
             }
         }
+
+        BeatMarkers = markers;
     }
 
     public void SnapToCuePoint(CuePoint cp) {
@@ -1133,20 +1140,40 @@
         Program.Settings.Playback.EqProfile = EqControls.EqProfile.Name;
     }
 
-    private void DoJump(int direction) {
-        Task.Run(async () => {
-            while(true) {
-                await Task.Delay(1);
-                if(InBeat) {
-                    double offset = PositionSeconds + direction * (direction * (secondsPerBeat / 10) + jumpSize / beatsPerSecond);
-                    if(offset > LengthSeconds) return;
-                    if(offset < 0) offset = 0;
+    // Jumps by jumpSize beats, quantised to a beat so it lands in time. The wait for that beat is
+    // now bounded: it used to spin at 1ms until InBeat became true, and on a paused deck it never
+    // did, so the buttons did nothing and every click leaked another loop. One beat is the longest
+    // it can ever be worth waiting.
+    private bool jumpPending;
 
-                    SeekSeconds(offset);
-                    break;
-                }
+    private void DoJump(int direction) {
+        if(jumpPending) return;
+
+        if(!IsPlaying) {
+            Jump(direction);
+            return;
+        }
+
+        jumpPending = true;
+        Task.Run(async () => {
+            try {
+                long deadline = Environment.TickCount64 + (long)(secondsPerBeat * 1000) + 50;
+                while(!InBeat && Environment.TickCount64 < deadline) await Task.Delay(1);
+
+                Jump(direction);
+                await InvokeAsync(StateHasChanged);
+            } finally {
+                jumpPending = false;
             }
         });
+    }
+
+    private void Jump(int direction) {
+        double offset = PositionSeconds + direction * (direction * (secondsPerBeat / 10) + jumpSize / beatsPerSecond);
+        if(offset > LengthSeconds) return;
+        if(offset < 0) offset = 0;
+
+        SeekSeconds(offset);
     }
 
     private void ToggleSendToMonitor(MouseEventArgs e) {
@@ -1278,29 +1305,35 @@
         while(true) {
             await Task.Delay(1);
 
-            if(Bass.BASS_ChannelIsActive(masterSplitterHandle) == BASSActive.BASS_ACTIVE_PLAYING) {
-                playbackPosition = PositionSeconds;
+            if(masterSplitterHandle == 0) continue;
 
-                InBeat = false;
-                int startIndex = BeatMarkers.FindIndex(b => b.Seconds >= File!.DownbeatAt);
-                for(int i = 0; i < BeatMarkers.Count; i++) {
-                    if(Math.Abs(BeatMarkers[i].Seconds - playbackPosition) < threshold) {
+            // Deliberately not behind a "is it playing" check. Position and beat state have to
+            // follow a seek on a PAUSED deck too: the readout froze, and DoJump waits for InBeat,
+            // which meant the jump buttons did nothing at all until the deck was running.
+            playbackPosition = PositionSeconds;
+
+            InBeat = false;
+            List<(double X, double Seconds)> markers = BeatMarkers;   // published by assignment
+            if(File != null) {
+                int startIndex = markers.FindIndex(b => b.Seconds >= File.DownbeatAt);
+                for(int i = 0; i < markers.Count; i++) {
+                    if(Math.Abs(markers[i].Seconds - playbackPosition) < threshold) {
                         InBeatIndex = (i + startIndex) % 2 + 1;
                         InBeat = true;
                         break;
                     }
                 }
+            }
 
-                if(++interval > 30) {
-                    if(IsPlaying) {
-                        float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO);
-                        vuMeter?.SetLevel(levelsReal[0], levelsReal[0] * trackVolume * crossFaderVolume, InBeatIndex);
-                    } else {
-                        vuMeter?.SetLevel(0, 0, InBeatIndex);
-                    }
-
-                    interval = 0;
+            if(++interval > 30) {
+                if(IsPlaying) {
+                    float[] levelsReal = BassMix.BASS_Mixer_ChannelGetLevel(handle: masterSplitterHandle, flags: BASSLevel.BASS_LEVEL_MONO);
+                    vuMeter?.SetLevel(levelsReal[0], levelsReal[0] * trackVolume * crossFaderVolume, InBeatIndex);
+                } else {
+                    vuMeter?.SetLevel(0, 0, InBeatIndex);
                 }
+
+                interval = 0;
             }
         }
     }
@@ -1335,6 +1368,12 @@
                 Stop(false);
                 CreateStreams();
                 SeekSeconds(LengthSeconds);
+            } else if(waveform != null && waveformFull != null && !waveformFull.IsMouseDown) {
+                // Paused, but a cue, a jump or a beat snap still moves the playhead, and the
+                // canvas below is redrawn either way - so without this the buttons looked dead
+                // even though the engine had moved.
+                waveform.PlaybackHead = SecondsToWaveformHead(PositionSeconds);
+                waveformFull.PlaybackHead = waveform.PlaybackHead;
             }
 
             if(waveform != null && intervals % 2 == 0) await waveform.Refresh();

@@ -1045,10 +1045,14 @@ public sealed class ScratchEngine : IDisposable {
         Volatile.Write(ref runHead, 0);
         PushRun(0, playhead, velocity);
 
-        // Cleared last, and in this order: until the map has been rebuilt readers are served the
-        // requested position, and the producer keeps aiming at it rather than at the old playhead.
-        Interlocked.Exchange(ref pendingSeekFrame, -1);
-        seekPending = false;
+        // Retire only the request that was actually applied. A seek arriving while this ran - the
+        // jump and snap buttons can fire two in quick succession - would otherwise be wiped by our
+        // own cleanup and simply never happen. If the value has moved on, leave the flag set so
+        // the next callback picks the new one up.
+        //
+        // Cleared last either way: until the map has been rebuilt, readers are served the
+        // requested position and the producer keeps aiming at it rather than at the old playhead.
+        if(Interlocked.CompareExchange(ref pendingSeekFrame, -1, frame) == frame) seekPending = false;
     }
 
     private void PushRun(long outFrame, double srcFrame, double slope) {
