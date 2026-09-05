@@ -35,6 +35,25 @@ public sealed class ScratchEngine : IDisposable {
     private const int ChunkFrames = 4096;      // decoded per top-up
     private const int BackfillFrames = 16384;  // decoded when reaching back beyond the ring
     private const int InterpMargin = 2;        // frames Catmull-Rom needs either side
+    private const int EdgeMargin = MaxKernelTaps;   // pre-roll kept behind a reposition, so the
+                                                    // first frame after a seek has its window
+
+    // The ring is filled by a producer thread; the STREAMPROC only ever reads it. Seeking and
+    // decoding cost hundreds of microseconds on a local file and hundreds of MILLISECONDS over
+    // dropbox://, and the thread that used to pay that is BASS's update thread, which serves every
+    // deck on the device - so one stalled track silenced both. Plan section 7, risk 3.
+    //
+    // The two windows never add up to the whole ring, which is what makes the reader safe without
+    // locking: the tail is only ever dragged up to HistoryFrames behind the playhead, so the
+    // producer cannot overwrite what is being played even if it is working from a stale reading
+    // of where the playhead is.
+    private const int LookaheadFrames = RingFrames / 2;    // kept ahead in the direction of travel
+    private const int HistoryFrames = RingFrames / 4;      // kept behind it
+    private const int ScratchWindow = RingFrames * 3 / 8;  // ...but both, once a hand is on it
+    private const int PrefillChunks = 2;                   // decoded inline on load and on seek
+    private const int ProducerWaitMs = 2;                  // one wait; the budget is a few of these
+    private const int ProducerWaitTries = 64;              // ...but only while it is making progress
+    private const int ProducerIdleMs = 250;                // re-check even if nobody asked
 
     // Band-limiting resampler, used above play speed - see docs/scratch-audio-quality.md.
     //
@@ -104,13 +123,31 @@ public sealed class ScratchEngine : IDisposable {
     private double playhead;                   // fractional source frame - the authority
     private double velocity = 1.0;             // current speed, after slewing
     private bool ended;
-    private bool sourceExhausted;
+    private volatile bool sourceExhausted;
     private long sourceNextFrame;              // frame the source will decode next
 
-    // Counters for tools/enginetest. Seeking and decoding happen on the audio thread, so how
-    // OFTEN they happen is a correctness concern, not just a performance one.
+    // Everything that touches the source handle or writes the ring runs under this: the producer
+    // thread, and the control thread when it prefills a seek. The audio thread never takes it.
+    private readonly object sourceLock = new();
+    private readonly Thread producer;
+    private readonly AutoResetEvent wake = new(false);
+    private readonly ManualResetEventSlim filled = new(false);
+    private volatile bool disposed;
+
+    private long readTail, readHead;           // audio thread only: the window this frame may read
+
+    // Counters for tools/enginetest. Source I/O now belongs to the producer thread, and
+    // AudioThreadSourceOps is the standing proof of it: anything but zero means a seek or a decode
+    // happened inside the STREAMPROC, which is what this whole arrangement exists to prevent.
     public long SourceSeeks { get; private set; }
     public long FramesDecoded { get; private set; }
+    public long AudioThreadSourceOps { get; private set; }
+
+    private int renderingOn;                   // thread id currently inside StreamProc, 0 if none
+
+    private void NoteSourceIo() {
+        if(Volatile.Read(ref renderingOn) == Environment.CurrentManagedThreadId) AudioThreadSourceOps++;
+    }
 
     // Output level, faded in and out around SilenceThreshold. Cutting straight to zero was a step
     // at whatever amplitude the waveform happened to be at - the click at the start and end of
@@ -203,6 +240,15 @@ public sealed class ScratchEngine : IDisposable {
         stream = Bass.BASS_StreamCreate(this.sampleRate, this.channels,
                                         BASSFlag.BASS_SAMPLE_FLOAT | BASSFlag.BASS_STREAM_DECODE,
                                         proc, IntPtr.Zero);
+
+        // A couple of chunks inline so the very first callback has something to play; the producer
+        // takes over from there.
+        lock(sourceLock) {
+            for(int i = 0; i < PrefillChunks && DecodeChunk(); i++) { }
+        }
+
+        producer = new Thread(ProducerLoop) { IsBackground = true, Name = "scratch-producer" };
+        producer.Start();
     }
 
     // ---------------------------------------------------------------- control side
@@ -215,9 +261,22 @@ public sealed class ScratchEngine : IDisposable {
         double max = LengthSeconds;
         if(max > 0 && seconds > max) seconds = max;
 
+        long frame = (long)(seconds * sampleRate);
+
+        // Moved here on purpose: a seek has to be audible at once, so the ring is repositioned and
+        // primed on the CALLER's thread rather than left for the producer to notice. This is the
+        // only source I/O outside the producer, and it is why a dropbox:// seek now stalls the
+        // thread that asked for it instead of the audio device.
+        lock(sourceLock) {
+            if(disposed) return;
+            RepositionSource(frame);
+            for(int i = 0; i < PrefillChunks && DecodeChunk(); i++) { }
+        }
+
         pendingSeekSeconds = seconds;
-        Interlocked.Exchange(ref pendingSeekFrame, (long)(seconds * sampleRate));
+        Interlocked.Exchange(ref pendingSeekFrame, frame);
         seekPending = true;
+        wake.Set();
     }
 
     // The platter has been grabbed. From here the hand decides where the record is, through
@@ -229,6 +288,7 @@ public sealed class ScratchEngine : IDisposable {
         anchorPending = true;                  // the audio thread pins the target to the playhead
         brakeCompleted = false;
         state = State.Touched;
+        wake.Set();                            // history is only worth fetching once we might reverse
     }
 
     // Speed the hand is asking for, as a multiple of normal playback: 1.0 is play speed, -2.0 is
@@ -350,6 +410,15 @@ public sealed class ScratchEngine : IDisposable {
     // ---------------------------------------------------------------- audio thread
 
     private int StreamProc(int handle, IntPtr buffer, int length, IntPtr user) {
+        Volatile.Write(ref renderingOn, Environment.CurrentManagedThreadId);
+        try {
+            return RenderBlock(buffer, length);
+        } finally {
+            Volatile.Write(ref renderingOn, 0);
+        }
+    }
+
+    private int RenderBlock(IntPtr buffer, int length) {
         if(seekPending) ApplySeek();
         if(fadeInRequested) {
             fadeInRequested = false;
@@ -419,9 +488,9 @@ public sealed class ScratchEngine : IDisposable {
             if(silenceGain == 0.0) {
                 int at = produced * channels;
                 for(int c = 0; c < channels; c++) outBuf[at + c] = 0f;
-            } else if(!RenderFrame(produced)) {
-                // Only a genuinely exhausted source ends the stream. Anything else is a short read
-                // that has not caught up yet, and returning less than asked for is allowed.
+            } else if(!RenderOne(produced)) {
+                // Only a genuinely exhausted source ends the stream. Anything else is the ring not
+                // being filled this far yet, and returning less than asked for is allowed.
                 if(sourceExhausted) ended = true;
                 break;
             } else if(silenceGain != 1.0) {
@@ -492,6 +561,11 @@ public sealed class ScratchEngine : IDisposable {
             }
         }
 
+        // Keep the producer ahead of us without poking it on every callback.
+        long headroom = velocity >= 0 ? Volatile.Read(ref ringHead) - (long)playhead
+                                      : (long)playhead - Volatile.Read(ref ringTail);
+        if(headroom < LookaheadFrames / 2) wake.Set();
+
         if(produced > 0) System.Runtime.InteropServices.Marshal.Copy(outBuf, 0, buffer, produced * channels);
 
         int bytes = produced * bytesPerFrame;
@@ -530,30 +604,79 @@ public sealed class ScratchEngine : IDisposable {
         _ => SlewTime
     });
 
-    // Writes one output frame. Returns false if the source could not supply the data.
+    // One output frame, in descending order of preference: the frame as it should be; the frame
+    // rendered from whatever part of its window the ring holds, which costs a little filtering;
+    // or nothing, which costs a gap. The waiting in between is what usually avoids both.
+    private bool RenderOne(int outIndex) {
+        for(int attempt = 0; attempt < ProducerWaitTries; attempt++) {
+            if(RenderFrame(outIndex, degrade: false)) return true;
+            if(sourceExhausted || !WaitForData()) break;
+        }
+        return RenderFrame(outIndex, degrade: true);
+    }
+
+    // The only place the audio thread waits at all - and it waits on a thread, not on a file. A
+    // dropbox:// range request that used to stall BASS's update thread, and with it every deck on
+    // the device, for hundreds of milliseconds now costs a few milliseconds and a slightly worse
+    // frame.
+    //
+    // Returns whether it is worth looking again: the producer publishes every chunk as it lands,
+    // so a ring that has not moved at all means it is stuck rather than merely behind, and the
+    // rest of the budget would be spent for nothing.
+    private bool WaitForData() {
+        long head = Volatile.Read(ref ringHead), tail = Volatile.Read(ref ringTail);
+
+        filled.Reset();
+        wake.Set();
+        filled.Wait(ProducerWaitMs);
+
+        return Volatile.Read(ref ringHead) != head || Volatile.Read(ref ringTail) != tail;
+    }
+
+    // Writes one output frame. Returns false if the ring does not hold what it needs.
     //
     // Below play speed the playhead moves less than one source frame per output frame, so there is
     // nothing to band-limit and plain interpolation is both correct and cheap. Above it the engine
     // is decimating, and point interpolation folds everything past Nyquist/rate back into the
     // audible band - see RenderBandLimited.
-    private bool RenderFrame(int outIndex) {
+    private bool RenderFrame(int outIndex, bool degrade) {
+        // Whatever the producer has published, taken once so the whole frame is rendered from a
+        // consistent view of the ring.
+        readTail = Volatile.Read(ref ringTail);
+        readHead = Volatile.Read(ref ringHead);
+
+        // The playhead's own frame is the one thing no amount of degrading can substitute for.
+        long i = (long)Math.Floor(playhead);
+        if(i < readTail || i >= readHead) return false;
+
         double rate = Math.Abs(velocity);
 
         // No cap on the stretch: the cutoff must follow the rate however fast it gets. The tap
         // budget inside RenderBandLimited is what bounds the cost.
-        if(rate > 1.0) return RenderBandLimited(outIndex, rate);
+        if(rate > 1.0) return RenderBandLimited(outIndex, rate, degrade);
 
-        long i = (long)Math.Floor(playhead);
         double t = playhead - i;
 
-        if(!Cover(i - 1, i + InterpMargin)) return false;
+        long i0 = i - 1, i2 = i + 1, i3 = i + InterpMargin;
+        if(degrade) {
+            // Out of patience: hold the ring's edge rather than emit nothing at all.
+            i0 = Math.Clamp(i0, readTail, readHead - 1);
+            i2 = Math.Clamp(i2, readTail, readHead - 1);
+            i3 = Math.Clamp(i3, readTail, readHead - 1);
+        } else if(Math.Max(i0, 0) < readTail || i3 >= readHead) {
+            // The whole interpolation window has to be there, because holding an edge sample would
+            // be a quietly wrong output frame where waiting costs nothing. Frame 0 is the
+            // exception: nothing precedes the start of the track, and Sample() folds the negative
+            // index onto it exactly as it always did.
+            return false;
+        }
 
         int at = outIndex * channels;
         for(int c = 0; c < channels; c++) {
-            float p0 = Sample(i - 1, c);
+            float p0 = Sample(i0, c);
             float p1 = Sample(i, c);
-            float p2 = Sample(i + 1, c);
-            float p3 = Sample(i + 2, c);
+            float p2 = Sample(i2, c);
+            float p3 = Sample(i3, c);
 
             // Catmull-Rom. At t == 0 this collapses to exactly p1, which is what keeps ordinary
             // playback bit-identical to reading the source directly.
@@ -574,18 +697,25 @@ public sealed class ScratchEngine : IDisposable {
     // Cost is proportional to rate, which is why the stretch is capped - a 30x flick is a whoosh
     // either way, and the cap keeps the worst case bounded on weak hardware. Weights depend only
     // on the tap offsets, so they are computed once and reused across channels.
-    private bool RenderBandLimited(int outIndex, double stretch) {
+    private bool RenderBandLimited(int outIndex, double stretch, bool degrade) {
         // Cutoff always follows the rate; only the window narrows once the tap budget is reached.
         double half = Math.Min(SincTapsPerSide * stretch, MaxKernelTaps / 2.0);
         double invWindow = stretch / half;             // maps a tap offset onto the window's [-1, 1]
 
-        long first = (long)Math.Ceiling(playhead - half);
-        long last = (long)Math.Floor(playhead + half);
-        if(first < 0) first = 0;
+        long wantFirst = (long)Math.Ceiling(playhead - half);
+        long wantLast = (long)Math.Floor(playhead + half);
+        long first = Math.Max(wantFirst, readTail);
+        long last = Math.Min(wantLast, readHead - 1);
+
+        // A kernel clipped by the RING is a filter nobody asked for, so wait for the producer
+        // rather than quietly applying it. Clipped by the start or the end of the TRACK is a
+        // different thing: there is nothing to wait for, and the normalisation below holds it at
+        // unity gain anyway. That case has always been allowed.
+        if(!degrade && ((first > wantFirst && first > 0) ||
+                        (last < wantLast && (lengthFrames <= 0 || last < lengthFrames - 1)))) return false;
 
         int taps = (int)(last - first + 1);
         if(taps <= 0 || taps > tapWeights.Length) return false;
-        if(!Cover(first, last)) return false;
 
         double weightSum = 0;
         for(int k = 0; k < taps; k++) {
@@ -650,69 +780,113 @@ public sealed class ScratchEngine : IDisposable {
         return sinc * window;
     }
 
+    // Callers are responsible for staying inside [readTail, readHead) - both render paths clamp
+    // their own window before they get here, which keeps the clamp out of the inner tap loop.
     private float Sample(long frame, int channel) {
         if(frame < 0) frame = 0;
         return ring[((frame & RingMask) * channels) + channel];
     }
 
-    // Makes sure [first, last] is present in the ring, decoding or re-seeking as needed.
-    private bool Cover(long first, long last) {
-        if(first < 0) first = 0;
-        if(first >= ringTail && last < ringHead) return true;
+    // ---------------------------------------------------------------- producer thread
 
-        if(first < ringTail) {
-            Backfill(first);
-        } else if(first > ringHead) {
-            RepositionSource(first);           // jumped forward out of the ring entirely
-        }
+    // Everything below runs off the audio thread, under sourceLock.
+    private void ProducerLoop() {
+        while(!disposed) {
+            wake.WaitOne(ProducerIdleMs);
+            if(disposed) return;
 
-        while(ringHead <= last) {
-            if(!DecodeChunk()) return false;
+            lock(sourceLock) {
+                if(disposed) return;
+                Fill();
+            }
         }
-        return true;
     }
 
-    // Reaching backwards past what the ring holds. Pulls in a block of history in one go rather
-    // than re-seeking per frame, and stops at the old tail so that everything already decoded
-    // AHEAD of the playhead survives.
-    //
-    // Keeping the forward half is the point: discarding it left only BackfillFrames of history and
-    // nothing in front, so a scratch oscillating across this boundary re-seeked and re-decoded on
-    // every pass - a file seek plus a chunk of decoding, on the audio thread, several times a
-    // second. Preserving both ends means crossing it once is enough.
-    private void Backfill(long first) {
-        long windowStart = Math.Max(0, first - BackfillFrames);
+    // Keeps the ring covering the playhead. One pass; the reader signals for another whenever it
+    // gets close to an edge, and the idle timeout catches anything that slips through.
+    private void Fill() {
+        // While a seek is pending the playhead is still at the old position, so aim at where the
+        // audio thread is about to jump to instead - otherwise this would undo the prefill that
+        // RequestSeek just did.
+        long pending = Volatile.Read(ref pendingSeekFrame);
+        long here = seekPending && pending >= 0 ? pending : (long)Volatile.Read(ref playhead);
 
-        // Both ends have to fit in the ring at once, or there is no point trying to keep them.
-        if(ringHead - windowStart > RingFrames) {
-            RepositionSource(windowStart);
-            return;
+        // A window biased along the direction of travel is right for playback and wrong for a
+        // scratch, where the direction reverses several times a second: each reversal would throw
+        // away one side and re-fetch the other. While the platter is held it is symmetric, so a
+        // stroke crossing back and forth costs nothing after the first pass.
+        bool scratching = state != State.Idle;
+        bool forward = Volatile.Read(ref velocity) >= 0;
+        long ahead = scratching ? ScratchWindow : forward ? LookaheadFrames : HistoryFrames;
+        long behind = scratching ? ScratchWindow : forward ? HistoryFrames : LookaheadFrames;
+
+        // Outside the ring entirely: a scratch that outran us, or a seek nobody prefilled. The
+        // reader is already emitting nothing, so there is nothing here worth preserving.
+        if(here < ringTail || here > ringHead) RepositionSource(Math.Max(0, here));
+
+        long wantHead = here + ahead;
+        if(lengthFrames > 0 && wantHead > lengthFrames) wantHead = lengthFrames;
+        while(!disposed && ringHead < wantHead && DecodeChunk()) { }
+
+        long wantTail = Math.Max(0, here - behind);
+        if(wantTail > ringTail) {
+            Volatile.Write(ref ringTail, wantTail);        // let go of history we have run past
+        } else if(scratching && here - ringTail < behind) {
+            // History is only fetched once the platter is in play, because only a scratch running
+            // backwards ever reads it. Fetching it after every seek would mean decoding a second
+            // of audio per scrub tick that nothing would ever look at.
+            while(!disposed && ringTail > wantTail && Backfill(wantTail)) { }
         }
+    }
+
+    // Pulls history in behind the tail, stopping at the old tail so that everything already
+    // decoded AHEAD of the playhead survives. Keeping the forward half is the point: discarding it
+    // left only BackfillFrames of history and nothing in front, so a scratch oscillating across
+    // this boundary re-seeked and re-decoded on every pass.
+    //
+    // It never repositions on failure either. The forward half of the ring is being played right
+    // now, and throwing that away to recover history nothing is even reading would turn a missing
+    // feature into a dropout.
+    private bool Backfill(long wantTail) {
+        // One BackfillFrames step at a time, so the new history becomes visible as it lands rather
+        // than only when the whole request is satisfied. A reader waiting on the tail to move gets
+        // to carry on within a fraction of a millisecond instead of after the lot.
+        long windowStart = Math.Max(wantTail, ringTail - BackfillFrames);
+        if(windowStart < 0) windowStart = 0;
+        if(ringHead - windowStart > RingFrames) windowStart = ringHead - RingFrames;
+        if(windowStart >= ringTail) return false;
 
         long fillTo = ringTail;
         SeekSource(windowStart);
 
         while(sourceNextFrame < fillTo) {
             int want = (int)Math.Min(ChunkFrames, fillTo - sourceNextFrame);
-            if(DecodeInto(sourceNextFrame, want) <= 0) {
-                RepositionSource(windowStart);   // could not fill the gap, so start clean
-                return;
-            }
+            // A hole anywhere in the step leaves everything below the tail unusable, so publish
+            // nothing and let the next pass try again.
+            if(disposed || DecodeInto(sourceNextFrame, want) <= 0) return false;
         }
 
-        ringTail = windowStart;
+        Volatile.Write(ref ringTail, windowStart);
+        filled.Set();
+        return true;
     }
 
     private void SeekSource(long frame) {
+        NoteSourceIo();
         Bass.BASS_ChannelSetPosition(source, frame * bytesPerFrame, BASSMode.BASS_POS_BYTE);
         sourceNextFrame = frame;
         sourceExhausted = false;
         SourceSeeks++;
     }
 
+    // Starts the ring a little BEHIND the requested frame. Interpolation reads one frame back, so
+    // a ring that begins exactly at the playhead cannot render its own first frame - which is the
+    // first frame after every seek.
     private void RepositionSource(long frame) {
-        SeekSource(frame);
-        ringTail = ringHead = frame;
+        long at = Math.Max(0, frame - EdgeMargin);
+        SeekSource(at);
+        Volatile.Write(ref ringTail, at);
+        Volatile.Write(ref ringHead, at);
     }
 
     // Decodes at most maxFrames into the ring at an absolute frame position, leaving ringTail and
@@ -723,6 +897,7 @@ public sealed class ScratchEngine : IDisposable {
         int wantFrames = Math.Min(maxFrames, decodeBuf.Length / channels);
         if(wantFrames <= 0) return 0;
 
+        NoteSourceIo();
         int bytes = Bass.BASS_ChannelGetData(source, decodeBuf, wantFrames * bytesPerFrame);
         if(bytes <= 0) {
             // Only a genuine BASS_ERROR_ENDED means the track is over. The master stream is opened
@@ -743,6 +918,8 @@ public sealed class ScratchEngine : IDisposable {
         return got;
     }
 
+    // Extends the ring forwards by one chunk. The frames land beyond ringHead, where nothing is
+    // reading, and only become visible once the new head is published.
     private bool DecodeChunk() {
         // A backfill leaves the source parked at the old tail, so the forward path has to put it
         // back before reading on. Tracking the position explicitly is what makes that safe.
@@ -751,13 +928,13 @@ public sealed class ScratchEngine : IDisposable {
         int got = DecodeInto(ringHead, ChunkFrames);
         if(got <= 0) return false;
 
-        ringHead += got;
-        if(ringHead - ringTail > RingFrames) ringTail = ringHead - RingFrames;
+        Volatile.Write(ref ringHead, ringHead + got);
+        filled.Set();                          // every chunk, so a waiting reader moves on at once
         return true;
     }
 
     private void ApplySeek() {
-        long frame = Interlocked.Exchange(ref pendingSeekFrame, -1);
+        long frame = Volatile.Read(ref pendingSeekFrame);
         if(frame < 0) {
             seekPending = false;
             return;
@@ -766,7 +943,8 @@ public sealed class ScratchEngine : IDisposable {
         if(lengthFrames > 0 && frame > lengthFrames) frame = lengthFrames;
         if(frame < 0) frame = 0;
 
-        RepositionSource(frame);
+        // The ring was repositioned by RequestSeek, on the caller's thread. All that is left here
+        // is to adopt the new position - the audio thread does no source I/O at all.
         playhead = frame;
         velocity = TargetVelocity();
         ended = false;
@@ -782,8 +960,9 @@ public sealed class ScratchEngine : IDisposable {
         Volatile.Write(ref runHead, 0);
         PushRun(0, playhead, velocity);
 
-        // Cleared last: until the map has been rebuilt, readers are served the requested position
-        // rather than a stale or half-built answer.
+        // Cleared last, and in this order: until the map has been rebuilt readers are served the
+        // requested position, and the producer keeps aiming at it rather than at the old playhead.
+        Interlocked.Exchange(ref pendingSeekFrame, -1);
         seekPending = false;
     }
 
@@ -798,7 +977,19 @@ public sealed class ScratchEngine : IDisposable {
     // ---------------------------------------------------------------- teardown
 
     public void Dispose() {
+        if(disposed) return;                   // Player nulls the field after this, but be safe
+        disposed = true;
+        wake.Set();
+
+        // Free our own stream first so no further callback can run, then make sure the producer is
+        // not inside BASS: the caller frees the source handle as soon as this returns.
         int h = Interlocked.Exchange(ref stream, 0);
         if(h != 0) Bass.BASS_StreamFree(h);
+
+        lock(sourceLock) { }
+        if(producer != null && producer.Join(2000)) {
+            wake.Dispose();
+            filled.Dispose();
+        }
     }
 }

@@ -24,6 +24,10 @@ internal static class EngineTest {
 
     static int failures;
 
+    // Summed from every engine the run creates. Non-zero means the STREAMPROC seeked or decoded
+    // the source, which is exactly what the producer thread exists to prevent - see check 22.
+    static long audioThreadOps;
+
     static void Check(string what, bool ok, string detail = "") {
         Console.WriteLine($"  [{(ok ? "PASS" : "FAIL")}] {what}{(detail == "" ? "" : "   " + detail)}");
         if(!ok) failures++;
@@ -460,11 +464,10 @@ internal static class EngineTest {
               $"last sample {last17:F0}");
 
         // ------------------------------------------------------------------ 20
-        // Seeking the source and decoding both happen on the audio thread, so how often they
-        // happen matters. Backfilling used to discard everything decoded ahead of the playhead,
-        // leaving only BackfillFrames of history and nothing in front - so a scratch oscillating
-        // across that boundary paid a file seek plus a chunk of decoding on every single pass.
-        Console.WriteLine("\n[20] Scratching across the backfill boundary does not re-seek every pass");
+        // Decoding belongs to the producer thread. What matters on the audio side is that it never
+        // touches the source, and that a scratch oscillating across the edge of the ring settles
+        // into a window it can re-use rather than paying a seek on every pass.
+        Console.WriteLine("\n[20] Scratching across the ring boundary settles instead of re-seeking");
         loop.Enabled = false;
         engine.SlewTime = 0;
         engine.SilenceFadeTime = 0;
@@ -472,27 +475,39 @@ internal static class EngineTest {
         Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 64 * BYTES_PER_FRAME);
         engine.Touch();
 
-        long seeksBefore = engine.SourceSeeks;
-        long decodedBefore = engine.FramesDecoded;
+        long firstSeeks = 0, laterSeeks = 0, firstDecoded = 0, laterDecoded = 0;
         bool sweepExact = true;
-        for(int sweep = 0; sweep < 6; sweep++) {
-            engine.SetGestureSpeed(sweep % 2 == 0 ? -8.0 : 8.0);
-            for(int block = 0; block < 6; block++) {
-                int n = Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
-                if(n <= 0) break;
-                int fr = n / BYTES_PER_FRAME;
-                for(int f = 1; f < fr; f++) {
-                    double step = buf[f * CHANS] - buf[(f - 1) * CHANS];
-                    if(Math.Abs(Math.Abs(step) - 8.0) > 0.01) sweepExact = false;
+        for(int round = 0; round < 2; round++) {
+            long seeksBefore = engine.SourceSeeks;
+            long decodedBefore = engine.FramesDecoded;
+
+            for(int sweep = 0; sweep < 6; sweep++) {
+                engine.SetGestureSpeed(sweep % 2 == 0 ? -8.0 : 8.0);
+                for(int block = 0; block < 6; block++) {
+                    int n = Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BYTES_PER_FRAME);
+                    if(n <= 0) break;
+                    int fr = n / BYTES_PER_FRAME;
+                    for(int f = 1; f < fr; f++) {
+                        double step = buf[f * CHANS] - buf[(f - 1) * CHANS];
+                        if(Math.Abs(Math.Abs(step) - 8.0) > 0.01) sweepExact = false;
+                    }
                 }
             }
+
+            if(round == 0) {
+                firstSeeks = engine.SourceSeeks - seeksBefore;
+                firstDecoded = engine.FramesDecoded - decodedBefore;
+            } else {
+                laterSeeks = engine.SourceSeeks - seeksBefore;
+                laterDecoded = engine.FramesDecoded - decodedBefore;
+            }
         }
-        long sweepSeeks = engine.SourceSeeks - seeksBefore;
-        long sweepDecoded = engine.FramesDecoded - decodedBefore;
-        Console.WriteLine($"      6 sweeps at 8x: {sweepSeeks} source seeks, {sweepDecoded} frames decoded");
+
+        Console.WriteLine($"      first 6 sweeps at 8x: {firstSeeks} seeks, {firstDecoded} frames decoded");
+        Console.WriteLine($"      next  6 sweeps at 8x: {laterSeeks} seeks, {laterDecoded} frames decoded");
         Check("audio stays sample-exact across the boundary", sweepExact);
-        Check("the boundary is crossed without re-seeking each pass", sweepSeeks <= 6,
-              $"{sweepSeeks} seeks over 6 sweeps");
+        Check("filling the window is a one-off, not a cost per pass", laterSeeks <= 1,
+              $"{firstSeeks} seeks to fill it, {laterSeeks} after");
 
         // ------------------------------------------------------------------ 21
         // The servo. The hand's POSITION is the input and the engine works out the speed, which
@@ -552,6 +567,7 @@ internal static class EngineTest {
               $"v={engine.Velocity:F4}");
 
         engine.Release();
+        audioThreadOps += engine.AudioThreadSourceOps;
         engine.Dispose();
         Bass.BASS_StreamFree(source);
 
@@ -580,6 +596,7 @@ internal static class EngineTest {
             e.SetGestureSpeed(rate);
             Bass.BASS_ChannelGetData(e.StreamHandle, tone, 4096 * BYTES_PER_FRAME);       // settle
             int frames = Bass.BASS_ChannelGetData(e.StreamHandle, tone, 16384 * BYTES_PER_FRAME) / BYTES_PER_FRAME;
+            audioThreadOps += e.AudioThreadSourceOps;
             e.Dispose();
 
             double ideal = toneHz * rate;
@@ -652,6 +669,7 @@ internal static class EngineTest {
             w.Touch();
             w.SetGestureSpeed(warmRate);
             for(int i = 0; i < 8; i++) Bass.BASS_ChannelGetData(w.StreamHandle, tone, 8192 * BYTES_PER_FRAME);
+            audioThreadOps += w.AudioThreadSourceOps;
             w.Dispose();
         }
 
@@ -671,6 +689,7 @@ internal static class EngineTest {
                 pulled += n / BYTES_PER_FRAME;
             }
             sw.Stop();
+            audioThreadOps += b.AudioThreadSourceOps;
             b.Dispose();
 
             double realtime = (pulled / (double)RATE) / sw.Elapsed.TotalSeconds;
@@ -683,6 +702,10 @@ internal static class EngineTest {
         Bass.BASS_StreamFree(benchSource);
 
         Bass.BASS_Free();
+
+        Console.WriteLine("\n[22] The audio thread never touches the source");
+        Check("no seek or decode happened inside the STREAMPROC, across every check above",
+              audioThreadOps == 0, $"{audioThreadOps} operation(s)");
 
         Console.WriteLine($"\n{(failures == 0 ? "ALL CHECKS PASSED" : $"{failures} CHECK(S) FAILED")}");
         Environment.Exit(failures == 0 ? 0 : 1);
