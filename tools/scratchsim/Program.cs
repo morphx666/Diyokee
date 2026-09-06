@@ -39,13 +39,13 @@ internal static class ScratchSim {
         Bass.BASS_Init(0, RATE, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);
         // How it sounded, how commanding a fitted speed sounds, and how following the hand's
         // position sounds at three different amounts of lag.
-        Render(src, new Variant("1 - as it was: 4ms slew, two-sample speed", 4, 1), outDir);
+        Render(src, new Variant("1 - as it was, 4ms slew and a two-sample speed", 4, 1), outDir);
         Render(src, new Variant("2 - fitted speed over 5 samples", 20, 5), outDir);
         Render(src, new Variant("3 - servo, 25ms behind the hand", 0, 0, 25), outDir);
         Render(src, new Variant("4 - servo, 40ms behind the hand", 0, 0, 40), outDir);
         Render(src, new Variant("5 - servo, 60ms behind the hand", 0, 0, 60), outDir);
         Bass.BASS_Free();
-        Console.WriteLine("\ndone");
+        Console.WriteLine($"\ndone - wrote 5 files to {outDir}");
     }
 
     // Hand position in pixels. Peak speed ~2x: 2 / SECONDS_PER_PIXEL = 160 px/s.
@@ -108,7 +108,12 @@ internal static class ScratchSim {
             t += frames / (double)RATE;
         }
 
-        string path = Path.Combine(outDir, v.Name + ".wav");
+        // Sanitised, because a ':' in a name does not fail on Windows - it silently writes an NTFS
+        // alternate data stream instead, leaving a 0-byte file behind and no error at all. One
+        // variant went missing that way for weeks.
+        string safe = v.Name;
+        foreach(char bad in Path.GetInvalidFileNameChars()) safe = safe.Replace(bad, '-');
+        string path = Path.Combine(outDir, safe + ".wav");
         using(FileStream fs = new(path, FileMode.Create, FileAccess.Write))
         using(BinaryWriter w = new(fs)) {
             int db = outp.Count * 4;
