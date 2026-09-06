@@ -79,6 +79,11 @@ public sealed class ScratchEngine : IDisposable {
     //      512       -77.8dB    36x    18x     9x     5x
     //
     // Lower it first if a Pi ever struggles.
+    //
+    // SincTapsPerSide sets how SHARP the cutoff is, where MaxKernelTaps sets how deep the far
+    // stopband gets. At 8 the transition band measures -27.9dB, taken on a 6600Hz tone at 4x
+    // against a 5512Hz cutoff. Raising it sharpens that, but unlike the tap cap it costs
+    // proportionally at EVERY rate including 1x, which is the case that runs all the time.
     private const int SincTapsPerSide = 8;     // full quality, used up to MaxKernelTaps/(2*rate)
     private const int MaxKernelTaps = 256;
     private const double MaxScratchSpeed = 32.0;
@@ -222,9 +227,22 @@ public sealed class ScratchEngine : IDisposable {
     public double SlewTime { get; set; } = 0.004;
 
     // How far behind the hand the record is allowed to sit while being scratched - the servo's
-    // one tuning knob, and the only scratch-feel setting that now exists. Shorter tracks the hand
-    // more tightly and passes more of the input's quantisation through as velocity ripple; longer
-    // is smoother and further behind. It is wall-clock lag, the same at any scratch speed.
+    // one tuning knob, and the only scratch-feel setting that now exists. It is wall-clock lag,
+    // the same at any scratch speed.
+    //
+    // What it buys is smoothness, and the exchange rate is exact. An isolated step of A seconds in
+    // the target drives the critically damped loop to a peak velocity excursion of
+    //
+    //     2A / (e * FollowTime)
+    //
+    // so the ripple is the INPUT'S QUANTUM measured against this number, and the only way to
+    // shrink it is to sit further behind the hand. The browser reports whole pixels and one is
+    // 12.5ms of source at default zoom, which at 40ms works out at about +/-10% of velocity on a
+    // 1x drag - check 21 of tools/enginetest measures it. A finer input, meaning a jog wheel,
+    // moves that floor without touching this setting.
+    //
+    // Steps arriving faster than the loop's 20ms peak time average each other down, so the closed
+    // form above is an upper bound rather than what is actually measured.
     public double FollowTime { get; set; } = 0.040;
 
     // Clamped at the point of use rather than trusted. The settings dialog exposes FollowTime as a
@@ -489,7 +507,12 @@ public sealed class ScratchEngine : IDisposable {
                 // movement of that stall - so chasing it at whatever speed closes the gap had the
                 // record running at 12x for a hand that never passed 2x. That whoosh is audio
                 // nobody played, and it is what made the servo sound worse than the fitted speed
-                // it replaced. Measured by tools/scratchsim.
+                // it replaced. Measured by tools/scratchsim, which prints peak speed per variant.
+                //
+                // A burst still peaks at roughly twice the hand's speed afterwards. That residue
+                // is the servo genuinely recovering position, and bounding it further would mean
+                // letting the record drift from where the hand actually is - which is the whole
+                // thing this design exists to avoid.
                 //
                 // Never shortens a spread already in flight, so a burst cannot accelerate the one
                 // before it.
