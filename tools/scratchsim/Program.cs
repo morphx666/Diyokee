@@ -65,6 +65,7 @@ internal static class ScratchSim {
         List<float> outp = new();
         Random rng = new(7);
         double t = 0, nextEvent = 0, quietUntil = 0;
+        double peakSpeed = 0, speedSum = 0; int speedCount = 0;
         long startPx = (long)Math.Round(HandPixels(0));
         long lastPx = startPx, lastMs = 0;
         Queue<(double ms, long px)> history = new();
@@ -103,6 +104,9 @@ internal static class ScratchSim {
 
             int n = Bass.BASS_ChannelGetData(engine.StreamHandle, buf, 1024 * BPF);
             if(n <= 0) break;
+            double sp = Math.Abs(engine.Velocity);
+            if(sp > peakSpeed) peakSpeed = sp;
+            speedSum += sp; speedCount++;
             int frames = n / BPF;
             for(int i = 0; i < frames * CHANS; i++) outp.Add(buf[i]);
             t += frames / (double)RATE;
@@ -123,7 +127,7 @@ internal static class ScratchSim {
             w.Write("data"u8.ToArray()); w.Write(db);
             foreach(float s in outp) w.Write(s);
         }
-        Console.WriteLine($"  {v.Name}");
+        Console.WriteLine($"  {v.Name,-46}  peak {peakSpeed,5:F1}x   mean {speedSum / speedCount:F2}x");
         engine.Dispose();
         Bass.BASS_StreamFree(source);
     }

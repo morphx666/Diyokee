@@ -552,8 +552,12 @@ internal static class EngineTest {
         Console.WriteLine($"      2x steady:   {steady.Lag * 1000,5:F1}ms behind, mean {steady.Speed:F3}x,"
                         + $" worst excursion {steady.Ripple:F3}x");
         Check("settles at the hand's speed", Math.Abs(steady.Speed - 2.0) < 0.02, $"{steady.Speed:F4}x");
+        // FollowTime of travel, plus a sampling interval: the newest report is already that old,
+        // and handing its movement over across the interval it represents - which is what stops a
+        // burst being chased at a speed nobody played - costs about as much again.
         Check("sits FollowTime's worth of travel behind the hand",
-              Math.Abs(steady.Lag - 2.0 * FOLLOW) < 0.020, $"{steady.Lag * 1000:F1}ms of source");
+              Math.Abs(steady.Lag - 2.0 * (FOLLOW + 0.016)) < 0.020,
+              $"{steady.Lag * 1000:F1}ms of source");
 
         // The same hand, sampled at irregular intervals with gaps - which is what bursty delivery
         // looks like to the engine. Dividing a distance by an interval makes this the dominant
@@ -771,7 +775,7 @@ internal static class EngineTest {
 
         double t = 0, nextSample = 0, lagSum = 0, speedSum = 0, ripple = 0;
         int taken = 0;
-        while(t < 2.0) {
+        while(t < 3.0) {
             if(t >= nextSample) {
                 double at = t * speed;
                 engine.SetGestureTarget(quantum > 0 ? Math.Round(at / quantum) * quantum : at);
@@ -781,7 +785,7 @@ internal static class EngineTest {
             Bass.BASS_ChannelGetData(engine.StreamHandle, buf, BLOCK * BYTES_PER_FRAME);
             t += BLOCK / (double)RATE;
 
-            if(t <= 1.0) continue;
+            if(t <= 2.0) continue;   // the burst spreading takes a moment longer to settle
             lagSum += (from + t * speed) - engine.DecodeSeconds;
             speedSum += engine.Velocity;
             ripple = Math.Max(ripple, Math.Abs(engine.Velocity - speed));

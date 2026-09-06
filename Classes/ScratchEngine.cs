@@ -96,6 +96,10 @@ public sealed class ScratchEngine : IDisposable {
     // stops the one-pole's inaudible tail from rendering for another 20ms. -80dB either way.
     private const double GainSnap = 1e-4;
 
+    // Longest a single burst of hand movement is replayed over. See the spreading in RenderBlock:
+    // it stops a very long stall from being smeared across an implausible stretch of audio.
+    private const int MaxSpreadFrames = 22050;   // 0.5s at 44.1kHz
+
     // Maps a stretch of what we emit onto where it came from in the source.
     private struct Run {
         public long OutFrame;     // output frame this run starts at
@@ -193,6 +197,9 @@ public sealed class ScratchEngine : IDisposable {
     private double gestureOffsetSeconds;       // hand displacement since Touch(), control thread
     private double appliedOffsetFrames;        // how much of it the audio thread has folded in
     private double targetFrame;                // where the hand says the record should be
+    private double pendingTarget;              // displacement not yet handed to the target
+    private long spreadRemaining;              // output frames left to hand it over across
+    private long lastTargetUpdate;             // output frame the last report arrived at
     private volatile bool servoActive;
     private volatile bool anchorPending;
 
@@ -464,12 +471,34 @@ public sealed class ScratchEngine : IDisposable {
             anchorPending = false;
             targetFrame = playhead;
             appliedOffsetFrames = 0;
+            pendingTarget = 0;
+            spreadRemaining = 0;
+            lastTargetUpdate = outputFrames;
         }
 
         bool servo = state == State.Touched && servoActive;
-        double offsetStep = servo
-            ? (Volatile.Read(ref gestureOffsetSeconds) * sampleRate - appliedOffsetFrames) / framesWanted
-            : 0;
+        if(servo) {
+            double wanted = Volatile.Read(ref gestureOffsetSeconds) * sampleRate;
+            double delta = wanted - appliedOffsetFrames;
+            appliedOffsetFrames = wanted;
+
+            if(delta != 0) {
+                // Hand it to the target over the time it actually took to happen, not over one
+                // callback. Delivery across the circuit stalls for a few hundred milliseconds
+                // often enough to matter, and a burst arriving after one of those carries all the
+                // movement of that stall - so chasing it at whatever speed closes the gap had the
+                // record running at 12x for a hand that never passed 2x. That whoosh is audio
+                // nobody played, and it is what made the servo sound worse than the fitted speed
+                // it replaced. Measured by tools/scratchsim.
+                //
+                // Never shortens a spread already in flight, so a burst cannot accelerate the one
+                // before it.
+                long gap = Math.Clamp(outputFrames - lastTargetUpdate, framesWanted, MaxSpreadFrames);
+                spreadRemaining = Math.Max(spreadRemaining, gap);
+                lastTargetUpdate = outputFrames;
+                pendingTarget += delta;
+            }
+        }
         double followGain = 1.0 / (Follow * sampleRate);
 
         long outCursor = outputFrames;
@@ -483,8 +512,12 @@ public sealed class ScratchEngine : IDisposable {
         while(produced < framesWanted) {
             double target = blockTarget;
             if(servo) {
-                appliedOffsetFrames += offsetStep;
-                targetFrame += offsetStep;
+                if(spreadRemaining > 0) {
+                    double step = pendingTarget / spreadRemaining;
+                    targetFrame += step;
+                    pendingTarget -= step;
+                    spreadRemaining--;
+                }
 
                 // Bend mode: the record keeps turning under the hand, so the target advances on
                 // its own and the hand only displaces it.
@@ -1038,6 +1071,9 @@ public sealed class ScratchEngine : IDisposable {
         // hand movement had accumulated but not yet been applied.
         targetFrame = frame;
         appliedOffsetFrames = Volatile.Read(ref gestureOffsetSeconds) * sampleRate;
+        pendingTarget = 0;
+        spreadRemaining = 0;
+        lastTargetUpdate = 0;
 
         // The caller flushes the chain, which resets BASS's byte counter for this stream back to
         // zero, so the output-frame origin moves with it.
