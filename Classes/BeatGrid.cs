@@ -179,6 +179,98 @@ public sealed class BeatGrid {
         return t;
     }
 
+    // ---------------------------------------------------------------- the warp
+    //
+    // The point of gridding a drifting track is to play it back locked to a quantised beat, which
+    // means varying the playback SPEED per segment. These are that map. Nothing here touches audio;
+    // they are the arithmetic both the warped waveform view and, later, the playback stage read -
+    // deliberately the same functions, so what you see and what you would hear cannot disagree.
+    //
+    // Two timelines:
+    //   source time - where a sample actually is in the file
+    //   grid time   - where it WOULD be if the track had been played at TargetBPM throughout
+    //
+    // Segment i has actual tempo B. To make it sound like T, one source beat of 60/B seconds must
+    // come out 60/T seconds long, so grid time advances at B/T per source second and the playback
+    // rate - source consumed per output second - is T/B. A segment detected at 127 against a target
+    // of 128 plays at 1.0079x.
+    //
+    // The first anchor is pinned: grid time and source time agree there, so correcting drift does
+    // not shift the whole track. Audio before it warps at the first segment's rate, extrapolated
+    // backwards, exactly as its beats do.
+
+    // The uniform tempo the track is corrected onto. The nominal BPM analysis found, which is what
+    // makes an unedited track's warp the identity: one anchor at the nominal tempo means every
+    // segment rate is T/T = 1, so nothing moves until a second anchor says the track drifts.
+    public double TargetBPM => nominalBPM;
+
+    public bool IsWarped {
+        get {
+            if(!(nominalBPM > 0) || anchors.Count == 0) return false;
+            return anchors.Any(a => Math.Abs(a.BPM - nominalBPM) > 1e-9);
+        }
+    }
+
+    // Grid time of each segment's start, accumulated so a segment begins where the previous one
+    // left off. Built lazily because most tracks never warp.
+    private double[]? gridStarts;
+
+    private double[] GridStarts() {
+        if(gridStarts != null) return gridStarts;
+
+        double[] starts = new double[anchors.Count];
+        if(anchors.Count > 0) starts[0] = anchors[0].Position;      // the pin
+
+        for(int i = 1; i < anchors.Count; i++) {
+            starts[i] = starts[i - 1] + (anchors[i].Position - anchors[i - 1].Position) * SlopeOf(i - 1);
+        }
+
+        return gridStarts = starts;
+    }
+
+    private double SlopeOf(int segment) {
+        double bpm = anchors[segment].BPM;
+        return bpm > 0 && nominalBPM > 0 ? bpm / nominalBPM : 1.0;
+    }
+
+    // Playback rate for the segment containing `sourceSeconds`: what the source has to be consumed
+    // at, relative to normal, for that stretch to come out at TargetBPM. This is the number that
+    // becomes playback speed.
+    public double PlaybackRateAt(double sourceSeconds) {
+        if(anchors.Count == 0) return 1.0;
+        double slope = SlopeOf(SegmentAt(sourceSeconds));
+        return slope > 0 ? 1.0 / slope : 1.0;
+    }
+
+    public double ToGridTime(double sourceSeconds) {
+        if(anchors.Count == 0 || !(nominalBPM > 0)) return sourceSeconds;
+
+        int segment = SegmentAt(sourceSeconds);
+        return GridStarts()[segment] + (sourceSeconds - anchors[segment].Position) * SlopeOf(segment);
+    }
+
+    public double FromGridTime(double gridSeconds) {
+        if(anchors.Count == 0 || !(nominalBPM > 0)) return gridSeconds;
+
+        double[] starts = GridStarts();
+
+        int lo = 0, hi = starts.Length - 1, segment = 0;
+        while(lo <= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if(starts[mid] <= gridSeconds) {
+                segment = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+
+        double slope = SlopeOf(segment);
+        return anchors[segment].Position + (gridSeconds - starts[segment]) / slope;
+    }
+
+    // ----------------------------------------------------------------
+
     // Index of the last beat at or before `seconds`, or -1 if the playhead is before the first.
     public int IndexAtOrBefore(double seconds) {
         int lo = 0, hi = beats.Length - 1, result = -1;

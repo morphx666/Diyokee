@@ -29,6 +29,7 @@ internal static class GridTest {
         BarPhase();
         Degenerate();
         Persistence();
+        Warp();
 
         Console.WriteLine(failures == 0
             ? "\nAll checks passed."
@@ -361,6 +362,67 @@ internal static class GridTest {
         var notIncluded = new DFile { Duration = 60 };
         notIncluded.ApplyEditsFrom(edited);
         Report(notIncluded.BeatGridMarkers.Count == 2, "diffing into an empty list adds rather than throws");
+    }
+
+    static void Warp() {
+        Console.WriteLine("\n[12] The warp map - source time to a quantised grid");
+
+        // An unedited track: one anchor at the nominal tempo. The warp MUST be the identity, or
+        // every existing track would change speed the moment this shipped.
+        var plain = BeatGrid.FromFile(new DFile { BPM = 128, DownbeatAt = 0.5, Duration = 300 }, 1);
+        Report(!plain.IsWarped, "one anchor at the nominal tempo is not warped");
+        Report(Near(plain.PlaybackRateAt(100.0), 1.0), "...its playback rate is exactly 1");
+        Report(Near(plain.ToGridTime(100.0), 100.0), "...and grid time equals source time");
+
+        // A track that drifts: 128 nominal, but the second half was actually recorded at 127.
+        var drifting = new BeatGrid([
+            new BeatGrid.Anchor(0.0, 128.0, true),
+            new BeatGrid.Anchor(60.0, 127.0, false),
+        ], 300.0, 1, 128.0);
+
+        Report(drifting.IsWarped, "a segment off the nominal tempo is warped");
+        Report(Near(drifting.PlaybackRateAt(10.0), 1.0), "the on-tempo segment plays at 1x");
+        Report(Near(drifting.PlaybackRateAt(100.0), 128.0 / 127.0), "the slow segment plays at 128/127");
+
+        // The first anchor is pinned, so correcting drift does not shift the whole track.
+        Report(Near(drifting.ToGridTime(0.0), 0.0), "the first anchor is pinned");
+        Report(Near(drifting.ToGridTime(30.0), 30.0), "...and the on-tempo segment is unmoved");
+
+        // 40s of a 127 BPM segment is 40 * 127/128 of grid time - it takes LESS grid time,
+        // because it is played slightly faster to bring it up to tempo.
+        Report(Near(drifting.ToGridTime(100.0), 60.0 + 40.0 * 127.0 / 128.0), "the slow segment is compressed onto the grid");
+        Report(drifting.ToGridTime(100.0) < 100.0, "...so grid time runs behind source time there");
+
+        // Round trip, which is what guarantees the warped VIEW and the eventual audio warp agree.
+        var rnd = new Random(99);
+        bool ok = true;
+        var messy = new BeatGrid([
+            new BeatGrid.Anchor(0.31, 128.0, true),
+            new BeatGrid.Anchor(37.9, 131.4, false),
+            new BeatGrid.Anchor(122.05, 124.2, true),
+            new BeatGrid.Anchor(200.0, 128.0, false),
+        ], 300.0, 1, 128.0);
+
+        for(int i = 0; i < 20000; i++) {
+            double t = rnd.NextDouble() * 320.0 - 10.0;
+            if(!Near(messy.FromGridTime(messy.ToGridTime(t)), t, 1e-8)) { ok = false; break; }
+        }
+        Report(ok, "ToGridTime and FromGridTime round-trip over 20000 positions");
+
+        // Monotonic: the map must never fold back on itself or the waveform would draw inside out.
+        bool monotonic = true;
+        double previous = double.NegativeInfinity;
+        for(double t = -5; t < 300; t += 0.05) {
+            double g = messy.ToGridTime(t);
+            if(g <= previous) { monotonic = false; break; }
+            previous = g;
+        }
+        Report(monotonic, "the map is strictly increasing across every segment");
+
+        // A grid with beats but no usable nominal tempo must not divide by zero.
+        var noTarget = new BeatGrid([new BeatGrid.Anchor(0.0, 120.0, true)], 60.0, 1, 0);
+        Report(Near(noTarget.ToGridTime(10.0), 10.0), "no target tempo leaves time alone");
+        Report(Near(noTarget.PlaybackRateAt(10.0), 1.0), "...and the rate stays 1");
     }
 
     // ------------------------------------------------------------------
