@@ -1,4 +1,4 @@
-# Diyokee
+﻿# Diyokee
 A work in progress, DJ mixing webapp with streaming support, where the UI runs on your browser.
 
 [![Watch the video](https://xfx.net/ftp/diyokee-releases/diyokee-s6.png)](https://xfx.net/ftp/diyokee-releases/diyokee-v2.mkv)
@@ -37,7 +37,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - Searching is quite limited and a bit buggy
 - Song Key detection is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
-- Making changes to the Audio Matrix, the MIDI profiles or changing the MIDI controller requires restarting the application
+- Making changes to the MIDI profiles or changing the MIDI controller requires restarting the application
 - ...and probably many more
   
 ## Latest Releases

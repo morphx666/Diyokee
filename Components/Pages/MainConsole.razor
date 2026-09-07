@@ -4,6 +4,7 @@
 @using static Diyokee.Settings
 @inject IJSRuntime JS
 @inject SessionState session
+@implements IDisposable
 
 @page "/"
 
@@ -56,9 +57,9 @@
                 <div class="button-3d" @onclick="() => HandleAutoCrossFade(+1)"><i class="fa-solid fa-caret-right"></i></div>
             </div>
             <div class="monitor-controls">
-                <Knob Name="Volume" @ref="monitorVolume" RangeFromCenter="false" ValueChanged="ApplyMonitorVolume" />
+                <Knob Name="Volume" @ref="monitorVolume" RangeFromCenter="false" Enabled="hasMonitorDevice" ValueChanged="ApplyMonitorVolume" />
                 <i class="fa-solid fa-volume-high"></i>
-                <Knob Name="Mix" @ref="monitorMix" ValueChanged="ApplyMonitorMix" />
+                <Knob Name="Mix" @ref="monitorMix" Enabled="hasMonitorDevice" ValueChanged="ApplyMonitorMix" />
                 <i class="fa-solid fa-headphones-simple"></i>
             </div>
         </div>
@@ -318,6 +319,24 @@
 
         shouldRender = true;
         await InvokeAsync(StateHasChanged);
+    }
+
+    // Both knobs only ever feed the monitor path, so they are dead controls without a device to
+    // send it to. The audio matrix can now take that device away while the console is on screen.
+    private bool hasMonitorDevice => Program.Settings.Audio.MonitorDevice.Count > 0;
+
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        Player.AudioDevicesChanged += HandleAudioDevicesChanged;
+    }
+
+    public void Dispose() {
+        Player.AudioDevicesChanged -= HandleAudioDevicesChanged;
+    }
+
+    private void HandleAudioDevicesChanged() {
+        shouldRender = true;
+        InvokeAsync(StateHasChanged);
     }
 
     protected override bool ShouldRender() {
