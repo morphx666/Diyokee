@@ -13,7 +13,7 @@ using Un4seen.Bass;
 // Check 18 uses a sine instead, because the ramp cannot show what the engine does to a SIGNAL.
 // Everything above verifies where samples come from; none of it looks at frequency content, which
 // is why unfiltered decimation went unnoticed all the way to a listening test.
-// See docs/scratch-audio-quality.md.
+// See docs/done-scratch-audio-quality.md.
 
 internal static class EngineTest {
     const int RATE = 44100;
@@ -538,7 +538,7 @@ internal static class EngineTest {
         // ------------------------------------------------------------------ 21
         // The servo. The hand's POSITION is the input and the engine works out the speed, which
         // is what stops the input's quantisation and bursty delivery reaching the audio.
-        // See docs/scratch-audio-quality.md.
+        // See docs/done-scratch-audio-quality.md.
         Console.WriteLine("\n[21] Position servo follows the hand rather than being told a speed");
         const double FOLLOW = 0.040;
         const double PIXEL = 0.05 / 4.0;                   // Files.TimeSlice / WaveformBarWidth
@@ -613,7 +613,7 @@ internal static class EngineTest {
         //
         // 1x and 2x are controls: at 2x the tone lands at 16kHz, still under Nyquist, so nothing
         // should fold and the 12100Hz bin must stay empty.
-        Console.WriteLine("\n[18] Aliasing above 1x  (see docs/scratch-audio-quality.md)");
+        Console.WriteLine("\n[18] Aliasing above 1x  (see docs/done-scratch-audio-quality.md)");
         float[] tone = new float[16384 * CHANS];
 
         // Runs a pure tone through its own engine at one rate and reports where the energy landed:

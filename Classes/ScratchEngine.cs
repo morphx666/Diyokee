@@ -61,7 +61,7 @@ public sealed class ScratchEngine : IDisposable {
     private const int ProducerQuietWaits = 3;              // consecutive silent waits that mean stalled
     private const int ProducerIdleMs = 250;                // re-check even if nobody asked
 
-    // Band-limiting resampler, used above play speed - see docs/scratch-audio-quality.md.
+    // Band-limiting resampler, used above play speed - see docs/done-scratch-audio-quality.md.
     //
     // The kernel spans SincTapsPerSide source frames either side at 1x and stretches with the rate,
     // so an unbounded kernel costs taps in proportion to speed. Cost is bounded by capping the TAP
