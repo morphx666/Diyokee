@@ -12,7 +12,7 @@ using Un4seen.Bass.AddOn.Mix;
 
 internal class Program {
     public const int SAMPLING_FREQUENCY = 44100;
-    public static List<(int Handle, int DeviceIndex)> BassMixHandles = [];
+    public static List<(int Handle, int DeviceIndex, string Name)> BassMixHandles = [];
     public static int BassLatencyMs = 0;
     public static ILogger Logger = null!;
 
@@ -74,7 +74,7 @@ internal class Program {
         Logger = app.Logger;
         Logger.LogInformation("Setting up BASS...");
         InitBASS(workingDirectory);
-        SetupBASS();
+        ReconcileAudioDevices();
 
         app.Logger.LogInformation("Validating Cache Database...");
         using(IServiceScope? scope = app.Services.CreateScope()) {
@@ -187,44 +187,105 @@ internal class Program {
         });
     }
 
-    // TODO: Implement support to add/remove audio outputs without restarting the application
-    // For this to work this function needs to be called every time the Settings.Audio object changes
-    // and the BassMixHandles should be used to not re-initialize devices that have already been initialized and
-    // to remove those are not longer in use.
-    // Then, the Player.CreateStreams() function needs to be modified to update it's splitter streams accordingly.
-
-    private static void SetupBASS() {
-        int index = 0;
+    // Brings the running set of mixer streams in line with Settings.Audio without disturbing the
+    // ones already playing, so adding or removing an output no longer needs a restart. Called once
+    // at startup and again from Player.ApplyAudioDeviceChanges whenever the audio matrix is edited.
+    //
+    // BassMixHandles is kept ordered as MainOutputDevice ++ MonitorDevice: DeviceIndex is what
+    // Player.GetSpeakersMatrix uses to look the device back up in Settings.Audio, and each Player's
+    // splitter list is positionally parallel to this one. Both break if the ordering drifts.
+    public static void ReconcileAudioDevices() {
         var devices = Settings.Audio.MainOutputDevice.Concat(Settings.Audio.MonitorDevice).ToList();
-        for(int i = 0; i < devices.Count; i++) {
-            AudioDevice device = devices[i];
-            int bassDeviceIndex = GetDeviceIndexByName(device.Name);
-            bool r = Bass.BASS_SetDevice(bassDeviceIndex);
-            if(!r || Bass.BASS_ErrorGetCode() != BASSError.BASS_OK) {
-                Logger.LogError($"Failed to set BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");
-                if(i < Settings.Audio.MainOutputDevice.Count) {
-                    Settings.Audio.MainOutputDevice.RemoveAt(i);
-                } else {
-                    Settings.Audio.MonitorDevice.RemoveAt(i - Settings.Audio.MainOutputDevice.Count);
-                }
+        List<(int Handle, int DeviceIndex, string Name)> reconciled = [];
+        List<AudioDevice> failed = [];
+
+        // Matches are consumed rather than searched, because one device can legitimately appear
+        // twice - checked as both a master and a monitor output - and each of those entries owns
+        // its own mixer on that device. Matching by name alone would hand them the same one.
+        List<(int Handle, int DeviceIndex, string Name)> unclaimed = [.. BassMixHandles];
+
+        foreach(AudioDevice device in devices) {
+            // Already running. Keep the stream as it is - it may only have moved in the ordering.
+            int claimed = unclaimed.FindIndex(m => m.Name == device.Name);
+            if(claimed >= 0) {
+                reconciled.Add((unclaimed[claimed].Handle, reconciled.Count, device.Name));
+                unclaimed.RemoveAt(claimed);
                 continue;
             }
 
-            BASS_INFO basInfo = new();
-            Bass.BASS_GetInfo(basInfo);
-            BassLatencyMs = Math.Max(BassLatencyMs, basInfo.latency);
+            int bassDeviceIndex = GetDeviceIndexByName(device.Name);
+
+            // A device configured at startup was initialised by SetupDevice, and one picked in the
+            // audio matrix by its own BASS_Init, so BASS_ALREADY is the normal answer here.
+            if(!Bass.BASS_Init(bassDeviceIndex, SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero)
+               && Bass.BASS_ErrorGetCode() != BASSError.BASS_ERROR_ALREADY) {
+                Logger.LogError($"Failed to initialize BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");
+                failed.Add(device);
+                continue;
+            }
+
+            if(!Bass.BASS_SetDevice(bassDeviceIndex) || Bass.BASS_ErrorGetCode() != BASSError.BASS_OK) {
+                Logger.LogError($"Failed to set BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");
+                failed.Add(device);
+                continue;
+            }
 
             int handle = BassMix.BASS_Mixer_StreamCreate(SAMPLING_FREQUENCY, 8, BASSFlag.BASS_MIXER_NONSTOP | BASSFlag.BASS_MIXER_NORAMPIN);
+            if(handle == 0) {
+                Logger.LogError($"Failed to create mixer for BASS device '{device.Name}': {Bass.BASS_ErrorGetCode()}");
+                failed.Add(device);
+                continue;
+            }
+
             Bass.BASS_ChannelSetAttribute(handle, BASSAttribute.BASS_ATTRIB_BUFFER, 0);
             Bass.BASS_ChannelPlay(handle, true);
-            BassMixHandles.Add((handle, index++));
+            reconciled.Add((handle, reconciled.Count, device.Name));
         }
 
-        // Attach to the first device, for now...
-        if(Settings.Encoder.Enabled && Runtime.Platform != Runtime.Platforms.MacApple) {
-            int encodeHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(BassMixHandles.First().Handle, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
-            _ = BassEnc.BASS_Encode_ServerInit(encodeHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
+        // Whatever no entry claimed has dropped out of the matrix. Callers release their splitters
+        // first, so by the time we get here nothing is feeding these.
+        foreach(var stale in unclaimed) {
+            if(stale.Handle == encoderMixHandle) encoderHandle = encoderMixHandle = 0;  // AUTOFREE takes it with the mixer
+            Bass.BASS_ChannelStop(stale.Handle);
+            Bass.BASS_StreamFree(stale.Handle);
         }
+
+        BassMixHandles = reconciled;
+
+        foreach(AudioDevice device in failed) {
+            Settings.Audio.MainOutputDevice.Remove(device);
+            Settings.Audio.MonitorDevice.Remove(device);
+        }
+
+        // A running maximum is meaningless once a device can leave, so it is measured afresh.
+        BassLatencyMs = 0;
+        foreach(var m in BassMixHandles) {
+            Bass.BASS_SetDevice(GetDeviceIndexByName(m.Name));
+            BASS_INFO bassInfo = new();
+            Bass.BASS_GetInfo(bassInfo);
+            BassLatencyMs = Math.Max(BassLatencyMs, bassInfo.latency);
+        }
+
+        SetupEncoder();
+    }
+
+    private static int encoderHandle = 0;
+    private static int encoderMixHandle = 0;
+
+    // The encoder rides on the first mixer, so it has to be moved when that device is the one
+    // removed - otherwise the stream dies silently along with the mixer it was attached to.
+    private static void SetupEncoder() {
+        if(!Settings.Encoder.Enabled || Runtime.Platform == Runtime.Platforms.MacApple) return;
+        if(BassMixHandles.Count == 0) return;
+
+        int target = BassMixHandles.First().Handle;
+        if(encoderHandle != 0 && encoderMixHandle == target) return;
+
+        if(encoderHandle != 0) BassEnc.BASS_Encode_Stop(encoderHandle);
+
+        encoderMixHandle = target;
+        encoderHandle = BassEnc_Mp3.BASS_Encode_MP3_Start(target, $"-b{Settings.Encoder.Bitrate}", BASSEncode.BASS_ENCODE_NOHEAD | BASSEncode.BASS_ENCODE_AUTOFREE, null, IntPtr.Zero);
+        _ = BassEnc.BASS_Encode_ServerInit(encoderHandle, $"{Settings.Encoder.Port}/{Settings.Encoder.Url}", 16384 / 2, 16384, BASSEncodeServer.BASS_ENCODE_SERVER_DEFAULT, null, IntPtr.Zero);
     }
 
     public static int GetDeviceIndexByName(string name) {

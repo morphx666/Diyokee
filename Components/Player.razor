@@ -11,6 +11,7 @@
 @inject IJSRuntime JS
 @inject SessionState session
 @inject UiBusyState Busy
+@implements IDisposable
 
 <div class="player-container"
      @ondragover="HandleDragOver"
@@ -661,9 +662,10 @@
     private void FreeStreams() {
         // The splitters carry BASS_STREAM_AUTOFREE, so unplugging them from the mixer frees them.
         // Freeing them here as well would risk hitting a handle BASS has already recycled.
-        foreach(int h in splitterStreams) BassMix.BASS_Mixer_ChannelRemove(h);
-        splitterStreams.Clear();
+        List<int> released = splitterStreams;
+        splitterStreams = [];        // published by assignment; see CreateSplitters
         masterSplitterHandle = 0;
+        foreach(int h in released) BassMix.BASS_Mixer_ChannelRemove(h);
 
         if(tempoHandle != 0) {
             Bass.BASS_StreamFree(tempoHandle);
@@ -787,13 +789,33 @@
             if(dspHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(dspHandle));
         }
 
-        splitterStreams.Clear();
+        return CreateSplitters();
+    }
+
+    // Taps the chain into one splitter per output mixer. Split out of CreateStreams so the outputs
+    // can be rebuilt on their own when the audio matrix gains or loses a device: everything above
+    // the splitters - the decode stream, the engine and its playhead, and over dropbox:// the open
+    // connection - is then left alone.
+    //
+    // splitterStreams is published by assignment rather than filled in place. The transport, the
+    // MIDI thread and MonitorPlayback all walk it, and a ForEach over a list being rebuilt
+    // underneath it throws; same reason BeatMarkers is built into a local and then assigned.
+    private (BASSError Error, string Message) CreateSplitters() {
+        List<int> splitters = [];
+
+        (BASSError Error, string Message) Fail(BASSError error, string message) {
+            foreach(int h in splitters) {
+                if(!BassMix.BASS_Mixer_ChannelRemove(h)) Bass.BASS_StreamFree(h);   // not plugged in yet
+            }
+            return (error, message);
+        }
+
         foreach(var mixHandle in Program.BassMixHandles) {
             int splitterHandle = BassMix.BASS_Split_StreamCreate(MinimalMode ? streamHandle : tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
-            bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(splitterHandle));
-            splitterStreams.Add(splitterHandle);
+            BASSError bassErrorCode = Bass.BASS_ErrorGetCode();
+            if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return Fail(bassErrorCode, nameof(splitterHandle));
+            splitters.Add(splitterHandle);
 
             bool r = BassMix.BASS_Mixer_StreamAddChannel(mixHandle.Handle, splitterHandle, BASSFlag.BASS_MIXER_CHAN_PAUSE
                                                                                            | BASSFlag.BASS_MIXER_CHAN_NORAMPIN
@@ -801,19 +823,110 @@
                                                                                            | BASSFlag.BASS_STREAM_AUTOFREE
                                                                                            | BASSFlag.BASS_MIXER_CHAN_MATRIX);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_StreamAddChannel));
+            if(!r || bassErrorCode != BASSError.BASS_OK) return Fail(bassErrorCode, nameof(BassMix.BASS_Mixer_StreamAddChannel));
 
 
             float[,] matrix = GetSpeakersMatrix(mixHandle.DeviceIndex);
             r = BassMix.BASS_Mixer_ChannelSetMatrix(splitterHandle, matrix);
             bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(!r || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
+            if(!r || bassErrorCode != BASSError.BASS_OK) return Fail(bassErrorCode, nameof(BassMix.BASS_Mixer_ChannelSetMatrix));
         }
-        masterSplitterHandle = splitterStreams[0];
+
+        // Every output was unchecked in the matrix. Nothing to play into, but the deck stays loaded
+        // and comes back the moment an output is checked again.
+        if(splitters.Count == 0) return (BASSError.BASS_ERROR_NOCHAN, "no audio outputs configured");
+
+        splitterStreams = splitters;
+        masterSplitterHandle = splitters[0];
 
         SetAudioMatrixVolume();
 
         return (BASSError.BASS_OK, "");
+    }
+
+    // ---------------------------------------------------------------- live audio matrix
+
+    // Every Player on screen, including the MinimalMode one the TrackProperties dialog creates.
+    // There is no other way to reach them all: MainConsole holds its two by @ref and that dialog's
+    // is transient.
+    private static readonly List<Player> livePlayers = [];
+    private static readonly object reconfigureLock = new();
+
+    // Raised once the graph is running on the new configuration. The decks re-render themselves
+    // below; this is for everything else that reads Settings.Audio - the monitor controls over in
+    // MainConsole - which would otherwise sit on stale state until some unrelated render came
+    // along, because the change arrives on a background thread rather than from a UI event.
+    public static event Action? AudioDevicesChanged;
+
+    // Applies the current Settings.Audio to the running audio graph, so editing the audio matrix
+    // takes effect without a restart. The splitters have to be unplugged before the mixers they
+    // feed can be freed, and rebuilt once the new set is in place - hence the three phases. Only
+    // the outputs are touched, so a deck keeps its track, its tempo and its position across the
+    // change; it will glitch for as long as the rebuild takes.
+    public static void ApplyAudioDeviceChanges() {
+        lock(reconfigureLock) {
+            // A circuit reconnect can leave a disposed Player registered while its replacement has
+            // already adopted the same handles out of SessionState. Rebuilding both would put two
+            // splitters on every mixer and play the deck twice over, so they are deduplicated by
+            // the stream they tap; decks with nothing loaded share handle 0 and rebuild nothing.
+            Player[] players;
+            lock(livePlayers) {
+                players = [.. livePlayers.GroupBy(p => p.MinimalMode ? p.streamHandle : p.tempoHandle)
+                                         .Select(g => g.Last())];
+            }
+
+            foreach(Player p in players) p.ReleaseOutputs();
+            Program.ReconcileAudioDevices();
+            foreach(Player p in players) p.RebuildOutputs();
+
+            // The cue button is enabled by the presence of a monitor device, and SetAudioMatrixVolume
+            // may just have dropped the cue itself, so the decks have to be redrawn either way.
+            // A component left over from a dropped circuit cannot render any more; that must not
+            // take the reconfigure down with it, the audio graph is already switched over.
+            try {
+                foreach(Player p in players) _ = p.InvokeAsync(p.StateHasChanged);
+                AudioDevicesChanged?.Invoke();
+            } catch(Exception ex) {
+                Program.Logger.LogError($"Error refreshing the UI after an audio device change: {ex.Message}");
+            }
+        }
+    }
+
+    private double heldPosition;
+    private bool heldIsPlaying;
+
+    private void ReleaseOutputs() {
+        heldIsPlaying = IsPlaying;
+        heldPosition = PositionSeconds;
+
+        List<int> released = splitterStreams;
+        splitterStreams = [];        // published by assignment; see CreateSplitters
+        masterSplitterHandle = 0;    // readers already bail on 0, which a freed handle would not do
+
+        // The splitters carry BASS_STREAM_AUTOFREE, so unplugging them frees them - as in FreeStreams.
+        foreach(int h in released) BassMix.BASS_Mixer_ChannelRemove(h);
+    }
+
+    private void RebuildOutputs() {
+        if(engine == null || (MinimalMode ? streamHandle : tempoHandle) == 0) return;   // no track loaded
+
+        var r = CreateSplitters();
+        if(r.Error != BASSError.BASS_OK) {
+            Program.Logger.LogError($"Error rebuilding player outputs ({r.Message}): {r.Error}");
+            return;
+        }
+
+        // The engine pins its output-frame origin to the mixer's byte counter for this stream, and
+        // fresh splitters start that counter at zero. A seek is what re-anchors the two, so the
+        // playhead is restored through the same path a cue or a jump uses rather than by carrying
+        // a correction around. It also flushes the chain, so the new routing is heard immediately.
+        SeekSeconds(heldPosition);
+
+        if(heldIsPlaying) splitterStreams.ForEach(h => BassMix.BASS_Mixer_ChannelPlay(h));
+    }
+
+    public void Dispose() {
+        lock(livePlayers) livePlayers.Remove(this);
     }
 
     public void SetPitch(double semiTones) {
@@ -1190,10 +1303,11 @@
 
     private void SetAudioMatrixVolume() {
         if(File == null) return;
-        if(sendToMonitor && Program.Settings.Audio.MonitorDevice.Count == 0) {
-            sendToMonitor = false;
-            return;
-        }
+
+        // Cueing a deck with nowhere to cue it to. This used to return, which left the main outputs
+        // sitting at whatever the last matrix said - so a deck cued when the monitor device was
+        // removed stayed silent on the master until something else moved a fader.
+        if(sendToMonitor && Program.Settings.Audio.MonitorDevice.Count == 0) sendToMonitor = false;
 
         int mainOutputDevicesCount = Program.Settings.Audio.MainOutputDevice.Count;
 
@@ -1211,7 +1325,10 @@
                     }
                 }
             }
-            if(mainDeviceIndex < splitterStreams.Count) { // REASON: This code avoids crashing when there are pending changes in the matrix. A restart is necessary.
+            // splitterStreams is parallel to Program.BassMixHandles, which ApplyAudioDeviceChanges
+            // keeps in Settings.Audio order. The bound still matters: this runs from the MIDI and
+            // monitor threads, which can catch the list mid-rebuild.
+            if(mainDeviceIndex < splitterStreams.Count) {
                 var splitterStream = splitterStreams[mainDeviceIndex];
                 BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
             }
@@ -1225,9 +1342,12 @@
                     speakersMatrix[i, j] *= (float)(sendToMonitor ? (trackVolume * monitorMix) : (1.0 - monitorMix) * trackVolume * crossFaderVolume * monitorVolume);
                 }
             }
-            monitorDeviceIndex += mainOutputDevicesCount;
-            if(monitorDeviceIndex < splitterStreams.Count) {
-                var splitterStream = splitterStreams[monitorDeviceIndex];
+            // The offset used to be folded back into the loop variable, which then skipped every
+            // other monitor device. Harmless while there was only ever one; not once the matrix
+            // can add a second without a restart.
+            int splitterIndex = mainOutputDevicesCount + monitorDeviceIndex;
+            if(splitterIndex < splitterStreams.Count) {
+                var splitterStream = splitterStreams[splitterIndex];
                 BassMix.BASS_Mixer_ChannelSetMatrix(splitterStream, speakersMatrix);
             }
         }
@@ -1296,6 +1416,38 @@
         });
     }
 
+    // Index of the last beat at or before `seconds`, or -1 if the playhead sits before the first.
+    // GenerateBeatMarkers emits them in ascending order - forwards from the downbeat, with earlier
+    // ones inserted at the front - so a binary search is valid.
+    private static int BeatIndexAtOrBefore(List<(double X, double Seconds)> markers, double seconds) {
+        int lo = 0, hi = markers.Count - 1, result = -1;
+        while(lo <= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if(markers[mid].Seconds <= seconds) {
+                result = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return result;
+    }
+
+    // Where the downbeat sits in the marker list, which fixes the bar phase. It only changes when
+    // the list itself does, so it is cached against the instance that produced it rather than
+    // re-scanned every millisecond. Only MonitorBeats calls this, so no locking is needed; a list
+    // swapped in underneath it simply misses the cache once.
+    private List<(double X, double Seconds)>? downbeatCachedFor;
+    private int downbeatCachedIndex;
+
+    private int DownbeatIndexOf(List<(double X, double Seconds)> markers) {
+        if(!ReferenceEquals(markers, downbeatCachedFor)) {
+            downbeatCachedIndex = Math.Max(0, markers.FindIndex(b => b.Seconds >= File!.DownbeatAt));
+            downbeatCachedFor = markers;
+        }
+        return downbeatCachedIndex;
+    }
+
     // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it
     // Disabling it would disable the playback sync and the beat monitor
     // TODO: Can we use the BASS channel syncs to do this more efficiently? !IMPORTANT
@@ -1315,14 +1467,22 @@
             InBeat = false;
             List<(double X, double Seconds)> markers = BeatMarkers;   // published by assignment
             if(File != null) {
-                int startIndex = markers.FindIndex(b => b.Seconds >= File.DownbeatAt);
-                for(int i = 0; i < markers.Count; i++) {
-                    if(Math.Abs(markers[i].Seconds - playbackPosition) < threshold) {
-                        InBeatIndex = (i + startIndex) % 2 + 1;
-                        InBeat = true;
-                        break;
-                    }
-                }
+                int at = BeatIndexAtOrBefore(markers, playbackPosition);
+
+                // Which half of the bar the playhead is inside, derived from where it is rather
+                // than latched the last time a beat happened to be hit. The old version only
+                // updated within `threshold` of a marker, and a scratch flies straight past that
+                // window - so the VU sat on a stale colour, or flickered on a reverse pass. This
+                // asks a question that has an answer at any speed and in either direction.
+                if(at >= 0) InBeatIndex = (at + DownbeatIndexOf(markers)) % 2 + 1;
+
+                // The narrow "we are on a beat right now" flag DoJump and StartSynced wait on.
+                // Same meaning and same window as before, but the nearest beat is either the one
+                // at or before the playhead or the one after it, so two comparisons answer it -
+                // where this used to scan all ~770 markers of a six-minute track, per deck, every
+                // millisecond.
+                InBeat = (at >= 0 && playbackPosition - markers[at].Seconds < threshold)
+                         || (at + 1 < markers.Count && markers[at + 1].Seconds - playbackPosition < threshold);
             }
 
             if(++interval > 30) {
@@ -1364,7 +1524,10 @@
                     waveform!.PlaybackHead = SecondsToWaveformHead(PositionSeconds);
                     waveformFull.PlaybackHead = waveform.PlaybackHead;
                 }
-            } else if(IsPlaying) {
+            } else if(IsPlaying && masterSplitterHandle != 0) {
+                // The handle test keeps this off ApplyAudioDeviceChanges' back: the splitters are
+                // gone for the length of a rebuild, which reads here exactly like a track that has
+                // run out - and this branch would tear the whole chain down and rebuild it.
                 Stop(false);
                 CreateStreams();
                 SeekSeconds(LengthSeconds);
@@ -1456,6 +1619,8 @@
 
     protected override void OnInitialized() {
         base.OnInitialized();
+
+        lock(livePlayers) livePlayers.Add(this);
 
         SetTempoRange(Program.Settings.Playback.TempoRange);
 

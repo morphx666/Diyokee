@@ -1,5 +1,4 @@
-﻿@using Newtonsoft.Json
-@using Un4seen.Bass
+﻿@using Un4seen.Bass
 
 <div class="container scroller">
     <div class="device">
@@ -32,19 +31,15 @@
     }
 </div>
 
-<div class="restart-warning">
-    @if(hideRestartRequiredMsg) {
-        <span>&nbsp;</span>
-    } else {
-        <span>Changes made to the AudioMatrix will require restarting the application</span>
-    }
+<div class="apply-status">
+    <span>@statusMessage</span>
 </div>
 
 @code {
     private List<AudioDevice> audioDevices { get; set; } = new();
     private bool[][] master = [];
     private bool[][] monitor = [];
-    private bool hideRestartRequiredMsg = true;
+    private string statusMessage = "Changes are applied immediately";
 
     [Parameter]
     public Diyokee.Settings Settings { get; set; } = default!;
@@ -59,6 +54,10 @@
 
     // FIXME: This is ridiculous. We need to find a way to trigger the update when the checkbox state changes.
     // This works but it'd be easier if we could capture the @onchange event handler. INVESTIGATE!
+    //
+    // Deliberately edits the settings the audio graph is actually running on rather than the dialog's
+    // working copy: routing is the one page here you can only judge by ear, so a change has to be
+    // audible as it is made. Save then just persists what is already playing.
     private void Update(bool isMasterOutput, int deviceIndex, int channelIndex) {
         Task.Run((Func<Task>)(async () => {
             await Task.Delay(25);
@@ -90,9 +89,24 @@
             }
 
         done:
-            var original = JsonConvert.SerializeObject(Program.Settings.Audio);
-            var updated = JsonConvert.SerializeObject(Settings.Audio);
-            hideRestartRequiredMsg = original == updated;
+            // The dialog holds a deep clone, so the live settings have to be pointed at this same
+            // AudioSettings for the rebuild to see it - and so that Save, which swaps the whole
+            // clone in, does not then revert what is already playing.
+            Program.Settings.Audio = Settings.Audio;
+
+            try {
+                Player.ApplyAudioDeviceChanges();
+                statusMessage = "Changes are applied immediately";
+
+                // A device BASS refused is dropped from the settings by the reconcile, so the box
+                // that was just ticked has to come back up rather than claim an output that is not
+                // actually there.
+                SyncCheckboxes();
+            } catch(Exception ex) {
+                Program.Logger.LogError($"Error applying audio matrix changes: {ex.Message}");
+                statusMessage = $"Could not apply the change: {ex.Message}";
+            }
+
             await InvokeAsync(StateHasChanged);
         }));
     }
@@ -107,7 +121,7 @@
             BASS_DEVICEINFO deviceInfo = Bass.BASS_GetDeviceInfo(i);
             AudioDevice device = new(deviceInfo.name);
             if(deviceInfo.IsEnabled) {
-                Bass.BASS_Init(i, Program.SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT, IntPtr.Zero);
+                Bass.BASS_Init(i, Program.SAMPLING_FREQUENCY, BASSInit.BASS_DEVICE_DEFAULT | BASSInit.BASS_DEVICE_LATENCY, IntPtr.Zero);
                 Bass.BASS_SetDevice(i);
                 BASS_INFO info = Bass.BASS_GetInfo();
 
@@ -167,10 +181,17 @@
 
             master[i - 2] = new bool[device.Speakers.Count];
             monitor[i - 2] = new bool[device.Speakers.Count];
+        }
 
+        SyncCheckboxes();
+    }
+
+    private void SyncCheckboxes() {
+        for(int i = 0; i < audioDevices.Count; i++) {
+            AudioDevice device = audioDevices[i];
             for(int j = 0; j < device.Speakers.Count; j++) {
-                master[i - 2][j] = IsSelected(true, device.Name, device.Speakers[j]);
-                monitor[i - 2][j] = IsSelected(false, device.Name, device.Speakers[j]);
+                master[i][j] = IsSelected(true, device.Name, device.Speakers[j]);
+                monitor[i][j] = IsSelected(false, device.Name, device.Speakers[j]);
             }
         }
     }
