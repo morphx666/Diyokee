@@ -13,6 +13,8 @@
 <div class="main-console"
      tabindex="0"
      @onkeydown="HandleKeyDown"
+     @onkeyup="HandleKeyUp"
+     @onfocusout="HandleFocusOut"
      @onkeydown:preventDefault="false"
      @onkeyup:preventDefault="false">
      <CascadingValue Value="@mouseState">
@@ -188,6 +190,19 @@
         session.Set(nameof(selectedFile), file);
     }
 
+    // Shift suppresses beat snapping while it is held. It used to be written only here, so
+    // releasing it without pressing another key left SnapToBeatMarkers off for the rest of the
+    // session; and focus moving into a text field in a dialog meant the release was never seen at
+    // all. Both now clear it, and both clear it towards snapping being ON, which is the state a
+    // user who is not holding anything expects.
+    private void HandleKeyUp(KeyboardEventArgs e) {
+        mouseState.ShiftDown = e.ShiftKey;
+    }
+
+    private void HandleFocusOut() {
+        mouseState.ShiftDown = false;
+    }
+
     private async Task HandleKeyDown(KeyboardEventArgs e) {
         mouseState.ShiftDown = e.ShiftKey;
         if(e.ShiftKey && e.CtrlKey) {
@@ -332,6 +347,7 @@
 
     public void Dispose() {
         Player.AudioDevicesChanged -= HandleAudioDevicesChanged;
+        Program.MidiTools.OnMidiEvent -= HandleMidiEvent;
     }
 
     private void HandleAudioDevicesChanged() {
@@ -349,220 +365,226 @@
 
     private bool IsPlaying => player1!.IsPlaying || player2!.IsPlaying;
 
+    // The handler used to be an anonymous lambda subscribed here and never removed. MidiTools is
+    // a process-wide static that outlives any circuit, so every reconnect and every extra browser
+    // tab left another live handler on it and each MIDI event was processed once per handler -
+    // decks toggling twice on one button press, and a trace that cannot be read. It is a named
+    // method now so Dispose can take it back off.
+    private bool midiNavigateFolders = true;
+    private readonly KeyTools midiKeyTools = new();
+    private readonly List<int> midiPressedKeys = [];
+
     private void MidiMonitor() {
-        bool navigateFolders = true;
-        KeyTools keyTools = new();
-        List<int> pressedKeys = [];
+        Program.MidiTools.OnMidiEvent += HandleMidiEvent;
+        Program.MidiTools.Start();
+    }
 
-        Program.MidiTools.OnMidiEvent += (string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) => {
-            if(!enableMidiEvents) return;
+    private void HandleMidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
+        if(!enableMidiEvents) return;
 
-            int velocity = (midiEvent.param >> 8) & 0xFF;
+        int velocity = (midiEvent.param >> 8) & 0xFF;
 
-            if(section == "general") {
-                switch(propertyName) {
-                    case "FoldersFilesToggle":
-                        navigateFolders = !navigateFolders;
-                        if(!navigateFolders) {
-                            InvokeAsync(filesComponent!.SelectDown);
-                            InvokeAsync(filesComponent!.SelectUp);
-                        }
-                        return;
-                    case "ExpandFolder":
-                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
-                        return;
-                    case "Crossfader":
-                        double crossfaderValue = 1.0 - midiEvent.param / 127.0;
-                        InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
-                        return;
-                    case "BrowseUp":
-                        if(mapping.Parameter != midiEvent.param) return;
-                        if(navigateFolders) {
-                            InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
-                        } else {
-                            InvokeAsync(filesComponent!.SelectUp);
-                        }
-                        return;
-                    case "BrowseDown":
-                        if(mapping.Parameter != midiEvent.param) return;
-                        if(navigateFolders) {
-                            InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
-                        } else {
-                            InvokeAsync(filesComponent!.SelectDown);
-                        }
-                        return;
-                    case "Gain":
-                        double gainValue = ((midiEvent.param >> 8) & 0xFF) / 127.0;
-                        InvokeAsync(() => mainGain!.SetValue(gainValue, true));
-                        return;
-                }
+        if(section == "general") {
+            switch(propertyName) {
+                case "FoldersFilesToggle":
+                    midiNavigateFolders = !midiNavigateFolders;
+                    if(!midiNavigateFolders) {
+                        InvokeAsync(filesComponent!.SelectDown);
+                        InvokeAsync(filesComponent!.SelectUp);
+                    }
+                    return;
+                case "ExpandFolder":
+                    InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
+                    return;
+                case "Crossfader":
+                    double crossfaderValue = 1.0 - midiEvent.param / 127.0;
+                    InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
+                    return;
+                case "BrowseUp":
+                    if(mapping.Parameter != midiEvent.param) return;
+                    if(midiNavigateFolders) {
+                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectUp);
+                    } else {
+                        InvokeAsync(filesComponent!.SelectUp);
+                    }
+                    return;
+                case "BrowseDown":
+                    if(mapping.Parameter != midiEvent.param) return;
+                    if(midiNavigateFolders) {
+                        InvokeAsync(mediaProviderContainerUI!.FoldersUI!.SelectDown);
+                    } else {
+                        InvokeAsync(filesComponent!.SelectDown);
+                    }
+                    return;
+                case "Gain":
+                    double gainValue = ((midiEvent.param >> 8) & 0xFF) / 127.0;
+                    InvokeAsync(() => mainGain!.SetValue(gainValue, true));
+                    return;
             }
+        }
 
-            if(section.StartsWith("player")) {
-                Player? targetPlayer = null;
-                if(section == "player0") targetPlayer = player1;
-                else if(section == "player1") targetPlayer = player2;
-                if(targetPlayer == null) return;
+        if(section.StartsWith("player")) {
+            Player? targetPlayer = null;
+            if(section == "player0") targetPlayer = player1;
+            else if(section == "player1") targetPlayer = player2;
+            if(targetPlayer == null) return;
 
-                bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
-                double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
+            bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
+            double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
 
-                var PlayerAction = (Action fcn) => {
+            var PlayerAction = (Action fcn) => {
+                if(velocity > 0) {
+                    fcn();
+                    shouldRender = true;
+                    InvokeAsync(StateHasChanged);
+                }
+            };
+
+            switch(propertyName) {
+                case "PlayPause":
+                    if(velocity > 0) targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                    return;
+                case "Stop":
+                    if(velocity > 0) targetPlayer.Stop(false);
+                    return;
+                case "Cue":
                     if(velocity > 0) {
-                        fcn();
-                        shouldRender = true;
-                        InvokeAsync(StateHasChanged);
+                        targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
+                    } else {
+                        targetPlayer.Stop(true);
                     }
-                };
-
-                switch(propertyName) {
-                    case "PlayPause":
-                        if(velocity > 0) targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
-                        return;
-                    case "Stop":
-                        if(velocity > 0) targetPlayer.Stop(false);
-                        return;
-                    case "Cue":
-                        if(velocity > 0) {
-                            targetPlayer.Play(targetPlayer.SnapToBeatMarkers && Program.Settings.Playback.SyncPlayback);
-                        } else {
-                            targetPlayer.Stop(true);
+                    return;
+                case "LoadSelectedFile":
+                    PlayerAction(() => {
+                        if(targetPlayer == player1) {
+                            player1File = selectedFile;
+                        } else if(targetPlayer == player2) {
+                            player2File = selectedFile;
                         }
-                        return;
-                    case "LoadSelectedFile":
-                        PlayerAction(() => {
-                            if(targetPlayer == player1) {
-                                player1File = selectedFile;
-                            } else if(targetPlayer == player2) {
-                                player2File = selectedFile;
-                            }
-                            shouldRender = true;
-                            if(!IsPlaying) InvokeAsync(StateHasChanged);
-                        });
-                        return;
-                    case "LoopJumpLockToggle":
-                        PlayerAction(targetPlayer.ToggleLoopJumpSync);
-                        return;
-                    case "LoopToggle":
-                        PlayerAction(targetPlayer.ToggleLoop);
-                        return;
-                    case "LoopSizeIncrease":
-                        PlayerAction(targetPlayer.LoopSizeIncrease);
-                        return;
-                    case "LoopSizeDecrease":
-                        PlayerAction(targetPlayer.LoopSizeDecrease);
-                        return;
-                    case "JumpSizeIncrease":
-                        PlayerAction(targetPlayer.JumpSizeIncrease);
-                        return;
-                    case "JumpSizeDecrease":
-                        PlayerAction(targetPlayer.JumpSizeDecrease);
-                        return;
-                    case "SnapToBeatMarker":
-                        PlayerAction(targetPlayer.SnapToClosestBeatMarker);
-                        return;
-                    case "Volume":
-                        double volume = value;
-                        InvokeAsync(() => targetPlayer.SetTrackVolume(volume));
-                        return;
-                    case "EqHi":
-                        InvokeAsync(() => {
-                            targetPlayer.EqControls.ApplyEqHi(value);
-                            targetPlayer.EqControls.UpdateKnobs();
-                        });
-                        return;
-                    case "EqMid":
-                        InvokeAsync(() => {
-                            targetPlayer.EqControls.ApplyEqMid(value);
-                            targetPlayer.EqControls.UpdateKnobs();
-                        });
-                        return;
-                    case "EqLow":
-                        InvokeAsync(() => {
-                            targetPlayer.EqControls.ApplyEqLow(value);
-                            targetPlayer.EqControls.UpdateKnobs();
-                        });
-                        return;
-                    case "Color":
-                        targetPlayer.FilterControls.FiltersValues.Color = value;
-                        InvokeAsync(targetPlayer.FilterControls.UpdateKnobs);
-                        return;
-                    case "JogWheelForward":
-                        if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelForward();
-                        return;
-                    case "JogWheelBackward":
-                        if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelBackward();
-                        return;
-                    case "Tempo":
-                        double tempo = 1.0 - value;
-                        InvokeAsync(() => targetPlayer.SetTempo(tempo));
-                        return;
-                    case "BpmMatch": {
-                        InvokeAsync(targetPlayer.SyncBPMToOtherPlayer);
-                        return;
-                    }
+                        shouldRender = true;
+                        if(!IsPlaying) InvokeAsync(StateHasChanged);
+                    });
+                    return;
+                case "LoopJumpLockToggle":
+                    PlayerAction(targetPlayer.ToggleLoopJumpSync);
+                    return;
+                case "LoopToggle":
+                    PlayerAction(targetPlayer.ToggleLoop);
+                    return;
+                case "LoopSizeIncrease":
+                    PlayerAction(targetPlayer.LoopSizeIncrease);
+                    return;
+                case "LoopSizeDecrease":
+                    PlayerAction(targetPlayer.LoopSizeDecrease);
+                    return;
+                case "JumpSizeIncrease":
+                    PlayerAction(targetPlayer.JumpSizeIncrease);
+                    return;
+                case "JumpSizeDecrease":
+                    PlayerAction(targetPlayer.JumpSizeDecrease);
+                    return;
+                case "SnapToBeatMarker":
+                    PlayerAction(targetPlayer.SnapToClosestBeatMarker);
+                    return;
+                case "Volume":
+                    double volume = value;
+                    InvokeAsync(() => targetPlayer.SetTrackVolume(volume));
+                    return;
+                case "EqHi":
+                    InvokeAsync(() => {
+                        targetPlayer.EqControls.ApplyEqHi(value);
+                        targetPlayer.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "EqMid":
+                    InvokeAsync(() => {
+                        targetPlayer.EqControls.ApplyEqMid(value);
+                        targetPlayer.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "EqLow":
+                    InvokeAsync(() => {
+                        targetPlayer.EqControls.ApplyEqLow(value);
+                        targetPlayer.EqControls.UpdateKnobs();
+                    });
+                    return;
+                case "Color":
+                    targetPlayer.FilterControls.FiltersValues.Color = value;
+                    InvokeAsync(targetPlayer.FilterControls.UpdateKnobs);
+                    return;
+                case "JogWheelForward":
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelForward();
+                    return;
+                case "JogWheelBackward":
+                    if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelBackward();
+                    return;
+                case "Tempo":
+                    double tempo = 1.0 - value;
+                    InvokeAsync(() => targetPlayer.SetTempo(tempo));
+                    return;
+                case "BpmMatch": {
+                    InvokeAsync(targetPlayer.SyncBPMToOtherPlayer);
+                    return;
                 }
             }
+        }
 
-            if(section == "keyboard") {
-                double pitch = 0;
+        if(section == "keyboard") {
+            double pitch = 0;
 
-                switch(propertyName) {
-                    case "Volume":
-                        if(player1 == null) return;
+            switch(propertyName) {
+                case "Volume":
+                    if(player1 == null) return;
 
-                        double volume = midiEvent.param / 127.0;
-                        InvokeAsync(() => player1.SetTrackVolume(volume));
-                        return;
-                    case "Pitch":
-                        if(player1 == null) return;
+                    double volume = midiEvent.param / 127.0;
+                    InvokeAsync(() => player1.SetTrackVolume(volume));
+                    return;
+                case "Pitch":
+                    if(player1 == null) return;
 
-                        pitch = (midiEvent.param - 8192) / 8192.0 * 12.0; // +/- 12 semitones
-                        player1.SetPitch(pitch);
-                        player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
+                    pitch = (midiEvent.param - 8192) / 8192.0 * 12.0; // +/- 12 semitones
+                    player1.SetPitch(pitch);
+                    player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
+                    InvokeAsync(player1.FilterControls.UpdateKnobs);
+                    shouldRender = true;
+                    InvokeAsync(StateHasChanged);
+                    return;
+                default:
+                    if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
+                        if(player1 == null || player1.File == null) return;
+
+                        int keyNumber = midiEvent.param & 0xFF;
+                        int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
+
+                        if(keyVelocity > 0) {
+                            string key = midiKeyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
+                            double trackKeyNumber = midiKeyTools.ToMidiNote(player1.File.Key ?? key);
+                            pitch = keyNumber - trackKeyNumber;
+
+                            if(player1.IsPlaying) player1.Stop(true); // Force no polyphony
+
+                            player1.SetPitch(pitch);
+                            player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
+                            player1.Play(false);
+
+                            midiPressedKeys.Add(keyNumber);
+                        } else {
+                            int lastIndex = midiPressedKeys.LastIndexOf(keyNumber);
+                            if(lastIndex >= 0) midiPressedKeys.RemoveAt(lastIndex);
+                            if(midiPressedKeys.Count == 0) {
+                                player1.FilterControls.FiltersValues.Key = 0.5;
+                                player1.Stop(true);
+                            }
+                        }
+
+                        // FIXME: This looks like will cause way too many re-renders
                         InvokeAsync(player1.FilterControls.UpdateKnobs);
                         shouldRender = true;
                         InvokeAsync(StateHasChanged);
-                        return;
-                    default:
-                        if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
-                            if(player1 == null || player1.File == null) return;
-
-                            int keyNumber = midiEvent.param & 0xFF;
-                            int keyVelocity = (midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) ? (midiEvent.param >> 8) & 0xFF : -1;
-
-                            if(keyVelocity > 0) {
-                                string key = keyTools.FromMidiNote(keyNumber, KeyTools.Notations.American, true);
-                                double trackKeyNumber = keyTools.ToMidiNote(player1.File.Key ?? key);
-                                pitch = keyNumber - trackKeyNumber;
-
-                                if(player1.IsPlaying) player1.Stop(true); // Force no polyphony
-
-                                player1.SetPitch(pitch);
-                                player1.FilterControls.FiltersValues.Key = pitch / 12.0 + 0.5;
-                                player1.Play(false);
-
-                                pressedKeys.Add(keyNumber);
-                            } else {
-                                int lastIndex = pressedKeys.LastIndexOf(keyNumber);
-                                if(lastIndex >= 0) pressedKeys.RemoveAt(lastIndex);
-                                if(pressedKeys.Count == 0) {
-                                    player1.FilterControls.FiltersValues.Key = 0.5;
-                                    player1.Stop(true);
-                                }
-                            }
-
-                            // FIXME: This looks like will cause way too many re-renders
-                            InvokeAsync(player1.FilterControls.UpdateKnobs);
-                            shouldRender = true;
-                            InvokeAsync(StateHasChanged);
-                        }
-                        return;
-                }
+                    }
+                    return;
             }
-        };
-
-        Program.MidiTools.Start();
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

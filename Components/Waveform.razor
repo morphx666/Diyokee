@@ -278,13 +278,19 @@
             if(Player.File != null) {
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync("#888");
-                Player.BeatMarkers.ForEach(async beatMarker => {
+                // A plain loop, not ForEach with an async lambda: that lambda was async void, so
+                // every marker's draw calls were launched without ever being awaited and only
+                // arrived in the right order because BeginBatch happened to buffer them. Reading
+                // the list into a local also pins the generation being drawn, since the player
+                // publishes a new one by assignment when a track loads.
+                var markers = Player.BeatMarkers;
+                foreach(var beatMarker in markers) {
                     double x = beatMarker.X / tempoFactor + cw2 - pbh;
                     if(x >= 0 && x < cw) {
                         await ctx.MoveToAsync(x, 0);
                         await ctx.LineToAsync(x, ch);
                     }
-                });
+                }
                 await ctx.StrokeAsync();
 
                 // Render downbeat marker

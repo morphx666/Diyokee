@@ -1416,6 +1416,38 @@
         });
     }
 
+    // Index of the last beat at or before `seconds`, or -1 if the playhead sits before the first.
+    // GenerateBeatMarkers emits them in ascending order - forwards from the downbeat, with earlier
+    // ones inserted at the front - so a binary search is valid.
+    private static int BeatIndexAtOrBefore(List<(double X, double Seconds)> markers, double seconds) {
+        int lo = 0, hi = markers.Count - 1, result = -1;
+        while(lo <= hi) {
+            int mid = lo + (hi - lo) / 2;
+            if(markers[mid].Seconds <= seconds) {
+                result = mid;
+                lo = mid + 1;
+            } else {
+                hi = mid - 1;
+            }
+        }
+        return result;
+    }
+
+    // Where the downbeat sits in the marker list, which fixes the bar phase. It only changes when
+    // the list itself does, so it is cached against the instance that produced it rather than
+    // re-scanned every millisecond. Only MonitorBeats calls this, so no locking is needed; a list
+    // swapped in underneath it simply misses the cache once.
+    private List<(double X, double Seconds)>? downbeatCachedFor;
+    private int downbeatCachedIndex;
+
+    private int DownbeatIndexOf(List<(double X, double Seconds)> markers) {
+        if(!ReferenceEquals(markers, downbeatCachedFor)) {
+            downbeatCachedIndex = Math.Max(0, markers.FindIndex(b => b.Seconds >= File!.DownbeatAt));
+            downbeatCachedFor = markers;
+        }
+        return downbeatCachedIndex;
+    }
+
     // TODO: This is a very taxing operation, so it might be a good idea to allow the user to disable it
     // Disabling it would disable the playback sync and the beat monitor
     // TODO: Can we use the BASS channel syncs to do this more efficiently? !IMPORTANT
@@ -1435,14 +1467,22 @@
             InBeat = false;
             List<(double X, double Seconds)> markers = BeatMarkers;   // published by assignment
             if(File != null) {
-                int startIndex = markers.FindIndex(b => b.Seconds >= File.DownbeatAt);
-                for(int i = 0; i < markers.Count; i++) {
-                    if(Math.Abs(markers[i].Seconds - playbackPosition) < threshold) {
-                        InBeatIndex = (i + startIndex) % 2 + 1;
-                        InBeat = true;
-                        break;
-                    }
-                }
+                int at = BeatIndexAtOrBefore(markers, playbackPosition);
+
+                // Which half of the bar the playhead is inside, derived from where it is rather
+                // than latched the last time a beat happened to be hit. The old version only
+                // updated within `threshold` of a marker, and a scratch flies straight past that
+                // window - so the VU sat on a stale colour, or flickered on a reverse pass. This
+                // asks a question that has an answer at any speed and in either direction.
+                if(at >= 0) InBeatIndex = (at + DownbeatIndexOf(markers)) % 2 + 1;
+
+                // The narrow "we are on a beat right now" flag DoJump and StartSynced wait on.
+                // Same meaning and same window as before, but the nearest beat is either the one
+                // at or before the playhead or the one after it, so two comparisons answer it -
+                // where this used to scan all ~770 markers of a six-minute track, per deck, every
+                // millisecond.
+                InBeat = (at >= 0 && playbackPosition - markers[at].Seconds < threshold)
+                         || (at + 1 < markers.Count && markers[at + 1].Seconds - playbackPosition < threshold);
             }
 
             if(++interval > 30) {
