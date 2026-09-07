@@ -28,6 +28,7 @@ internal static class GridTest {
         TempoLookup();
         BarPhase();
         Degenerate();
+        Persistence();
 
         Console.WriteLine(failures == 0
             ? "\nAll checks passed."
@@ -312,6 +313,54 @@ internal static class GridTest {
         Report(Near(noDownbeat.Advance(10.0, 4), 12.0), "...but Advance still uses the nominal tempo");
         Report(Near(noDownbeat.TempoAt(10.0), 120.0), "...and TempoAt reports it");
         Report(Near(noDownbeat.NearestBeat(10.0), 10.0), "...and NearestBeat leaves the position alone");
+    }
+
+    static void Persistence() {
+        Console.WriteLine("\n[11] The traps in persisting anchors (plan section 9)");
+
+        // FromFile prefers a track's own anchors; the BPM + DownbeatAt pair is only the fallback.
+        var gridded = new DFile { BPM = 120, DownbeatAt = 0.0, Duration = 60 };
+        gridded.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 1, Position = 0.0, BPM = 60, IsDownbeat = true });
+        var g = BeatGrid.FromFile(gridded, 1);
+        Report(Near(g.TempoAt(10.0), 60.0), "anchors win over BPM/DownbeatAt when present");
+
+        var ungridded = new DFile { BPM = 120, DownbeatAt = 0.0, Duration = 60 };
+        Report(Near(BeatGrid.FromFile(ungridded, 1).TempoAt(10.0), 120.0), "and the pair is used when they are not");
+
+        // Clone must deep-copy, or Cancel in the dialog does not cancel.
+        var original = new DFile { BPM = 120, DownbeatAt = 0.0, Duration = 60 };
+        original.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 7, Position = 5.0, BPM = 128, IsDownbeat = true });
+        var copy = (DFile)original.Clone();
+        copy.BeatGridMarkers[0].Position = 99.0;
+        copy.BeatGridMarkers.Add(new DFile.BeatGridMarker { Position = 20.0, BPM = 100 });
+        Report(Near(original.BeatGridMarkers[0].Position, 5.0), "Clone deep-copies anchors: editing the clone leaves the original alone");
+        Report(original.BeatGridMarkers.Count == 1, "...including additions");
+
+        // ApplyEditsFrom diffs by Id: an edited anchor keeps its row, a new one is added, a
+        // dropped one is removed. Replacing the list instead would churn every id on every save.
+        var tracked = new DFile { Duration = 60 };
+        tracked.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 1, Position = 1.0, BPM = 120, IsDownbeat = true });
+        tracked.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 2, Position = 2.0, BPM = 120, IsDownbeat = false });
+
+        var edited = new DFile { Duration = 60 };
+        edited.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 1, Position = 1.5, BPM = 130, IsDownbeat = true });
+        edited.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 0, Position = 9.0, BPM = 140, IsDownbeat = false });
+
+        var kept = tracked.BeatGridMarkers[0];
+        tracked.ApplyEditsFrom(edited);
+
+        Report(tracked.BeatGridMarkers.Count == 2, $"anchor 2 was dropped, got {tracked.BeatGridMarkers.Count} anchors");
+        Report(ReferenceEquals(tracked.BeatGridMarkers.FirstOrDefault(m => m.Id == 1), kept),
+               "an edited anchor is the same object, so EF keeps the row");
+        Report(Near(kept.Position, 1.5) && Near(kept.BPM, 130.0), "...with its values updated");
+        Report(tracked.BeatGridMarkers.Any(m => m.Id == 0 && Near(m.Position, 9.0)), "a new anchor is added");
+        Report(!tracked.BeatGridMarkers.Any(m => m.Id == 2), "a removed anchor is gone");
+
+        // The failure mode the Include exists to prevent: diffing against an empty collection,
+        // which is what EF hands back when the anchors were not loaded.
+        var notIncluded = new DFile { Duration = 60 };
+        notIncluded.ApplyEditsFrom(edited);
+        Report(notIncluded.BeatGridMarkers.Count == 2, "diffing into an empty list adds rather than throws");
     }
 
     // ------------------------------------------------------------------

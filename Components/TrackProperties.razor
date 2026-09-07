@@ -263,6 +263,12 @@
     private async Task Save() {
         File.ApplyEditsFrom(edit);
         await FilesComponent.UpdateFile(File);
+
+        // Rebuild the working copy from what was actually persisted. The clone is only refreshed
+        // when the dialog is opened on a DIFFERENT file, so without this, reopening it on the same
+        // track would reuse a copy whose new anchors still carry Id 0 and re-insert them.
+        edit = (DFile)File.Clone();
+
         Close();
     }
 

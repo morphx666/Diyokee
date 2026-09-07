@@ -51,9 +51,12 @@ public sealed class BeatGrid {
     // The one place that knows how a DFile becomes a grid. Falls back to the BPM + DownbeatAt pair
     // when the track has no anchors of its own, which is every track until one is edited.
     public static BeatGrid FromFile(DFile file, double secondsToPosX) {
-        List<Anchor> anchors = [];
+        List<Anchor> anchors = [.. file.BeatGridMarkers.Select(m => new Anchor(m.Position, m.BPM, m.IsDownbeat))];
 
-        if(file.DownbeatAt >= 0) anchors.Add(new Anchor(file.DownbeatAt, file.BPM, true));
+        // No anchors of its own, which is every track until one is edited: fall back to the pair
+        // analysis produces. This is the ONLY compatibility mechanism, and it is why there is one
+        // code path here rather than a legacy one and a new one.
+        if(anchors.Count == 0 && file.DownbeatAt >= 0) anchors.Add(new Anchor(file.DownbeatAt, file.BPM, true));
 
         return new BeatGrid(anchors, file.Duration, secondsToPosX, file.BPM);
     }

@@ -258,7 +258,10 @@
         // This is ONLY for debugging the Krumhansl-Schmuckler algorithm implementation
         //reanalyze = file.Filename.Contains("Dero - ") || file.Filename.Contains("Dario Nunez -");
 
-        var cachedFile = reanalyze ? null : await cache.Files.Include(f => f.CuePoints).FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        var cachedFile = reanalyze ? null : await cache.Files
+            .Include(f => f.CuePoints)
+            .Include(f => f.BeatGridMarkers)
+            .FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(cachedFile == null) {
             float bpm = 0;
 
@@ -329,6 +332,7 @@
             file.ReplayGain = cachedFile.ReplayGain;
             file.HasReplayGain = cachedFile.HasReplayGain;
             file.CuePoints = cachedFile.CuePoints;
+            file.BeatGridMarkers = cachedFile.BeatGridMarkers;   // or a re-browsed folder serves ungridded tracks
         }
     }
 
@@ -371,7 +375,12 @@
     public async Task UpdateFile(DFile file) {
         await using CacheDbContext cache = await CacheDbContextFactory.CreateDbContextAsync();
 
-        DFile? fileFromCache = await cache.Files.FirstOrDefaultAsync(f => f.Filename == file.Filename);
+        // The Include is load-bearing, not a nicety: ApplyEditsFrom diffs the beat grid anchors in,
+        // and without it EF returns the row with an empty collection, so the diff reads every anchor
+        // as deleted and saving wipes the grid.
+        DFile? fileFromCache = await cache.Files
+            .Include(f => f.BeatGridMarkers)
+            .FirstOrDefaultAsync(f => f.Filename == file.Filename);
         if(fileFromCache == null) throw new Exception($"File {file.Filename} not found in cache");
 
         // Update the row in place. Removing it and adding "file" back left EF tracking two
@@ -380,6 +389,14 @@
         // tracked". Cue points belong to CuePoints.UpdateCuePoints(), so they are left alone.
         fileFromCache.ApplyEditsFrom(file);
         await cache.SaveChangesAsync();
+
+        // The anchors the dialog added arrived with Id 0 and have only now been given real ones.
+        // Copy them back onto the in-memory file, or the next save diffs against ids that never
+        // matched, deletes the rows it just wrote and inserts them again - id churn every time,
+        // and the same shape as the duplicate-row bug this method was fixed for.
+        file.BeatGridMarkers = [.. fileFromCache.BeatGridMarkers.Select(m => new DFile.BeatGridMarker {
+            Id = m.Id, Position = m.Position, BPM = m.BPM, IsDownbeat = m.IsDownbeat
+        })];
 
         int index = files.FindIndex(f => f.Filename == file.Filename);
         if(index >= 0) files[index] = file;
