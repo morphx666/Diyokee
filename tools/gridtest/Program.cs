@@ -30,6 +30,8 @@ internal static class GridTest {
         Degenerate();
         Persistence();
         Warp();
+        Editing();
+        CuePointsSurvive();
 
         Console.WriteLine(failures == 0
             ? "\nAll checks passed."
@@ -423,6 +425,149 @@ internal static class GridTest {
         var noTarget = new BeatGrid([new BeatGrid.Anchor(0.0, 120.0, true)], 60.0, 1, 0);
         Report(Near(noTarget.ToGridTime(10.0), 10.0), "no target tempo leaves time alone");
         Report(Near(noTarget.PlaybackRateAt(10.0), 1.0), "...and the rate stays 1");
+    }
+
+    static List<DFile.BeatGridMarker> Anchors(params (double pos, double bpm)[] a)
+        => [.. a.Select((x, i) => new DFile.BeatGridMarker { Id = i + 1, Position = x.pos, BPM = x.bpm, IsDownbeat = i == 0 })];
+
+    static void Editing() {
+        Console.WriteLine("\n[13] Editing operations");
+
+        // Bend: both beat counts are preserved, the neighbours do not move, and the tempo moves
+        // the right way. 120 BPM either side of an anchor at 10s, 20 beats each way.
+        var a = Anchors((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
+        var bend = BeatGrid.BeginBend(a, 1);
+        Report(Near(bend.PrevBeats, 20) && Near(bend.NextBeats, 20), "bend freezes the beat counts either side");
+
+        BeatGrid.ApplyBend(a, bend, 10.5);
+        Report(Near(a[0].Position, 0.0) && Near(a[2].Position, 20.0), "the neighbours do not move");
+        Report(Near(a[1].Position, 10.5), "the dragged anchor moves");
+        Report(Near(a[0].BPM, 60.0 * 20 / 10.5), "dragging right SLOWS the preceding segment");
+        Report(a[0].BPM < 120.0, $"...to {a[0].BPM:F2}, below the original 120");
+        Report(Near(a[1].BPM, 60.0 * 20 / 9.5), "and speeds up the following one");
+        Report(a[1].BPM > 120.0, $"...to {a[1].BPM:F2}, above the original 120");
+
+        // The beat counts really are preserved - that is what makes a bend safe.
+        var g = new BeatGrid([.. a.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 30.0, 1, 120);
+        Report(Near(g.Advance(0.0, 20), 10.5, 1e-6), "20 beats from the start still lands on the bent anchor");
+        Report(Near(g.Advance(10.5, 20), 20.0, 1e-6), "and 20 more still lands on the next one");
+
+        // Dragging left does the opposite.
+        var b = Anchors((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
+        BeatGrid.ApplyBend(b, BeatGrid.BeginBend(b, 1), 9.5);
+        Report(b[0].BPM > 120.0, "dragging left speeds the preceding segment up");
+
+        // Clamped: an anchor can never cross or touch a neighbour.
+        var c = Anchors((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
+        var cb = BeatGrid.BeginBend(c, 1);
+        BeatGrid.ApplyBend(c, cb, 500.0);
+        Report(c[1].Position < 20.0 && c[1].Position > 0.0, $"a drag past the next anchor is clamped to {c[1].Position:F2}");
+        BeatGrid.ApplyBend(c, cb, -500.0);
+        Report(c[1].Position > 0.0, $"and past the previous one to {c[1].Position:F2}");
+
+        // First and last anchors have only one side to stretch.
+        var d = Anchors((0.0, 120.0), (10.0, 120.0));
+        BeatGrid.ApplyBend(d, BeatGrid.BeginBend(d, 0), 0.5);
+        Report(Near(d[1].Position, 10.0), "bending the first anchor leaves the next one alone");
+        Report(Near(d[0].BPM, 60.0 * 20 / 9.5), "...and re-times only the segment after it");
+
+        var e = Anchors((0.0, 120.0), (10.0, 120.0));
+        double tailBpm = e[1].BPM;
+        BeatGrid.ApplyBend(e, BeatGrid.BeginBend(e, 1), 10.5);
+        Report(Near(e[1].BPM, tailBpm), "bending the last anchor leaves its own tempo alone");
+        Report(Near(e[0].BPM, 60.0 * 20 / 10.5), "...and re-times only the segment before it");
+
+        // Round trip.
+        var f = Anchors((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
+        var fb = BeatGrid.BeginBend(f, 1);
+        BeatGrid.ApplyBend(f, fb, 10.7);
+        BeatGrid.ApplyBend(f, fb, 10.0);
+        Report(Near(f[0].BPM, 120.0, 1e-9) && Near(f[1].BPM, 120.0, 1e-9), "bending out and back restores the tempos");
+
+        // Offsets.
+        var sa = Anchors((1.0, 120.0), (10.0, 130.0));
+        BeatGrid.ShiftAll(sa, 0.25);
+        Report(Near(sa[0].Position, 1.25) && Near(sa[1].Position, 10.25), "ShiftAll moves every anchor");
+        Report(Near(sa[0].BPM, 120.0) && Near(sa[1].BPM, 130.0), "...and leaves the tempos alone");
+
+        var st = Anchors((1.0, 120.0), (10.0, 130.0), (20.0, 140.0));
+        BeatGrid.ShiftTail(st, 1, 0.5);
+        Report(Near(st[0].Position, 1.0), "ShiftTail leaves earlier anchors alone");
+        Report(Near(st[1].Position, 10.5) && Near(st[2].Position, 20.5), "...and moves this one and every later one");
+
+        // Insert keeps order and defaults to the tempo already in force, so dropping an anchor
+        // changes nothing until it is edited.
+        var ins = Anchors((0.0, 120.0), (20.0, 90.0));
+        int at = BeatGrid.Insert(ins, 10.0, 120.0, false);
+        Report(at == 1 && Near(ins[1].Position, 10.0), "Insert places the anchor in order");
+        var before = new BeatGrid([new BeatGrid.Anchor(0, 120, true), new BeatGrid.Anchor(20, 90, true)], 40, 1, 120);
+        var after = new BeatGrid([.. ins.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 40, 1, 120);
+        Report(before.Beats.Count == after.Beats.Count, "...and inserting at the running tempo does not move any beat");
+
+        BeatGrid.Delete(ins, 1);
+        Report(ins.Count == 2 && Near(ins[1].Position, 20.0), "Delete removes the anchor and the previous segment extends");
+
+        BeatGrid.Delete(ins, 99);
+        Report(ins.Count == 2, "deleting out of range is ignored");
+    }
+
+    // Cue points must be completely unaffected by anything done to the beat grid. They are stored
+    // in absolute SOURCE seconds, so they stay glued to the audio they mark - which stays true even
+    // once playback is warped, because warping changes when a source instant is heard, not which
+    // instant a cue names.
+    static void CuePointsSurvive() {
+        Console.WriteLine("\n[14] Cue points are untouched by grid edits");
+
+        var file = new DFile { BPM = 120, DownbeatAt = 0.0, Duration = 120 };
+        file.CuePoints.Add(new DFile.CuePoint { Id = 1, Position = 12.345, Name = "Drop" });
+        file.CuePoints.Add(new DFile.CuePoint { Id = 2, Position = 60.5, Name = "Break" });
+        file.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 1, Position = 0.0, BPM = 120, IsDownbeat = true });
+        file.BeatGridMarkers.Add(new DFile.BeatGridMarker { Id = 2, Position = 30.0, BPM = 120, IsDownbeat = false });
+
+        // Every editing operation, run over the anchors.
+        BeatGrid.ApplyBend(file.BeatGridMarkers, BeatGrid.BeginBend(file.BeatGridMarkers, 1), 31.7);
+        BeatGrid.Insert(file.BeatGridMarkers, 50.0, 118.0, false);
+        BeatGrid.ShiftTail(file.BeatGridMarkers, 1, 0.25);
+        BeatGrid.ShiftAll(file.BeatGridMarkers, 0.1);
+        BeatGrid.Delete(file.BeatGridMarkers, 2);
+
+        Report(file.CuePoints.Count == 2, "the cue points are all still there");
+        Report(Near(file.CuePoints[0].Position, 12.345), "bend, insert, shift and delete leave cue positions alone");
+        Report(Near(file.CuePoints[1].Position, 60.5), "...including one past every anchor that moved");
+        Report(file.CuePoints[0].Name == "Drop", "...and their names");
+
+        // Clone has to deep-copy cues as well as anchors, or Cancel in the dialog would not cancel.
+        var copy = (DFile)file.Clone();
+        copy.CuePoints[0].Position = 99.0;
+        copy.CuePoints.Add(new DFile.CuePoint { Position = 5.0, Name = "Extra" });
+        Report(Near(file.CuePoints[0].Position, 12.345) && file.CuePoints.Count == 2,
+               "Clone deep-copies cue points, so editing the copy does not reach the original");
+
+        // ApplyEditsFrom now also diffs anchors. It must STILL leave cue points alone - they belong
+        // to CuePoints.UpdateCuePoints, which saves against its own context.
+        var live = new DFile { Duration = 120 };
+        live.CuePoints.Add(new DFile.CuePoint { Id = 9, Position = 3.5, Name = "Intro" });
+
+        var edited = new DFile { BPM = 128, Duration = 120 };
+        edited.BeatGridMarkers.Add(new DFile.BeatGridMarker { Position = 1.0, BPM = 128, IsDownbeat = true });
+        live.ApplyEditsFrom(edited);
+
+        Report(live.CuePoints.Count == 1 && Near(live.CuePoints[0].Position, 3.5),
+               "ApplyEditsFrom leaves cue points alone while diffing anchors in");
+        Report(live.BeatGridMarkers.Count == 1, "...and still applies the anchors");
+
+        // A cue's position in GRID time moves when the grid changes - that is correct and is what
+        // keeps it drawn over the right audio in the straightened view - but its source position,
+        // which is what seeking uses, does not.
+        var warped = new BeatGrid([
+            new BeatGrid.Anchor(0.0, 128.0, true),
+            new BeatGrid.Anchor(30.0, 124.0, false),
+        ], 120.0, 1, 128.0);
+
+        double cue = 60.0;
+        Report(!Near(warped.ToGridTime(cue), cue), "a cue's grid time does shift under a warp");
+        Report(Near(warped.FromGridTime(warped.ToGridTime(cue)), cue, 1e-8),
+               "...but it maps back to exactly the same audio, which is what seeking uses");
     }
 
     // ------------------------------------------------------------------

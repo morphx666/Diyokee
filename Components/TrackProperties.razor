@@ -189,8 +189,21 @@
                 Color = "#82871f"
             })"
             MinimalMode="true"
+            GridEditing="@gridEditing"
+            WarpedView="@gridWarped"
+            SelectedAnchor="@selectedAnchor"
+            SelectedAnchorChanged="@(i => selectedAnchor = i)"
             @ref="player" />
     </div>
+
+    @if(player != null) {
+        <BeatGridEditor
+            Player="player"
+            File="edit"
+            @bind-Editing="gridEditing"
+            @bind-Warped="gridWarped"
+            @bind-Selected="selectedAnchor" />
+    }
 
     <div class="filename ellipsis">@edit.Filename</div>
 </ModalDialog>
@@ -259,6 +272,10 @@
     }
 
     public bool IsOpen { get => dialog.IsOpen; }
+
+    private bool gridEditing;
+    private bool gridWarped;
+    private int selectedAnchor = -1;
 
     private async Task Save() {
         File.ApplyEditsFrom(edit);

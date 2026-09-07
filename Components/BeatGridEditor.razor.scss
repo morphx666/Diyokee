@@ -1,0 +1,137 @@
+.beat-grid-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #ccc;
+
+    .spacer {
+        flex: 1;
+    }
+
+    .header,
+    .actions {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .button-3d {
+        padding: 0.15rem 0.45rem;
+        border-radius: 3px;
+        background-color: #3a3a3a;
+        border: 1px solid #4d4d4d;
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+
+        &:hover {
+            background-color: #464646;
+        }
+
+        &.active {
+            background-color: #4183c4;
+            border-color: #5a9de0;
+            color: #fff;
+        }
+
+        &.danger:hover {
+            background-color: #8a3030;
+            border-color: #a54040;
+        }
+    }
+
+    .nudges {
+        display: flex;
+        align-items: center;
+        gap: 0.2rem;
+
+        span {
+            color: #888;
+            padding: 0 0.15rem;
+        }
+    }
+
+    // Reads as a status line rather than a control: it is the one number that says what gridding
+    // this track is actually asking playback to do.
+    .drift {
+        color: #888;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .anchors {
+        max-height: 9rem;
+        overflow-y: auto;
+        border: 1px solid #3a3a3a;
+        border-radius: 3px;
+
+        .empty {
+            padding: 0.5rem;
+            color: #777;
+            font-style: italic;
+        }
+
+        .anchor {
+            display: grid;
+            grid-template-columns: 5.5rem 4rem 1.5rem 1fr;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.15rem 0.35rem;
+            cursor: pointer;
+            border-bottom: 1px solid #2c2c2c;
+
+            &:hover {
+                background-color: #333;
+            }
+
+            &.selected {
+                background-color: #2f4d6b;
+            }
+
+            .cell {
+                overflow: hidden;
+                text-overflow: ellipsis;
+
+                &.right {
+                    text-align: right;
+                }
+            }
+
+            .mono {
+                font-family: monospace;
+            }
+
+            // Same three states as the flags on the waveform, so the panel and the canvas agree
+            // without anyone having to map a colour to a meaning twice.
+            .bpm {
+                font-variant-numeric: tabular-nums;
+
+                &.slow {
+                    color: #e8a33d;
+                }
+
+                &.fast {
+                    color: #4db2e8;
+                }
+            }
+
+            .anchor-button {
+                background: none;
+                border: none;
+                color: #aaa;
+                cursor: pointer;
+                padding: 0 0.15rem;
+
+                &:hover {
+                    color: #fff;
+                }
+            }
+        }
+    }
+
+    .hint {
+        color: #777;
+        font-style: italic;
+        line-height: 1.3;
+    }
+}

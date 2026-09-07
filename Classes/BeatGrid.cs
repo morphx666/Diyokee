@@ -179,6 +179,100 @@ public sealed class BeatGrid {
         return t;
     }
 
+    // ---------------------------------------------------------------- editing
+    //
+    // Pure functions over the anchor list, so the operations can be checked in tools/gridtest
+    // without a UI. They mutate the list in place and keep each anchor's identity, because those
+    // ids are database rows - see DFile.ApplyEditsFrom.
+
+    // The beat counts either side of the anchor being dragged, frozen when the drag STARTS.
+    // Re-deriving them on every mouse-move lets the rounding flip mid-drag, which makes the
+    // marker visibly jump under the hand. OriginalBPM is kept so a drag can be cancelled.
+    public readonly record struct Bend(int Index, double PrevBeats, double NextBeats,
+                                       double Lower, double Upper,
+                                       double OriginalPosition, double OriginalPrevBPM, double OriginalBPM);
+
+    // Smallest a segment may become. A segment that reaches zero length is a division by zero and
+    // an anchor that has swallowed its neighbour; half a beat at 200 BPM is already absurd.
+    private const double MinSegmentSeconds = 0.15;
+
+    public static Bend BeginBend(List<DFile.BeatGridMarker> anchors, int index) {
+        DFile.BeatGridMarker a = anchors[index];
+
+        double prevBeats = 0, nextBeats = 0;
+        double lower = 0, upper = double.PositiveInfinity;
+
+        if(index > 0) {
+            DFile.BeatGridMarker p = anchors[index - 1];
+            prevBeats = Math.Round((a.Position - p.Position) * p.BPM / 60.0);
+            lower = p.Position + MinSegmentSeconds;
+        }
+
+        if(index + 1 < anchors.Count) {
+            DFile.BeatGridMarker n = anchors[index + 1];
+            nextBeats = Math.Round((n.Position - a.Position) * a.BPM / 60.0);
+            upper = n.Position - MinSegmentSeconds;
+        }
+
+        return new Bend(index, prevBeats, nextBeats, lower, upper,
+                        a.Position, index > 0 ? anchors[index - 1].BPM : 0, a.BPM);
+    }
+
+    // Moves the anchor and re-times the segments either side so both keep the beat count they had.
+    // Dragging right therefore SLOWS the section leading up to the anchor and speeds up the one
+    // after it - which is what "stretch this bit to line up" means.
+    //
+    // The neighbors do not move, so a bend is local: it cannot disturb a part of the track that
+    // has already been gridded.
+    public static void ApplyBend(List<DFile.BeatGridMarker> anchors, Bend bend, double position) {
+        if(bend.Index < 0 || bend.Index >= anchors.Count) return;
+
+        position = Math.Clamp(position, bend.Lower, bend.Upper);
+        if(!double.IsFinite(position)) return;
+
+        DFile.BeatGridMarker a = anchors[bend.Index];
+        a.Position = position;
+
+        if(bend.Index > 0 && bend.PrevBeats > 0) {
+            DFile.BeatGridMarker p = anchors[bend.Index - 1];
+            p.BPM = 60.0 * bend.PrevBeats / (position - p.Position);
+        }
+
+        if(bend.Index + 1 < anchors.Count && bend.NextBeats > 0) {
+            a.BPM = 60.0 * bend.NextBeats / (anchors[bend.Index + 1].Position - position);
+        }
+    }
+
+    // Every anchor moves by the same amount, tempos untouched. "The whole track is 18 ms early."
+    public static void ShiftAll(List<DFile.BeatGridMarker> anchors, double delta) {
+        foreach(DFile.BeatGridMarker a in anchors) a.Position += delta;
+    }
+
+    // This anchor and every later one move, tempos untouched. The fix for a splice or an edit
+    // point where the track jumps but the tempo does not.
+    public static void ShiftTail(List<DFile.BeatGridMarker> anchors, int index, double delta) {
+        for(int i = index; i < anchors.Count; i++) anchors[i].Position += delta;
+    }
+
+    // A new anchor, inserted in order. Its tempo defaults to whatever was already in force there,
+    // so dropping one changes nothing until it is bent or its BPM is set - you place it, then edit.
+    public static int Insert(List<DFile.BeatGridMarker> anchors, double position, double bpm, bool isDownbeat) {
+        int at = anchors.FindIndex(m => m.Position > position);
+        if(at < 0) at = anchors.Count;
+
+        anchors.Insert(at, new DFile.BeatGridMarker {
+            Position = position,
+            BPM = bpm,
+            IsDownbeat = isDownbeat
+        });
+        return at;
+    }
+
+    // The previous segment simply extends to the next anchor, keeping its own tempo.
+    public static void Delete(List<DFile.BeatGridMarker> anchors, int index) {
+        if(index >= 0 && index < anchors.Count) anchors.RemoveAt(index);
+    }
+
     // ---------------------------------------------------------------- the warp
     //
     // The point of gridding a drifting track is to play it back locked to a quantised beat, which
