@@ -243,6 +243,65 @@ public sealed class BeatGrid {
         }
     }
 
+    // Dragging an ordinary beat - one that is not an anchor's own beat. The beat is somewhere
+    // inside a segment, so the segment's TEMPO is what changes: its start anchor is pinned and the
+    // tempo is set so that this beat lands exactly where it was dropped. Every later beat in the
+    // segment follows, which is the point - you drag one beat onto a kick and the whole section
+    // lines up behind it.
+    //
+    // No anchor is created. Anchors are for pinning a section you have already got right, so that
+    // correcting a LATER section cannot disturb it; they should not breed every time a beat moves.
+    public readonly record struct BeatDrag(bool IsAnchor, Bend AnchorBend, int Segment, double Beats,
+                                           double Lower, double Upper, double OriginalBPM) {
+        public static readonly BeatDrag None = new(false, default, -1, 0, 0, 0, 0);
+        public bool IsValid => IsAnchor || Segment >= 0;
+    }
+
+    private const double MinEditableBPM = 20.0;
+    private const double MaxEditableBPM = 400.0;
+
+    // `beatSeconds` is the position of the beat the user grabbed, as it stands right now.
+    public BeatDrag BeginBeatDrag(List<DFile.BeatGridMarker> anchors, double beatSeconds) {
+        if(anchors.Count == 0) return BeatDrag.None;
+
+        // A beat sitting on an anchor moves the anchor itself, which re-times BOTH neighbouring
+        // segments and leaves the neighbours where they are.
+        int onAnchor = anchors.FindIndex(a => Math.Abs(a.Position - beatSeconds) < 1e-6);
+        if(onAnchor >= 0) return new BeatDrag(true, BeginBend(anchors, onAnchor), -1, 0, 0, 0, anchors[onAnchor].BPM);
+
+        int segment = SegmentAt(beatSeconds);
+        double start = anchors[segment].Position;
+        double bpm = anchors[segment].BPM;
+        if(!(bpm > 0)) return BeatDrag.None;
+
+        // Frozen here, not re-derived per mouse-move: re-rounding mid-drag lets the beat count flip
+        // and the grid jump under the hand.
+        double beats = Math.Round((beatSeconds - start) * bpm / 60.0);
+        if(Math.Abs(beats) < 1) return BeatDrag.None;
+
+        // Clamp by the tempo the drag would imply rather than by distance, so the limits mean
+        // something musical and a beat can never be dragged onto its own anchor.
+        double a = start + beats * 60.0 / MaxEditableBPM;
+        double b = start + beats * 60.0 / MinEditableBPM;
+
+        return new BeatDrag(false, default, segment, beats, Math.Min(a, b), Math.Max(a, b), bpm);
+    }
+
+    public void ApplyBeatDrag(List<DFile.BeatGridMarker> anchors, BeatDrag drag, double position) {
+        if(!drag.IsValid) return;
+
+        if(drag.IsAnchor) {
+            ApplyBend(anchors, drag.AnchorBend, position);
+            return;
+        }
+
+        position = Math.Clamp(position, drag.Lower, drag.Upper);
+        double start = anchors[drag.Segment].Position;
+        if(Math.Abs(position - start) < 1e-9) return;
+
+        anchors[drag.Segment].BPM = 60.0 * drag.Beats / (position - start);
+    }
+
     // Every anchor moves by the same amount, tempos untouched. "The whole track is 18 ms early."
     public static void ShiftAll(List<DFile.BeatGridMarker> anchors, double delta) {
         foreach(DFile.BeatGridMarker a in anchors) a.Position += delta;
