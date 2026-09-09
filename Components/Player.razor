@@ -516,9 +516,19 @@
         await faderTempo!.SetValue(value, true);
     }
 
+    // How much faster the beat grid says this stretch of the track has to be played to sit on a
+    // quantised beat. 1.0 on any track whose grid has not been edited, so nothing changes speed
+    // until an anchor says the track drifts.
+    [JsonIgnore] private double warpFactor = 1.0;
+
     private void ApplyTempo() {
         if(masterSplitterHandle == 0) return;
-        double tempo = ReScaleTempoFader() * 100.0;
+
+        // The fader is a percentage change and the warp is a multiplier on the resulting rate, so
+        // they compose rather than add: pulling the fader on a warped track still gives the same
+        // proportional change it would on any other.
+        double rate = (1.0 + ReScaleTempoFader()) * warpFactor;
+        double tempo = (rate - 1.0) * 100.0;
 
         bool r = Bass.BASS_ChannelSetAttribute(tempoHandle, BASSAttribute.BASS_ATTRIB_TEMPO, (float)tempo);
         if(Program.Settings.Playback.SyncPlayersBpm) {
@@ -693,6 +703,9 @@
         gainHandle = 0;
         eqHandle = 0;
         pitchHandle = 0;
+
+        // Or the next track inherits this one's correction until the first anchor crossing.
+        warpFactor = 1.0;
     }
 
     private void LoadFile() {
@@ -767,14 +780,20 @@
             gainHandle = Bass.BASS_ChannelSetFX(streamHandle, BASSFXType.BASS_FX_BFX_VOLUME, 0);
             bassErrorCode = Bass.BASS_ErrorGetCode();
             if(gainHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(gainHandle));
+        }
 
-            // Tempo Control.
-            // Deliberately without BASS_FX_FREESOURCE: the engine owns its own stream and frees
-            // it in FreeStreams, so letting the tempo stream free it too would be a double free.
-            tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
-                                                                   | BASSFlag.BASS_STREAM_DECODE);
-            bassErrorCode = Bass.BASS_ErrorGetCode();
-            if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
+        // Tempo Control. Built in minimal mode too, unlike the rest of the chain: it is where the
+        // beat grid's warp is applied, and the Track Properties preview is the one place a grid
+        // gets judged by ear. Without it, gridding would be silent about the thing it is for.
+        //
+        // Deliberately without BASS_FX_FREESOURCE: the engine owns its own stream and frees it in
+        // FreeStreams, so letting the tempo stream free it too would be a double free.
+        tempoHandle = BassFx.BASS_FX_TempoCreate(streamHandle, BASSFlag.BASS_FX_TEMPO_ALGO_SHANNON
+                                                               | BASSFlag.BASS_STREAM_DECODE);
+        bassErrorCode = Bass.BASS_ErrorGetCode();
+        if(tempoHandle == 0 || bassErrorCode != BASSError.BASS_OK) return (bassErrorCode, nameof(tempoHandle));
+
+        if(!MinimalMode) {
 
             // Eq Control
             eqHandle = Bass.BASS_ChannelSetFX(tempoHandle, BASSFXType.BASS_FX_BFX_PEAKEQ, 0);
@@ -819,7 +838,7 @@
         }
 
         foreach(var mixHandle in Program.BassMixHandles) {
-            int splitterHandle = BassMix.BASS_Split_StreamCreate(MinimalMode ? streamHandle : tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
+            int splitterHandle = BassMix.BASS_Split_StreamCreate(tempoHandle, BASSFlag.BASS_STREAM_DECODE, null);
 
             BASSError bassErrorCode = Bass.BASS_ErrorGetCode();
             if(splitterHandle == 0 || bassErrorCode != BASSError.BASS_OK) return Fail(bassErrorCode, nameof(splitterHandle));
@@ -879,7 +898,7 @@
             // the stream they tap; decks with nothing loaded share handle 0 and rebuild nothing.
             Player[] players;
             lock(livePlayers) {
-                players = [.. livePlayers.GroupBy(p => p.MinimalMode ? p.streamHandle : p.tempoHandle)
+                players = [.. livePlayers.GroupBy(p => p.tempoHandle)
                                          .Select(g => g.Last())];
             }
 
@@ -916,7 +935,7 @@
     }
 
     private void RebuildOutputs() {
-        if(engine == null || (MinimalMode ? streamHandle : tempoHandle) == 0) return;   // no track loaded
+        if(engine == null || tempoHandle == 0) return;   // no track loaded
 
         var r = CreateSplitters();
         if(r.Error != BASSError.BASS_OK) {
@@ -1138,6 +1157,12 @@
     // SetParameters, which also re-parses the whole waveform string out of the cached file.
     public async Task RefreshBeatGrid() {
         BuildBeatGrid();
+
+        // The segment under the playhead may have just changed tempo, so the rate has to be
+        // re-read now rather than at the next anchor crossing - otherwise a drag is silent until
+        // playback happens to cross one.
+        warpFactor = double.NaN;
+        UpdateWarp();
         await (waveform?.ForceReRender() ?? Task.CompletedTask);
         await (waveformFull?.ForceReRender() ?? Task.CompletedTask);
         await InvokeAsync(StateHasChanged);
@@ -1484,12 +1509,32 @@
         }
     }
 
+    // Makes the audio follow the grid. The grid is piecewise constant, so this only does anything
+    // when the playhead crosses an anchor - which matters, because setting BASS_ATTRIB_TEMPO
+    // re-initialises SoundTouch and doing that every tick would be audible.
+    //
+    // Driven by the ENGINE's position rather than the heard position: the tempo stream buffers, so
+    // what is entering it is ahead of what is coming out, and the engine's playhead is what is
+    // being fed in. Reading the heard position instead would apply each tempo change a buffer late.
+    public void UpdateWarp() {
+        if(engine == null || tempoHandle == 0) return;
+
+        double wanted = grid.PlaybackRateAt(engine.DecodeSeconds);
+        if(!(wanted > 0) || !double.IsFinite(wanted)) wanted = 1.0;
+        if(Math.Abs(wanted - warpFactor) < 1e-9) return;
+
+        warpFactor = wanted;
+        ApplyTempo();
+    }
+
     private async Task MonitorPlayback() {
         int intervals = 0;
         int delay = 30;
 
         while(true) {
             await Task.Delay(delay);
+
+            UpdateWarp();
 
             // A braked release finishes on the audio thread; the deck is parked here.
             if(engine != null && engine.ConsumeBrakeCompleted()) {
