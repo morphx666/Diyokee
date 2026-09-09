@@ -32,6 +32,7 @@ internal static class GridTest {
         Warp();
         Editing();
         BeatDragging();
+        Pinning();
         CuePointsSurvive();
 
         Console.WriteLine(failures == 0
@@ -570,24 +571,85 @@ internal static class GridTest {
         var d5 = g5.BeginBeatDrag(a5, 10.0);
         BeatGrid.ApplyBeatDrag(a5, d5, 10.9);
         BeatGrid.ApplyBeatDrag(a5, d5, 10.0);
-        BeatGrid.Prune(a5);
+        BeatGrid.PruneDrag(a5, d5);
         Report(a5.Count == 1, $"dragging out and back leaves no anchor behind, got {a5.Count}");
         Report(Near(a5[0].BPM, 120.0, 1e-9), "...and the tempo is exactly as it was");
 
         // A real correction is NOT pruned.
         var (g6, a6) = Build((0.0, 120.0));
-        BeatGrid.ApplyBeatDrag(a6, g6.BeginBeatDrag(a6, 10.0), 10.4);
-        BeatGrid.Prune(a6);
+        var d6b = g6.BeginBeatDrag(a6, 10.0);
+        BeatGrid.ApplyBeatDrag(a6, d6b, 10.4);
+        BeatGrid.PruneDrag(a6, d6b);
         Report(a6.Count == 2, "a genuine correction keeps its anchor");
-
-        // Downbeat anchors carry bar phase, not tempo, so they always survive pruning.
-        var a7 = Anchors((0.0, 120.0), (10.0, 120.0));
-        a7[1].IsDownbeat = true;
-        BeatGrid.Prune(a7);
-        Report(a7.Count == 2, "a downbeat anchor is never pruned");
 
         var (g8, a8) = Build((0.0, 120.0));
         Report(!g8.BeginBeatDrag([], 10.0).IsValid, "grabbing with no anchors at all is refused");
+    }
+
+    // Pinning: the answer to "everything up to here is already correct, do not touch it".
+    static void Pinning() {
+        Console.WriteLine("\n[16] Pins protect what is already aligned");
+
+        static (BeatGrid grid, List<DFile.BeatGridMarker> anchors) Build(params (double pos, double bpm)[] a) {
+            var anchors = Anchors(a);
+            var grid = new BeatGrid([.. anchors.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 600.0, 1, 120.0);
+            return (grid, anchors);
+        }
+
+        static BeatGrid Rebuild(List<DFile.BeatGridMarker> anchors)
+            => new([.. anchors.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 600.0, 1, 120.0);
+
+        // A pin changes nothing you can see or hear - it takes the tempo already in force.
+        var (grid, anchors) = Build((0.0, 120.0));
+        var beatsBefore = grid.Beats.Select(b => b.Seconds).ToArray();
+        Report(grid.TogglePin(anchors, 16.0), "double-clicking a beat adds a pin");
+        Report(anchors.Count == 2, "...as an anchor");
+
+        var pinned = Rebuild(anchors);
+        Report(pinned.Beats.Count == beatsBefore.Length, "a pin does not change the number of beats");
+        Report(pinned.Beats.Select(b => b.Seconds).Zip(beatsBefore).All(p => Near(p.First, p.Second, 1e-9)),
+               "...and does not move a single one");
+
+        // THE point: drag a later beat and nothing before the pin may move.
+        var beforeDrag = pinned.Beats.Where(b => b.Seconds <= 16.0).Select(b => b.Seconds).ToArray();
+        double later = pinned.Advance(16.0, 32);
+        BeatGrid.ApplyBeatDrag(anchors, pinned.BeginBeatDrag(anchors, later), later + 0.35);
+
+        var after = Rebuild(anchors);
+        var afterBeforePin = after.Beats.Where(b => b.Seconds <= 16.0 + 1e-9).Select(b => b.Seconds).ToArray();
+        Report(afterBeforePin.Length == beforeDrag.Length, "the same beats still sit before the pin");
+        Report(afterBeforePin.Zip(beforeDrag).All(p => Near(p.First, p.Second, 1e-9)),
+               "not one beat before the pin moved");
+        Report(!Near(after.Advance(16.0, 32), later, 1e-6), "...while the beat that was dragged did");
+
+        // Without a pin, the same drag reaches all the way back - which is what the pin is for.
+        var (g2, a2) = Build((0.0, 120.0));
+        double later2 = g2.Advance(16.0, 32);
+        BeatGrid.ApplyBeatDrag(a2, g2.BeginBeatDrag(a2, later2), later2 + 0.35);
+        var after2 = Rebuild(a2);
+        Report(!Near(after2.Beats[8].Seconds, g2.Beats[8].Seconds, 1e-9), "with no pin, an early beat does move");
+
+        // A pin survives a later drag's prune. It looks exactly like a redundant anchor - same
+        // tempo as the segment before it - which is why the prune has to be targeted.
+        var (g3, a3) = Build((0.0, 120.0));
+        g3.TogglePin(a3, 16.0);
+        var g3b = Rebuild(a3);
+        double later3 = g3b.Advance(16.0, 32);
+        var drag3 = g3b.BeginBeatDrag(a3, later3);
+        BeatGrid.ApplyBeatDrag(a3, drag3, later3 + 0.2);
+        BeatGrid.PruneDrag(a3, drag3);
+        Report(a3.Any(m => Near(m.Position, 16.0)), "the pin survives a later drag and its prune");
+
+        // Double-clicking a pin removes it.
+        var (g4, a4) = Build((0.0, 120.0));
+        g4.TogglePin(a4, 16.0);
+        Report(!Rebuild(a4).TogglePin(a4, 16.0), "double-clicking a pin reports removal");
+        Report(a4.Count == 1, "...and it is gone");
+
+        // The downbeat anchor is what the grid hangs from and cannot be unpinned away.
+        var (g5, a5) = Build((0.0, 120.0));
+        g5.TogglePin(a5, 0.0);
+        Report(a5.Count == 1, "the first anchor cannot be removed");
     }
 
     // Cue points must be completely unaffected by anything done to the beat grid. They are stored

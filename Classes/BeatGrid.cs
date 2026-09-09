@@ -253,8 +253,8 @@ public sealed class BeatGrid {
     // The user never places, names or deletes these. Dragging a beat is the only way one appears
     // and dragging it back is the only way one goes, which is what keeps the anchors an invisible
     // consequence of the gesture rather than a thing to manage.
-    public readonly record struct BeatDrag(Bend Bend, int Index) {
-        public static readonly BeatDrag None = new(default, -1);
+    public readonly record struct BeatDrag(Bend Bend, int Index, bool Created) {
+        public static readonly BeatDrag None = new(default, -1, false);
         public bool IsValid => Index >= 0;
     }
 
@@ -263,26 +263,51 @@ public sealed class BeatGrid {
         if(anchors.Count == 0) return BeatDrag.None;
 
         int index = anchors.FindIndex(a => Math.Abs(a.Position - beatSeconds) < 1e-6);
-        if(index < 0) index = Insert(anchors, beatSeconds, TempoAt(beatSeconds), false);
+        bool created = index < 0;
+        if(created) index = Insert(anchors, beatSeconds, TempoAt(beatSeconds), false);
 
-        return new BeatDrag(BeginBend(anchors, index), index);
+        return new BeatDrag(BeginBend(anchors, index), index, created);
     }
 
     public static void ApplyBeatDrag(List<DFile.BeatGridMarker> anchors, BeatDrag drag, double position) {
         if(drag.IsValid) ApplyBend(anchors, drag.Bend, position);
     }
 
-    // Drops anchors that say nothing: one whose tempo matches the segment before it is not a tempo
-    // change, so it is only clutter in the database and a needless extra segment. Run when a drag
-    // finishes, so dragging a beat back to where it started leaves no trace - the user should not
-    // be able to accumulate invisible state by fidgeting.
+    // Called when a drag finishes. Removes ONLY the anchor that this drag created, and only if it
+    // turned out to say nothing - a tempo matching the segment before it is not a tempo change.
+    // That way a press that moves nothing, or a drag taken back to where it started, leaves no
+    // trace, and the user cannot accumulate invisible state by fidgeting.
     //
-    // Downbeat anchors always survive, because they carry bar phase rather than tempo.
-    public static void Prune(List<DFile.BeatGridMarker> anchors) {
-        for(int i = anchors.Count - 1; i > 0; i--) {
-            if(anchors[i].IsDownbeat) continue;
-            if(Math.Abs(anchors[i].BPM - anchors[i - 1].BPM) < 1e-6) anchors.RemoveAt(i);
+    // Deliberately targeted rather than sweeping the whole list: a pin the user placed on purpose
+    // also has the tempo of the segment before it - that is exactly what makes it a pin and not a
+    // tempo change - so a general sweep would delete every pin the moment anything was dragged.
+    public static void PruneDrag(List<DFile.BeatGridMarker> anchors, BeatDrag drag) {
+        if(!drag.Created || drag.Index <= 0 || drag.Index >= anchors.Count) return;
+        if(anchors[drag.Index].IsDownbeat) return;
+
+        if(Math.Abs(anchors[drag.Index].BPM - anchors[drag.Index - 1].BPM) < 1e-6) anchors.RemoveAt(drag.Index);
+    }
+
+    // Pins a beat, or unpins one already pinned.
+    //
+    // A pin is just an anchor carrying the tempo already in force, so it changes nothing you can
+    // hear or see - it exists to say "everything before here is correct". Because a bend only ever
+    // re-times the two segments either side of the anchor being dragged, an anchor is a wall:
+    // dragging any later beat cannot reach past it. That is the whole mechanism.
+    //
+    // Returns true if a pin was added, false if one was removed.
+    public bool TogglePin(List<DFile.BeatGridMarker> anchors, double beatSeconds) {
+        int at = anchors.FindIndex(a => Math.Abs(a.Position - beatSeconds) < 1e-6);
+
+        if(at >= 0) {
+            // The first anchor is the track's downbeat and is what the whole grid hangs from;
+            // removing it would leave the grid with nothing to reference.
+            if(at > 0) anchors.RemoveAt(at);
+            return false;
         }
+
+        Insert(anchors, beatSeconds, TempoAt(beatSeconds), false);
+        return true;
     }
 
     // Every anchor moves by the same amount, tempos untouched. "The whole track is 18 ms early."

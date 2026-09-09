@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 
 <MouseSupport OnMouseEvent="@HandleMouseEvent">
-    <div class="waveform-container">
+    <div class="waveform-container" @ondblclick="HandleDoubleClick">
         <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
         @foreach(double x in GrabbableBeatXs()) {
             <div class="beat-handle" style="left:@(x.ToString("0.##", CultureInfo.InvariantCulture))px"></div>
@@ -212,6 +212,31 @@
         }
     }
 
+    // The beat within reach of a canvas x, or NaN. Generous enough to grab without squinting,
+    // tight enough that at normal zoom you cannot take the wrong one - and the same width as the
+    // .beat-handle strips, so what the ew-resize cursor promises is what a press actually gets.
+    private double NearestGrabbableBeat(double px) {
+        const double ReachPx = 7;
+
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double head = PlaybackHead / tempoFactor;
+
+        double bestDistance = ReachPx;
+        double found = double.NaN;
+
+        foreach(var beat in Player.Grid.Beats) {
+            double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - head;
+            double distance = Math.Abs(px - x);
+            if(distance < bestDistance) {
+                bestDistance = distance;
+                found = beat.Seconds;
+            }
+        }
+
+        return found;
+    }
+
     // Seconds under the pointer, on the synced waveform. The centre of the canvas is the playhead.
     private double PointerSeconds() {
         double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
@@ -236,26 +261,7 @@
             BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
         }
 
-        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
-        double cw2 = canvasWidth / (canvasRatio * 2);
-        double head = PlaybackHead / tempoFactor;
-        double px = mouseState.X - (canvasBounds?.X ?? 0);
-
-        // Nearest beat within reach of the pointer. Generous enough to grab without squinting,
-        // tight enough that at normal zoom you cannot grab the wrong one.
-        const double ReachPx = 7;
-        double bestDistance = ReachPx;
-        double grabbed = double.NaN;
-
-        foreach(var beat in Player.Grid.Beats) {
-            double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - head;
-            double distance = Math.Abs(px - x);
-            if(distance < bestDistance) {
-                bestDistance = distance;
-                grabbed = beat.Seconds;
-            }
-        }
-
+        double grabbed = NearestGrabbableBeat(mouseState.X - (canvasBounds?.X ?? 0));
         if(double.IsNaN(grabbed)) return;
 
         activeDrag = Player.Grid.BeginBeatDrag(anchors, grabbed);
@@ -264,6 +270,29 @@
         draggingAnchor = activeDrag.Index;
         draggedBeat = grabbed;
         ghostBeats = [.. Player.Grid.Beats.Select(b => b.Seconds)];
+    }
+
+    // Double-clicking a beat pins it: everything before that point is then protected from any
+    // later drag, because a bend can only ever re-time the two segments either side of the anchor
+    // being dragged. Double-clicking a pin removes it.
+    //
+    // The two presses of the double-click each begin and end a drag first, but a press that never
+    // moves applies no bend and PruneDrag removes the anchor it created, so they leave nothing
+    // behind and this runs last on a clean grid.
+    private async Task HandleDoubleClick(MouseEventArgs e) {
+        if(!GridEditing || Mode != Modes.AudioSynced || Player.File == null) return;
+
+        var anchors = Player.File.BeatGridMarkers;
+        if(anchors.Count == 0) {
+            if(Player.File.DownbeatAt < 0 || !(Player.File.BPM > 0)) return;
+            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
+        }
+
+        double beat = NearestGrabbableBeat(e.ClientX - (canvasBounds?.X ?? 0));
+        if(double.IsNaN(beat)) return;
+
+        Player.Grid.TogglePin(anchors, beat);
+        await Player.RefreshBeatGrid();
     }
 
     private async Task DragAnchor() {
@@ -276,14 +305,18 @@
     }
 
     private async Task EndAnchorDrag() {
+        BeatGrid.BeatDrag finished = activeDrag;
+
         draggingAnchor = -1;
         draggedBeat = double.NaN;
         activeDrag = BeatGrid.BeatDrag.None;
         ghostBeats = null;
 
         // Dragging a beat back where it came from must leave nothing behind, or fidgeting would
-        // quietly accumulate anchors the user never asked for and cannot see.
-        if(Player.File != null) BeatGrid.Prune(Player.File.BeatGridMarkers);
+        // quietly accumulate anchors the user never asked for and cannot see. Only this drag's own
+        // anchor is considered - a pin the user placed deliberately looks identical to a redundant
+        // anchor, so a general sweep would delete every pin the moment anything was dragged.
+        if(Player.File != null) BeatGrid.PruneDrag(Player.File.BeatGridMarkers, finished);
 
         await Player.RefreshBeatGrid();
     }
