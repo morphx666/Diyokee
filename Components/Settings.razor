@@ -7,195 +7,260 @@
 <ModalDialog
     Title="Settings"
     Buttons = "dlgButtons"
-    @ref="dialog">
+    @ref="dialog"
+    Movable=true>>
 
     @if(settings == null) return;
 
-    <div class="header">
-        <h3>General</h3>
-        <div class="field">
-            <label for="key-notation">Key Notation</label>
-            <div class="select-container">
-                <InputSelect id="key-notation" class="key-notation-select-container" @bind-value="settings.KeyNotation">
-                    @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
-                        <option value="@notation">@notation</option>
-                    }
-                </InputSelect>
-            </div>
-        </div>
-    </div>
+    @* A category list beside one panel, rather than every setting in one scroll. The dialog holds
+       roughly forty controls across six unrelated concerns, and the Playback section alone had
+       fifteen plus both players plus the VU colours plus - nested inside it, which cannot have
+       been deliberate - the whole MIDI section. Nothing was findable except by scrolling past
+       everything else.
 
-    <div class="header">
-        <h3>Audio</h3>
-        <AudioMatrix Settings="settings" />
-    </div>
-
-    <div class="header">
-        <h3>Media Providers</h3>
-        <div class="media-providers scroller">
-            @foreach(var provider in settings.MediaProviders) {
-                <MediaProvider
-                    Provider="provider"
-                    OnDeleteProvider="@(() => DeleteProvider(provider))" />
+       Panels are hidden with a class rather than removed, so switching category keeps every
+       component mounted: the audio matrix applies its changes live and MIDI learn holds state
+       mid-capture, and neither survives being torn down and rebuilt. *@
+    <div class="settings-layout">
+        <nav class="settings-nav">
+            @foreach(var item in Nav) {
+                <div class="nav-item @(section == item.Section ? "active" : "")"
+                     @onclick="() => section = item.Section">
+                    <i class="fa-solid @item.Icon"></i><span>@item.Label</span>
+                </div>
             }
-            <div class="add-provider-menu">
-                <button class="button-add-provider" onclick="@ToggleAddMenu"><i class="fa-solid fa-circle-plus"></i></button>
-                @if(showAddMenu) {
-                    <div class="add-provider-dropdown">
-                        <button onclick="@(() => AddProvider("local"))"><i class="fa-solid fa-folder"></i> Local</button>
-                        <button onclick="@(() => AddProvider("dropbox"))"><i class="fa-brands fa-dropbox"></i> Dropbox</button>
-                    </div>
-                }
-            </div>
-        </div>
-    </div>
+        </nav>
 
-    <div class="header">
-        <h3>Playback</h3>
+        <div class="settings-panel scroller">
 
-        <div class="field">
-            <label for="beatmatching-display">Beatmatching Display</label>
-            <InputCheckbox id="beatmatching-display" @bind-value="settings.Playback.BeatmatchingDisplay" />
-        </div>
-
-        <div class="field">
-            <label for="lock-onplay">Lock players while playing</label>
-            <InputCheckbox id="lock-onplay" @bind-value="settings.Playback.LockOnPlay" />
-        </div>
-
-        <div class="field">
-            <label for="sync-playback">Start playback in-sync with other player</label>
-            <InputCheckbox id="sync-playback" @bind-value="settings.Playback.SyncPlayback" />
-            <span class="info" hidden="@(!settings.Playback.SyncPlayback)">(hold SHIFT to override)</span>
-        </div>
-
-        <div class="field">
-            <label for="snap-on-load">Snap to downbeat on load</label>
-            <InputCheckbox id="snap-on-load" @bind-value="settings.Playback.SnapToDownBeatOnLoad" />
-        </div>
-
-        <div class="field">
-            <label for="scratch-enabled">Scratching</label>
-            <InputCheckbox id="scratch-enabled" @bind-value="settings.Playback.Scratch.Enabled" />
-            <span class="info">(drag the synced waveform)</span>
-        </div>
-
-        @if(settings.Playback.Scratch.Enabled) {
-            <div class="field">
-                <label for="scratch-touch-mode">On touch</label>
-                <div class="select-container">
-                    <InputSelect id="scratch-touch-mode" @bind-value="settings.Playback.Scratch.TouchMode">
-                        <option value="@TouchModes.Vinyl">Vinyl - the hand takes over</option>
-                        <option value="@TouchModes.Bend">Bend - offset play speed</option>
-                    </InputSelect>
-                </div>
-            </div>
-
-            <div class="field">
-                <label for="scratch-release-mode">On release</label>
-                <div class="select-container">
-                    <InputSelect id="scratch-release-mode" @bind-value="settings.Playback.Scratch.ReleaseMode">
-                        <option value="@ReleaseModes.Inertia">Inertia - spin back up to speed</option>
-                        <option value="@ReleaseModes.Stop">Stop - brake to a standstill</option>
-                    </InputSelect>
-                </div>
-            </div>
-
-            <div class="field">
-                <label for="scratch-spin-up">@(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop ? "Brake time" : "Spin-up time")</label>
-                @if(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop) {
-                    <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.BrakeTime" />
-                } else {
-                    <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.SpinUpTime" />
-                }
-                <span class="info">seconds (0 = instant)</span>
-            </div>
-
-            <div class="field">
-                <label for="scratch-follow">Follow time</label>
-                <InputNumber id="scratch-follow" step="0.005" @bind-value="settings.Playback.Scratch.FollowTime" />
-                <span class="info">seconds behind the hand - lower is tighter, higher is smoother</span>
-            </div>
-
-            <div class="field">
-                <label for="scratch-sensitivity">Mouse sensitivity</label>
-                <InputNumber id="scratch-sensitivity" step="0.1" @bind-value="settings.Playback.Scratch.MouseSensitivity" />
-            </div>
-        }
-
-        <div class="field">
-            <label for="tempo-range">Tempo Range -/+</label>
-            <div class="select-container">
-                <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
-                    @foreach(var tempoRange in TempoRanges) {
-                        <option value="@tempoRange">@tempoRange</option>
-                    }
-                </InputSelect>
-            </div>
-        </div>
-
-        @*
-            FIXME: This could be removed. It's already available as a dropdown menu for each player.
-            Or perhaps we should remove the dropdown menus from the main UI?
-        *@
-        <div class="field">
-            <label for="eq-profile">Equalizer Profile</label>
-            <div class="select-container">
-                <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
-                    @foreach(var profile in settings.EqualizerProfiles) {
-                        <option value="@profile.Name">@profile.Name</option>
-                    }
-                </InputSelect>
-            </div>
-        </div>
-
-        <div class="eq-profile-info">
-            <span>Low:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Low.ToString("N2")) Hz</span>
-            <span>Mid:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Mid.ToString("N2")) Hz</span>
-            <span>Hi:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Hi.ToString("N2")) Hz</span>
-        </div>
-
-        @foreach(var playerObj in settings.Playback.Players.Select((player, index) => new { player, index })) {
-            <div class="sub-header">
-                <h5>Player @(playerObj.index + 1)</h5>
-
-                <div class="field">
-                    <label for="@($"player{playerObj.index}-name")">Name</label>
-                    <InputText id="@($"player{playerObj.index}-name")" @bind-value="playerObj.player.Name" />
-                </div>
-                <div class="field">
-                    <label for="@($"player{playerObj.index}-color")">Color</label>
-                    <InputText class="as-number"
-                               id="@($"player{playerObj.index}-color")"
-                               @bind-value="playerObj.player.Color" />
-                    <input type="color" class="color" id="@($"player{playerObj.index}-color-picker")" @bind-value="playerObj.player.Color" />
-                </div>
-                <div class="field">
-                    <label for="@($"player{playerObj.index}-reverse-controls")">Reverse Controls Order</label>
-                    <InputCheckbox id="@($"player{playerObj.index}-reverse-controls")" @bind-value="playerObj.player.ReverseControls" />
-                </div>
-            </div>
-        }
-
-        <div class="sub-header">
-            <h5>VU Meters Colors</h5>
-
-            <div class="vu-colors">
-                @foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-") && !e.Key.Contains("-alt"))) {
+            @* ---------------------------------------------------------------- General *@
+            <div class="panel @(section == Sections.General ? "active" : "")">
+                <div class="group">
+                    <div class="group-title">Display</div>
                     <div class="field">
-                        <label for=@vuColor.Key>@(textInfo.ToTitleCase(vuColor.Key.Replace("vu-", "").Replace("color", "").Replace("-", " ")))</label>
-                        <input type="color" class="color" id=@vuColor.Key @bind=@settings.UIElements[vuColor.Key] />
+                        <label for="key-notation">Key Notation</label>
+                        <div class="select-container">
+                            <InputSelect id="key-notation" class="key-notation-select-container" @bind-value="settings.KeyNotation">
+                                @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
+                                    <option value="@notation">@notation</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- Audio *@
+            <div class="panel @(section == Sections.Audio ? "active" : "")">
+                <div class="group">
+                    <div class="group-title">Output Routing</div>
+                    <AudioMatrix Settings="settings" />
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- Library *@
+            <div class="panel @(section == Sections.Library ? "active" : "")">
+                <div class="group">
+                    <div class="group-title">Media Providers</div>
+                    <div class="media-providers scroller">
+                        @foreach(var provider in settings.MediaProviders) {
+                            <MediaProvider
+                                Provider="provider"
+                                OnDeleteProvider="@(() => DeleteProvider(provider))" />
+                        }
+                        <div class="add-provider-menu">
+                            <button class="button-add-provider" onclick="@ToggleAddMenu"><i class="fa-solid fa-circle-plus"></i></button>
+                            @if(showAddMenu) {
+                                <div class="add-provider-dropdown">
+                                    <button onclick="@(() => AddProvider("local"))"><i class="fa-solid fa-folder"></i> Local</button>
+                                    <button onclick="@(() => AddProvider("dropbox"))"><i class="fa-brands fa-dropbox"></i> Dropbox</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- Playback *@
+            <div class="panel @(section == Sections.Playback ? "active" : "")">
+                <div class="group">
+                    <div class="group-title">Behaviour</div>
+
+                    <div class="field">
+                        <label for="lock-onplay">Lock players while playing</label>
+                        <InputCheckbox id="lock-onplay" @bind-value="settings.Playback.LockOnPlay" />
+                    </div>
+
+                    <div class="field">
+                        <label for="sync-playback">Start playback in-sync with other player</label>
+                        <InputCheckbox id="sync-playback" @bind-value="settings.Playback.SyncPlayback" />
+                        <span class="info" hidden="@(!settings.Playback.SyncPlayback)">(hold SHIFT to override)</span>
+                    </div>
+
+                    <div class="field">
+                        <label for="snap-on-load">Snap to downbeat on load</label>
+                        <InputCheckbox id="snap-on-load" @bind-value="settings.Playback.SnapToDownBeatOnLoad" />
+                    </div>
+                </div>
+
+                <div class="group">
+                    <div class="group-title">Waveforms</div>
+
+                    <div class="field">
+                        <label for="beatmatching-display">Beatmatching Display</label>
+                        <InputCheckbox id="beatmatching-display" @bind-value="settings.Playback.BeatmatchingDisplay" />
+                    </div>
+
+                    <div class="field">
+                        <label for="bar-lines-waveform">Measure lines on the playback waveform</label>
+                        <InputCheckbox id="bar-lines-waveform" @bind-value="settings.Playback.BarLinesWaveform" />
+                    </div>
+
+                    <div class="field">
+                        <label for="bar-lines-overview">Measure lines on the track overview</label>
+                        <InputCheckbox id="bar-lines-overview" @bind-value="settings.Playback.BarLinesOverview" />
+                    </div>
+                </div>
+
+                <div class="group">
+                    <div class="group-title">Scratching</div>
+
+                    <div class="field">
+                        <label for="scratch-enabled">Enabled</label>
+                        <InputCheckbox id="scratch-enabled" @bind-value="settings.Playback.Scratch.Enabled" />
+                        <span class="info">(drag the synced waveform)</span>
+                    </div>
+
+                    @if(settings.Playback.Scratch.Enabled) {
+                        <div class="field">
+                            <label for="scratch-touch-mode">On touch</label>
+                            <div class="select-container">
+                                <InputSelect id="scratch-touch-mode" @bind-value="settings.Playback.Scratch.TouchMode">
+                                    <option value="@TouchModes.Vinyl">Vinyl - the hand takes over</option>
+                                    <option value="@TouchModes.Bend">Bend - offset play speed</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="scratch-release-mode">On release</label>
+                            <div class="select-container">
+                                <InputSelect id="scratch-release-mode" @bind-value="settings.Playback.Scratch.ReleaseMode">
+                                    <option value="@ReleaseModes.Inertia">Inertia - spin back up to speed</option>
+                                    <option value="@ReleaseModes.Stop">Stop - brake to a standstill</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="scratch-spin-up">@(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop ? "Brake time" : "Spin-up time")</label>
+                            @if(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop) {
+                                <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.BrakeTime" />
+                            } else {
+                                <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.SpinUpTime" />
+                            }
+                            <span class="info">seconds (0 = instant)</span>
+                        </div>
+
+                        <div class="field">
+                            <label for="scratch-follow">Follow time</label>
+                            <InputNumber id="scratch-follow" step="0.005" @bind-value="settings.Playback.Scratch.FollowTime" />
+                            <span class="info">seconds behind the hand - lower is tighter, higher is smoother</span>
+                        </div>
+
+                        <div class="field">
+                            <label for="scratch-sensitivity">Mouse sensitivity</label>
+                            <InputNumber id="scratch-sensitivity" step="0.1" @bind-value="settings.Playback.Scratch.MouseSensitivity" />
+                        </div>
+                    }
+                </div>
+
+                <div class="group">
+                    <div class="group-title">Tempo &amp; Equalizer</div>
+
+                    <div class="field">
+                        <label for="tempo-range">Tempo Range -/+</label>
+                        <div class="select-container">
+                            <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
+                                @foreach(var tempoRange in TempoRanges) {
+                                    <option value="@tempoRange">@tempoRange</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    @*
+                        FIXME: This could be removed. It's already available as a dropdown menu for each player.
+                        Or perhaps we should remove the dropdown menus from the main UI?
+                    *@
+                    <div class="field">
+                        <label for="eq-profile">Equalizer Profile</label>
+                        <div class="select-container">
+                            <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
+                                @foreach(var profile in settings.EqualizerProfiles) {
+                                    <option value="@profile.Name">@profile.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                    </div>
+
+                    <div class="eq-profile-info">
+                        <span>Low:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Low.ToString("N2")) Hz</span>
+                        <span>Mid:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Mid.ToString("N2")) Hz</span>
+                        <span>Hi:</span><span>@(settings.EqualizerProfiles.Where(p => p.Name == settings.Playback.EqProfile).First().Hi.ToString("N2")) Hz</span>
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- Players *@
+            <div class="panel @(section == Sections.Players ? "active" : "")">
+                @foreach(var playerObj in settings.Playback.Players.Select((player, index) => new { player, index })) {
+                    <div class="group">
+                        <div class="group-title">Player @(playerObj.index + 1)</div>
+
+                        <div class="field">
+                            <label for="@($"player{playerObj.index}-name")">Name</label>
+                            <InputText id="@($"player{playerObj.index}-name")" @bind-value="playerObj.player.Name" />
+                        </div>
+                        <div class="field">
+                            <label for="@($"player{playerObj.index}-color")">Color</label>
+                            <InputText class="as-number"
+                                       id="@($"player{playerObj.index}-color")"
+                                       @bind-value="playerObj.player.Color" />
+                            <input type="color" class="color" id="@($"player{playerObj.index}-color-picker")" @bind-value="playerObj.player.Color" />
+                        </div>
+                        <div class="field">
+                            <label for="@($"player{playerObj.index}-reverse-controls")">Reverse Controls Order</label>
+                            <InputCheckbox id="@($"player{playerObj.index}-reverse-controls")" @bind-value="playerObj.player.ReverseControls" />
+                        </div>
                     </div>
                 }
-            </div>
-        </div>
 
-        <div class="header">
-            <h3>Midi</h3>
-            <MidiControllers
-                Settings="settings"
-                MidiProfiles="midiProfiles"
-                @ref="midiControllersComponent"/>
+                <div class="group">
+                    <div class="group-title">VU Meter Colours</div>
+
+                    <div class="vu-colors">
+                        @foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-") && !e.Key.Contains("-alt"))) {
+                            <div class="field">
+                                <label for=@vuColor.Key>@(textInfo.ToTitleCase(vuColor.Key.Replace("vu-", "").Replace("color", "").Replace("-", " ")))</label>
+                                <input type="color" class="color" id=@vuColor.Key @bind=@settings.UIElements[vuColor.Key] />
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            @* ---------------------------------------------------------------- MIDI *@
+            <div class="panel @(section == Sections.Midi ? "active" : "")">
+                <div class="group">
+                    <div class="group-title">Controllers</div>
+                    <p class="note">Changing the MIDI device or profile requires restarting the app.</p>
+                    <MidiControllers
+                        Settings="settings"
+                        MidiProfiles="midiProfiles"
+                        @ref="midiControllersComponent"/>
+                </div>
+            </div>
         </div>
     </div>
 </ModalDialog>
@@ -208,6 +273,21 @@
 
     [Parameter]
     public EventCallback OnClose { get; set; } = default!;
+
+    private enum Sections { General, Audio, Library, Playback, Players, Midi }
+
+    private readonly record struct NavItem(Sections Section, string Label, string Icon);
+
+    private static readonly NavItem[] Nav = [
+        new(Sections.General,  "General",  "fa-sliders"),
+        new(Sections.Audio,    "Audio",    "fa-volume-high"),
+        new(Sections.Library,  "Library",  "fa-folder-open"),
+        new(Sections.Playback, "Playback", "fa-play"),
+        new(Sections.Players,  "Players",  "fa-record-vinyl"),
+        new(Sections.Midi,     "MIDI",     "fa-plug"),
+    ];
+
+    private Sections section = Sections.General;
 
     private Diyokee.Settings settings = default!;
     private List<MidiControllerProfile> midiProfiles = default!;

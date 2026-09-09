@@ -1,12 +1,119 @@
-﻿h3 {
-    color: var(--text-white);
-    border-bottom: 1px solid var(--panel-background-color-light);
-    //border-bottom: 2px solid var(--header-background-color);
-    margin-bottom: 1rem;
+﻿// Categories down the left, one panel on the right. Every setting used to live in one scroll
+// under a run of <h3>s, which meant finding anything you had not already memorised took a lap of
+// the whole dialog.
+.settings-layout {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+
 }
 
-h5 {
-    margin-bottom: 0.6rem;
+.settings-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 0 0 10rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--panel-background-color-light);
+
+    .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+
+        padding: 0.45rem 0.7rem;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        color: var(--ctrl-highlight-soft);
+        cursor: pointer;
+        user-select: none;
+
+        transition: background-color 150ms, color 150ms;
+
+        // Fixed width so the labels line up whatever glyph the icon happens to be.
+        i {
+            width: 1rem;
+            text-align: center;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        &:hover {
+            background-color: #ffffff10;
+            color: var(--text-white);
+        }
+
+        &.active {
+            background-color: #4183c4;
+            color: #fff;
+
+            i { opacity: 1; }
+        }
+    }
+}
+
+.settings-panel {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-y: auto;
+
+    // The top padding is not decoration: a group's title sits at a negative offset, ABOVE its own
+    // border, and this element's overflow clips at its top edge - so without room the first title
+    // in every panel loses its upper half.
+    padding: 0.75rem 0.5rem 0 0;
+
+    // A FIXED height, so the dialog never resizes - not an animated one.
+    //
+    // Panels differ enormously: General holds one field, Playback fifteen plus a scratch section
+    // that grows by five more when it is enabled. Animating that away needs a transition on the
+    // DIALOG's height, not on anything in here - the dialog is the box you actually see move, and
+    // it sizes itself from a grid row two levels up. Transitioning an inner element just animates
+    // a box inside a frame that has already snapped. Doing it properly means measuring in JS.
+    //
+    // Holding this box still removes the resize instead of decorating it, which is what a settings
+    // dialog does anyway: the content scrolls, the frame stays put. Nothing jumps, including when
+    // Scratching is toggled.
+    height: clamp(20rem, 58vh, 38rem);
+}
+
+// Hidden rather than removed: switching category must not tear down the audio matrix, which
+// applies its changes live, or MIDI learn, which holds state mid-capture.
+.panel {
+    display: none;
+    flex-direction: column;
+    gap: 1rem;
+
+    &.active {
+        display: flex;
+    }
+}
+
+// The group box. A title sitting on the border rather than above it, so a group reads as one
+// enclosed thing at a glance instead of as a heading followed by some rows.
+.group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+
+    padding: 1.1rem 1rem 0.9rem;
+    border: 1px solid var(--panel-background-color-light);
+    border-radius: 6px;
+
+    .group-title {
+        position: absolute;
+        top: -0.55rem;
+        left: 0.7rem;
+
+        // Must match the dialog's own background, since the point is to punch a hole in the
+        // border rather than to sit on a coloured chip.
+        padding: 0 0.4rem;
+        background-color: var(--panel-background-color-dark-dark);
+        color: var(--text-white);
+        font-size: 0.75rem;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
 }
 
 .note {
@@ -27,32 +134,27 @@ h5 {
     }
 }
 
-.sub-header {
+.vu-colors {
     display: flex;
-    flex-direction: column;
-    margin-left: 2rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1rem;
 
-    .vu-colors {
+    label {
+        min-width: unset;
+        padding: 0;
+        white-space: nowrap;
+    }
+
+    input {
+        margin: 0;
+    }
+
+    .field {
         display: flex;
-        flex-direction: row;
-        gap: 1rem;
-
-        label {
-            min-width: unset;
-            padding: 0;
-            white-space: nowrap;
-        }
-
-        input {
-            margin: 0;
-        }
-
-        .field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.3rem;
-            min-width: 5ch;
-        }
+        flex-direction: column;
+        gap: 0.3rem;
+        min-width: 5ch;
     }
 }
 
