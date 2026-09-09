@@ -206,6 +206,7 @@
             MinimalMode="true"
             GridEditing="@gridEditing"
             ShowGridDetail="true"
+            GridChanged="@(() => InvokeAsync(StateHasChanged))"
             @ref="player" />
     </div>
 

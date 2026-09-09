@@ -1153,6 +1153,11 @@
     // Properties turns it on because gridding needs to see what the grid is doing.
     [Parameter] public bool ShowGridDetail { get; set; }
 
+    // Raised after the grid changes. The waveform edits File.BeatGridMarkers directly, so anything
+    // outside this component that reports on them - the marker count and the Reset button in Track
+    // Properties - has no idea anything happened and would sit on a stale reading.
+    [Parameter] public EventCallback GridChanged { get; set; }
+
     // Rebuilds after the editor has changed an anchor, and redraws both waveforms. Cheaper than
     // SetParameters, which also re-parses the whole waveform string out of the cached file.
     public async Task RefreshBeatGrid() {
@@ -1166,6 +1171,7 @@
         await (waveform?.ForceReRender() ?? Task.CompletedTask);
         await (waveformFull?.ForceReRender() ?? Task.CompletedTask);
         await InvokeAsync(StateHasChanged);
+        await GridChanged.InvokeAsync();
     }
 
     private void BuildBeatGrid() {

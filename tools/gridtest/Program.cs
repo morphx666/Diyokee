@@ -779,6 +779,22 @@ internal static class GridTest {
         }
         Report(introMoved == 0, $"not one beat before the downbeat moved ({introMoved} moved, worst {introWorst * 1000:F1} ms)");
 
+        // ...and it must not be PLAYED any differently either. Drawing the intro at the nominal
+        // tempo while warping it at segment 0's rate is a picture and a sound disagreeing about
+        // the same audio - visually correct, audibly wrong, which is exactly how it was reported.
+        var introGrid = IntroGrid();
+        Report(Near(introGrid.PlaybackRateAt(intro.DownbeatAt / 2), 1.0, 1e-12),
+               $"the intro plays at 1.0x, got {introGrid.PlaybackRateAt(intro.DownbeatAt / 2):F6}");
+        Report(Near(introGrid.PlaybackRateAt(0.0), 1.0, 1e-12), "...including the very start of the track");
+        Report(Near(introGrid.ToGridTime(4.0), 4.0, 1e-12), "...and its grid time equals its source time");
+        Report(Near(introGrid.FromGridTime(4.0), 4.0, 1e-12), "...both ways");
+
+        // The correction itself is still applied, from the first anchor onward - the point is that
+        // it starts THERE and not before.
+        double insideCorrected = intro.DownbeatAt + 1.0;
+        Report(!Near(introGrid.PlaybackRateAt(insideCorrected), 1.0, 1e-9),
+               $"the corrected segment does play at {introGrid.PlaybackRateAt(insideCorrected):F4}x");
+
         // And the reference itself is exactly where it was put.
         Report(anchors.Any(a => Math.Abs(a.Position - reference) < 1e-9), "the reference itself has not moved");
 

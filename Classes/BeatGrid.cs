@@ -418,17 +418,35 @@ public sealed class BeatGrid {
         return bpm > 0 && nominalBPM > 0 ? bpm / nominalBPM : 1.0;
     }
 
+    // Slope at a POSITION, which is not the same as the slope of the segment SegmentAt would name.
+    //
+    // Everything before the first anchor belongs to segment 0 for the purpose of "how long is a
+    // beat here", because that is the only tempo there is to extrapolate with. But its beats are
+    // DRAWN at the nominal tempo, deliberately, so that no drag can move them - and if it were
+    // warped at segment 0's rate it would be played at a tempo the grid on screen does not show.
+    // That is a picture and a sound disagreeing about the same audio.
+    //
+    // So the region before the first anchor is not warped at all. The first anchor is where
+    // correction starts, which is what makes it a guard rail in the audio as well as in the grid.
+    private double SlopeAt(double seconds) {
+        if(anchors.Count == 0 || seconds < anchors[0].Position) return 1.0;
+        return SlopeOf(SegmentAt(seconds));
+    }
+
     // Playback rate for the segment containing `sourceSeconds`: what the source has to be consumed
     // at, relative to normal, for that stretch to come out at TargetBPM. This is the number that
     // becomes playback speed.
     public double PlaybackRateAt(double sourceSeconds) {
-        if(anchors.Count == 0) return 1.0;
-        double slope = SlopeOf(SegmentAt(sourceSeconds));
+        double slope = SlopeAt(sourceSeconds);
         return slope > 0 ? 1.0 / slope : 1.0;
     }
 
     public double ToGridTime(double sourceSeconds) {
         if(anchors.Count == 0 || !(nominalBPM > 0)) return sourceSeconds;
+
+        // Unwarped before the first anchor, so grid time and source time agree there - the same
+        // reason PlaybackRateAt leaves it alone.
+        if(sourceSeconds < anchors[0].Position) return sourceSeconds;
 
         int segment = SegmentAt(sourceSeconds);
         return GridStarts()[segment] + (sourceSeconds - anchors[segment].Position) * SlopeOf(segment);
@@ -438,6 +456,7 @@ public sealed class BeatGrid {
         if(anchors.Count == 0 || !(nominalBPM > 0)) return gridSeconds;
 
         double[] starts = GridStarts();
+        if(gridSeconds < starts[0]) return gridSeconds;
 
         int lo = 0, hi = starts.Length - 1, segment = 0;
         while(lo <= hi) {
