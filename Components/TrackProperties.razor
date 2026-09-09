@@ -118,6 +118,11 @@
                      title="Drag any beat in the waveform onto the audio it belongs on">
                     <i class="fa-solid fa-ruler-horizontal"></i> Edit
                 </div>
+                <div class="recalculate grid-auto @(gridAligning ? "working" : "")"
+                     @onclick="AutoGrid"
+                     title="Listen to the track from the downbeat on and correct the grid wherever the beats have drifted">
+                    <i class="fa-solid @(gridAligning ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles")"></i> Auto
+                </div>
                 <div class="recalculate grid-reset @(HasCustomGrid ? "" : "disabled")"
                      @onclick="ResetGrid"
                      title="Discard every grid change and go back to the detected BPM and downbeat">
@@ -125,6 +130,16 @@
                 </div>
                 <span class="grid-summary">@GridSummary</span>
             </div>
+
+            @* Its own row: this is a sentence, not a readout, and hanging it off the end of the
+               button row either pushed the waveform sideways or got clipped. The empty label puts
+               it under the buttons rather than under "Grid". *@
+            @if(gridMessage != "") {
+                <div class="field grid-message-row">
+                    <label></label>
+                    <span class="grid-message">@gridMessage</span>
+                </div>
+            }
 
             <div class="key-notation-container">
                 <div class="field"
@@ -274,6 +289,10 @@
         if(!ReferenceEquals(source, File)) {
             source = File;
             edit = File == null ? new() : (DFile)File.Clone();
+
+            // A different track: nothing the last one's automatic run did applies to it.
+            bpmBeforeAuto = null;
+            gridMessage = "";
         }
     }
 
@@ -285,7 +304,16 @@
     // removed on the waveform itself - so this is only the mode switch and a way out.
     private void ToggleGridEditing() => gridEditing = !gridEditing;
 
-    private bool HasCustomGrid => edit?.BeatGridMarkers.Count > 0;
+    // The BPM as it stood before the first automatic run, or null if none has been made. Auto can
+    // correct the BPM as well as the grid, so the reset has to be able to put it back - otherwise
+    // the commonest outcome of all, where the number was the only thing wrong and no markers are
+    // left behind, is also the one that cannot be undone.
+    //
+    // Deliberately only what Auto changed, not a general BPM undo: a value typed by hand is not
+    // the grid tooling's to revert.
+    private float? bpmBeforeAuto;
+
+    private bool HasCustomGrid => edit?.BeatGridMarkers.Count > 0 || bpmBeforeAuto != null;
 
     private string GridSummary {
         get {
@@ -305,7 +333,52 @@
         if(!HasCustomGrid || player == null) return;
 
         edit.BeatGridMarkers.Clear();
+
+        if(bpmBeforeAuto != null) {
+            edit.BPM = bpmBeforeAuto.Value;
+            bpmBeforeAuto = null;
+        }
+
+        gridMessage = "";
         await player.RefreshBeatGrid();
+    }
+
+    private bool gridAligning;
+    private string gridMessage = "";
+
+    // Automatic gridding. The measurement is the slow part - a few seconds of decoding - so it runs
+    // off the circuit's thread; the fit itself is arithmetic and stays here.
+    //
+    // It works on `edit`, the dialog's clone, which is also what the preview player is bound to, so
+    // the result is visible and audible immediately and Cancel still discards it. Nothing reaches
+    // the loaded deck or the database until Save, exactly as for a hand edit.
+    private async Task AutoGrid() {
+        if(player == null || gridAligning) return;
+
+        gridAligning = true;
+        gridMessage = "";
+        await InvokeAsync(StateHasChanged);
+
+        try {
+            DFile track = edit;
+            List<BeatAlign.Onset> onsets = await Task.Run(() => OnsetDetector.Detect(track, track.DownbeatAt));
+
+            // Only on the first run, so running it twice still resets back to where the track
+            // started rather than to what the previous run decided.
+            bpmBeforeAuto ??= edit.BPM;
+
+            BeatAlign.Report report = BeatAlign.Apply(edit, onsets);
+            if(report.Changed) await player.RefreshBeatGrid();
+
+            gridMessage = report.Summary;
+        } catch(Exception ex) {
+            gridMessage = "The track could not be analysed.";
+            Program.Logger.LogError(ex, "Automatic beat gridding failed");
+        } finally {
+            gridAligning = false;
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task Save() {
@@ -316,6 +389,10 @@
         // when the dialog is opened on a DIFFERENT file, so without this, reopening it on the same
         // track would reuse a copy whose new anchors still carry Id 0 and re-insert them.
         edit = (DFile)File.Clone();
+
+        // Saved, so this IS the track's BPM now - there is no longer a previous one to go back to.
+        bpmBeforeAuto = null;
+        gridMessage = "";
 
         Close();
     }

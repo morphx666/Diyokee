@@ -26,9 +26,10 @@ namespace Diyokee {
             public double BPM { get; set; } = 0;
             public bool IsDownbeat { get; set; } = true;
 
-            // A guard rail the user placed on purpose: this beat is asserted to be correct, so
-            // nothing before it may move and it cannot itself be dragged. Distinct from an anchor
-            // a drag left behind, which is only a tempo change and stays adjustable.
+            // A guard rail the user placed on purpose: this beat is asserted to be correct, so no
+            // later edit - by hand or by BeatAlign - may move anything before it. The reference
+            // itself is still draggable; "immovable" is about what it protects. Distinct from an
+            // anchor a drag or an automatic run left behind, which is only a tempo change.
             public bool IsReference { get; set; } = false;
         }
 

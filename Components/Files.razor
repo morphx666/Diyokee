@@ -395,7 +395,7 @@
         // matched, deletes the rows it just wrote and inserts them again - id churn every time,
         // and the same shape as the duplicate-row bug this method was fixed for.
         file.BeatGridMarkers = [.. fileFromCache.BeatGridMarkers.Select(m => new DFile.BeatGridMarker {
-            Id = m.Id, Position = m.Position, BPM = m.BPM, IsDownbeat = m.IsDownbeat
+            Id = m.Id, Position = m.Position, BPM = m.BPM, IsDownbeat = m.IsDownbeat, IsReference = m.IsReference
         })];
 
         int index = files.FindIndex(f => f.Filename == file.Filename);
