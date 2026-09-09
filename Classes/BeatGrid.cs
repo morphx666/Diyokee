@@ -95,7 +95,13 @@ public sealed class BeatGrid {
         before.Reverse();
 
         Beat[] result = new Beat[before.Count + forward.Count];
-        int bar = 0;
+
+        // The backward run is phased BACKWARDS from the downbeat, so the beat just before it is the
+        // last of a bar and the one four back is a downbeat. Counting forward from the earliest
+        // extrapolated beat instead - which is what this used to do - left a short bar wherever the
+        // backward count was not a multiple of BeatsPerBar, and put a stray downbeat line a few
+        // beats before the real one.
+        int bar = ((-before.Count) % BeatsPerBar + BeatsPerBar) % BeatsPerBar;
         int next = 0;   // the next anchor a forward beat might coincide with
 
         for(int i = 0; i < result.Length; i++) {

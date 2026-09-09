@@ -269,6 +269,25 @@ internal static class GridTest {
                "a non-downbeat anchor does not");
 
         Report(grid.Beats.Count(b => b.IsDownbeat) > 1, "downbeats are marked throughout");
+
+        // The beats extrapolated BEFORE the downbeat have to be phased backwards from it, or the
+        // bar lines land on the wrong beat and a stray downbeat appears a few beats early. The
+        // count of backward beats is what used to decide it, so try every remainder.
+        foreach(int backwardBeats in new[] { 1, 2, 3, 4, 5, 6, 7, 8 }) {
+            double spb = 0.5;                               // 120 BPM
+            double downbeat = backwardBeats * spb + 0.01;   // just past a whole number of beats back
+            var g = new BeatGrid([new BeatGrid.Anchor(downbeat, 120.0, true)], 60.0, 1);
+
+            int at = g.IndexAtOrBefore(downbeat);
+            bool ok = g.Beats[at].IsDownbeat && at == backwardBeats;
+
+            // Every downbeat must be a whole number of bars from the real one, in both directions.
+            for(int i = 0; i < g.Beats.Count && ok; i++) {
+                if(g.Beats[i].IsDownbeat && Math.Abs(i - at) % BeatGrid.BeatsPerBar != 0) ok = false;
+            }
+
+            Report(ok, $"{backwardBeats} beat(s) before the downbeat: bar lines stay in phase with it");
+        }
         Report(grid.Beats.All(b => b.IndexInBar >= 0 && b.IndexInBar < BeatGrid.BeatsPerBar),
                "every beat has a valid bar position");
     }

@@ -31,9 +31,51 @@
         position: absolute;
         top: 0;
         height: 100%;
-        width: 14px;
-        margin-left: -7px;
+        width: 16px;
+        margin-left: -8px;
         cursor: ew-resize;
+
+        // The button only exists on hover: one per visible beat, permanently drawn, would bury the
+        // waveform under a row of icons.
+        .beat-action {
+            position: absolute;
+            top: 2px;
+            left: 1px;
+            width: 14px;
+            height: 14px;
+            padding: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            line-height: 1;
+            border: 1px solid #6a6a6a;
+            border-radius: 2px;
+            background-color: #2a2a2ad9;
+            color: #ddd;
+            cursor: pointer;
+        }
+
+        &:hover .beat-action {
+            display: flex;
+        }
+
+        // A beat that is already a reference: the button removes it, so it warns rather than invites.
+        &.anchored .beat-action {
+            border-color: #a5544a;
+            color: #ffb4a8;
+
+            &:hover {
+                background-color: #8a3030;
+                color: #fff;
+            }
+        }
+
+        &:not(.anchored) .beat-action:hover {
+            background-color: #4183c4;
+            border-color: #5a9de0;
+            color: #fff;
+        }
     }
 
     &:hover {
