@@ -2,12 +2,16 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
+@using System.Globalization
 @using static Diyokee.DFile
 @inject IJSRuntime JS
 
 <MouseSupport OnMouseEvent="@HandleMouseEvent">
     <div class="waveform-container">
         <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
+        @foreach(double x in GrabbableBeatXs()) {
+            <div class="beat-handle" style="left:@(x.ToString("0.##", CultureInfo.InvariantCulture))px"></div>
+        }
         <div class="cursor" style="@GetCursorCss()"></div>
         @if(EnableZoomControls && Mode == Modes.AudioSynced) {
             <div class="zoom-controls">
@@ -78,6 +82,29 @@
 
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
+
+    // A transparent strip over each visible beat, so the pointer can show ew-resize when it is over
+    // something draggable.
+    //
+    // Done with real elements rather than a hit test, because MouseSupport only attaches its
+    // mousemove listener while a button is held - there are no hover events to react to at all -
+    // and adding them would put a SignalR round trip on every pixel of every drag-capable control
+    // in the app. Native CSS hover costs nothing and has no latency.
+    //
+    // Yields nothing unless grid editing is on, so the ordinary waveform renders exactly as before.
+    private IEnumerable<double> GrabbableBeatXs() {
+        if(!GridEditing || Mode != Modes.AudioSynced || Player?.File == null || canvasWidth == 0) yield break;
+
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double cw = canvasWidth / canvasRatio;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double pbh = PlaybackHead / tempoFactor;
+
+        foreach(var beat in Player.Grid.Beats) {
+            double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+            if(x >= 0 && x < cw) yield return x;
+        }
+    }
 
     public async Task ForceReRender() {
         forceReRender = true;
