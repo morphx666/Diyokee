@@ -107,10 +107,45 @@
         }
     }
 
+    .grid-auto {
+        &:hover {
+            background-color: #2f6b4a;
+            border-color: #3d8a60;
+        }
+
+        // Measuring takes a few seconds, so the button has to look occupied - otherwise the only
+        // feedback is that nothing happens.
+        &.working {
+            opacity: 1;
+            pointer-events: none;
+            color: #6fd39b;
+        }
+    }
+
     .grid-summary {
         margin-left: 0.4rem;
         color: #888;
         font-size: 0.7rem;
         white-space: nowrap;
+    }
+
+}
+
+// What the last automatic run actually did. Best effort deserves an account of itself: how many
+// beats were found, how far out they were, and whether anything was given up on - which is a
+// sentence, so it gets a row of its own below the buttons and wraps inside it.
+.grid-message-row {
+    align-items: flex-start;
+    margin-top: -0.35rem;
+
+    .grid-message {
+        // Bounded so a long summary wraps instead of widening the column and pushing the waveform
+        // out of the dialog, which is what an ellipsis was papering over.
+        max-width: 28rem;
+
+        color: var(--ctrl-highlight-soft);
+        font-size: 0.7rem;
+        line-height: 1.4;
+        overflow-wrap: break-word;
     }
 }

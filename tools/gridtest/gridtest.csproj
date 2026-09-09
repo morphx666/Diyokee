@@ -18,6 +18,8 @@
 
   <ItemGroup>
     <Compile Include="..\..\Classes\BeatGrid.cs" Link="BeatGrid.cs" />
+    <Compile Include="..\..\Classes\BeatAlign.cs" Link="BeatAlign.cs" />
+    <Compile Include="..\..\Classes\OnsetEnvelope.cs" Link="OnsetEnvelope.cs" />
     <Compile Include="..\..\Classes\DFile.cs" Link="DFile.cs" />
     <Compile Include="..\..\Classes\GZip.cs" Link="GZip.cs" />
   </ItemGroup>

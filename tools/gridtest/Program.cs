@@ -1,11 +1,16 @@
 using Diyokee;
 
-// Correctness harness for Classes/BeatGrid.cs. Run by hand, not part of Diyokee.sln:
+// Correctness harness for Classes/BeatGrid.cs and Classes/BeatAlign.cs. Run by hand, not part of
+// Diyokee.sln:
 //
 //     dotnet run --project tools/gridtest/gridtest.csproj
 //
-// It compiles the real Classes/BeatGrid.cs, so it cannot drift from what ships. No BASS, no audio
-// and no I/O, so it finishes in well under a second anywhere.
+// It compiles the real sources, so it cannot drift from what ships. No BASS, no audio and no I/O,
+// so it finishes in well under a second anywhere.
+//
+// Group 18 drives automatic gridding on synthesised onsets - a drifting track, a tempo change, a
+// breakdown with no drums in it, stray onsets, a mis-detected BPM - which is the only way to test
+// it repeatably: the same run over a real file depends on the file.
 //
 // Check 1 is the important one and was written FIRST, against the old GenerateBeatMarkers, before
 // any of it was replaced: a one-anchor grid has to reproduce the legacy BPM + DownbeatAt grid bit
@@ -35,6 +40,8 @@ internal static class GridTest {
         Pinning();
         ReferenceIsImmovable();
         CuePointsSurvive();
+        OnsetDetection();
+        AutomaticGridding();
 
         Console.WriteLine(failures == 0
             ? "\nAll checks passed."
@@ -870,6 +877,557 @@ internal static class GridTest {
         Report(!Near(warped.ToGridTime(cue), cue), "a cue's grid time does shift under a warp");
         Report(Near(warped.FromGridTime(warped.ToGridTime(cue)), cue, 1e-8),
                "...but it maps back to exactly the same audio, which is what seeking uses");
+    }
+
+
+
+    // ------------------------------------------------------------------ onset detection
+
+    // A click track: a short decaying burst at each beat, band-limited so the check can say which
+    // of the detector's three bands it is exercising. Everything else about the signal is silence,
+    // so anything the detector reports that is not a click is a false positive.
+    static float[] Clicks(int rate, double duration, double first, double bpm,
+                          double frequency, double amplitude = 0.7, Func<int, bool>? silent = null) {
+        float[] samples = new float[(int)(rate * duration)];
+        double step = 60.0 / bpm;
+
+        for(int k = 0; ; k++) {
+            double at = first + k * step;
+            if(at >= duration - 0.05) break;
+            if(silent != null && silent(k)) continue;
+
+            int from = (int)(at * rate);
+
+            // 25 ms of exponentially decaying tone. A real drum is broadband, but a tone is the
+            // honest test of one band: if the low band alone can find a 60 Hz thump, it works.
+            for(int i = 0; i < rate * 0.025 && from + i < samples.Length; i++) {
+                double t = (double)i / rate;
+                samples[from + i] += (float)(amplitude * Math.Exp(-t * 120.0) * Math.Sin(2 * Math.PI * frequency * t));
+            }
+        }
+
+        return samples;
+    }
+
+    // Feeds a float array through OnsetEnvelope the way OnsetDetector feeds it a decode channel.
+    static List<BeatAlign.Onset> Detect(float[] samples, int rate, double startSeconds = 0, double fromSeconds = 0) {
+        int read = 0;
+
+        return OnsetEnvelope.Onsets(buffer => {
+            int n = Math.Min(buffer.Length, samples.Length - read);
+            if(n <= 0) return 0;
+
+            Array.Copy(samples, read, buffer, 0, n);
+            read += n;
+            return n;
+        }, rate, startSeconds, fromSeconds);
+    }
+
+    // Worst error between each expected click and the nearest onset reported, plus how many
+    // expected clicks got no onset at all.
+    static (double Worst, int Missed) Compare(List<BeatAlign.Onset> onsets, double first, double bpm,
+                                              double duration, Func<int, bool>? silent = null) {
+        double step = 60.0 / bpm, worst = 0;
+        int missed = 0;
+
+        for(int k = 0; ; k++) {
+            double at = first + k * step;
+            if(at >= duration - 0.05) break;
+            if(silent != null && silent(k)) continue;
+
+            double nearest = double.MaxValue;
+            foreach(BeatAlign.Onset onset in onsets) {
+                nearest = Math.Min(nearest, Math.Abs(onset.Seconds - at));
+            }
+
+            if(nearest > 0.030) missed++; else worst = Math.Max(worst, nearest);
+        }
+
+        return (worst, missed);
+    }
+
+    static void OnsetDetection() {
+        Console.WriteLine("\n[18] Onset detection");
+
+        const int rate = 44100;
+        const double duration = 20.0;
+
+        // A kick drum, which is what the beat of most of this material actually is.
+        {
+            var samples = Clicks(rate, duration, 0.517, 128.0, 60.0);
+            var onsets = Detect(samples, rate);
+            (double worst, int missed) = Compare(onsets, 0.517, 128.0, duration);
+
+            Report(missed == 0, $"every kick in a 20-second click track is found ({missed} missed of {onsets.Count} onsets)");
+            Report(worst < 0.012, $"...to within {worst * 1000:F1} ms, well inside the 18 ms tolerance");
+        }
+
+        // A hat, to prove the high band is wired the right way round. A low-pass where a high-pass
+        // was meant would find nothing here and everything above.
+        {
+            var samples = Clicks(rate, duration, 0.25, 174.0, 6000.0);
+            var onsets = Detect(samples, rate);
+            (double worst, int missed) = Compare(onsets, 0.25, 174.0, duration);
+
+            Report(missed == 0, $"a high-frequency click track is found too ({missed} missed)");
+            Report(worst < 0.012, $"...to within {worst * 1000:F1} ms");
+        }
+
+        // Silence has to produce nothing. This is the requirement the whole "wait for the next
+        // beat" behaviour rests on, and it is why the flux is log(1 + lambda E) and not log E.
+        {
+            var onsets = Detect(new float[rate * 10], rate);
+            Report(onsets.Count == 0, $"ten seconds of silence produces no onsets ({onsets.Count})");
+        }
+
+        // Digital black is easy; a noise floor is the real case. At -60 dB there is nothing to
+        // detect, and the local statistics of noise must not promote it.
+        {
+            float[] samples = new float[rate * 10];
+            var random = new Random(1);
+            for(int i = 0; i < samples.Length; i++) samples[i] = (float)((random.NextDouble() - 0.5) * 0.002);
+
+            var onsets = Detect(samples, rate);
+            Report(onsets.Count == 0, $"a quiet noise floor produces no onsets either ({onsets.Count})");
+        }
+
+        // The absolute flux floor has to reject a noise floor without rejecting quiet music. A
+        // click track 23 dB down is still perfectly audible material.
+        {
+            var samples = Clicks(rate, duration, 0.4, 120.0, 60.0, amplitude: 0.05);
+            var onsets = Detect(samples, rate);
+            (double worst, int missed) = Compare(onsets, 0.4, 120.0, duration);
+
+            Report(missed == 0, $"a click track 23 dB down is still found ({missed} missed)");
+            Report(worst < 0.012, $"...to within {worst * 1000:F1} ms");
+        }
+
+        // A breakdown in the middle: nothing reported there, and the beat found again after it.
+        {
+            var samples = Clicks(rate, duration, 0.5, 128.0, 60.0, silent: k => k >= 16 && k < 32);
+            var onsets = Detect(samples, rate);
+
+            double from = 0.5 + 16 * 60.0 / 128.0, to = 0.5 + 32 * 60.0 / 128.0;
+            int inside = onsets.Count(x => x.Seconds > from + 0.05 && x.Seconds < to - 0.05);
+            (_, int missed) = Compare(onsets, 0.5, 128.0, duration, k => k >= 16 && k < 32);
+
+            Report(inside == 0, $"a silent stretch reports no onsets ({inside} inside it)");
+            Report(missed == 0, $"...and the clicks after it are all still found ({missed} missed)");
+        }
+
+        // The pre-roll: samples are decoded before the start point so the filters settle, and
+        // nothing from it may be reported.
+        {
+            var samples = Clicks(rate, duration, 0.5, 128.0, 60.0);
+            var onsets = Detect(samples, rate, startSeconds: 8.0, fromSeconds: 8.5);
+
+            Report(onsets.All(x => x.Seconds >= 8.5), $"no onset is reported before the start point");
+            Report(onsets.Count > 30, $"...and the rest are still there ({onsets.Count})");
+        }
+
+        // Throughput. This runs behind a button press with a spinner on it, so it does not have to
+        // be fast, but it does have to be bounded - and the filters are per-sample, so the cost is
+        // linear in the length of the track and worth knowing.
+        {
+            var samples = Clicks(rate, 300.0, 0.5, 128.0, 60.0);
+
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            var onsets = Detect(samples, rate);
+            clock.Stop();
+
+            Report(clock.Elapsed.TotalSeconds < 3.0,
+                   $"a five-minute track is analysed in {clock.Elapsed.TotalSeconds:F2}s ({onsets.Count} onsets)");
+        }
+
+        // The two halves together, on a click track that drifts: the acceptance test for the
+        // feature as a whole, with nothing synthesised except the audio.
+        {
+            const double drifting = 60.0;
+            var samples = Clicks(rate, drifting, 0.517, 127.4, 60.0);
+
+            var file = new DFile { BPM = 128, DownbeatAt = 0.517, Duration = drifting };
+            var onsets = Detect(samples, rate);
+            var report = BeatAlign.Apply(file, onsets);
+
+            double after = WorstGridError(file, onsets, 0.517);
+            Report(report.Changed, $"a drifting click track is corrected end to end (\"{report.Summary}\")");
+            Report(after < 0.015, $"...and the grid ends up on the clicks (worst {after * 1000:F1} ms)");
+            Report(Math.Abs(report.MeasuredBPM - 127.4) < 0.15,
+                   $"...at the tempo the clicks were actually written at ({report.MeasuredBPM:F2} vs 127.40)");
+        }
+    }
+
+    // ------------------------------------------------------------------ automatic gridding
+
+    // Onsets on a tempo schedule, starting at the downbeat. `legs` is a run of (beats, BPM) pairs,
+    // so a track that changes tempo, or drifts in steps, is one line to describe.
+    static List<BeatAlign.Onset> Onsets(double downbeat, (int Beats, double BPM)[] legs,
+                                        double jitter = 0, Func<int, bool>? drop = null) {
+        List<BeatAlign.Onset> onsets = [];
+        double t = downbeat;
+        int k = 0;
+
+        foreach((int beats, double bpm) in legs) {
+            double step = 60.0 / bpm;
+
+            for(int i = 0; i < beats; i++) {
+                // Deterministic, so a failure is reproducible. Real onset times wobble by a few
+                // milliseconds even on a machine-made track.
+                double wobble = jitter == 0 ? 0 : jitter * Math.Sin(k * 2.399963);
+                if(drop == null || !drop(k)) onsets.Add(new BeatAlign.Onset(t + wobble, 4.0));
+
+                t += step;
+                k++;
+            }
+        }
+
+        return onsets;
+    }
+
+    // The only measure that matters in the end: how far the audio is from the grid drawn over it.
+    static double WorstGridError(DFile file, IEnumerable<BeatAlign.Onset> onsets, double from) {
+        BeatGrid grid = BeatGrid.FromFile(file, 1);
+        double worst = 0;
+
+        foreach(BeatAlign.Onset onset in onsets) {
+            if(onset.Seconds < from) continue;
+            worst = Math.Max(worst, Math.Abs(onset.Seconds - grid.NearestBeat(onset.Seconds)));
+        }
+
+        return worst;
+    }
+
+    static double[] BeatsFrom(DFile file, double from)
+        => [.. BeatGrid.FromFile(file, 1).Beats.Where(b => b.Seconds >= from - 1e-9).Select(b => b.Seconds)];
+
+    static bool Same(double[] a, double[] b, double tolerance = 1e-9)
+        => a.Length == b.Length && a.Zip(b).All(x => Math.Abs(x.First - x.Second) < tolerance);
+
+    static DFile Track(double bpm, double downbeat, double duration)
+        => new() { BPM = (float)bpm, DownbeatAt = downbeat, Duration = duration };
+
+    static void AutomaticGridding() {
+        Console.WriteLine("\n[19] Automatic gridding");
+
+        // A track that is already right is left alone. This is the property that makes the button
+        // safe to press twice, and safe to press on a track someone has already gridded by hand.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 128.0)]);
+            var report = BeatAlign.Apply(file, onsets);
+
+            Report(!report.Changed && file.BeatGridMarkers.Count == 0,
+                   $"a track already on the grid is left untouched ({file.BeatGridMarkers.Count} markers)");
+            Report(report.BeatsMatched > 500, $"...and its beats were still all found ({report.BeatsMatched} of {report.BeatsChecked})");
+        }
+
+        // The commonest case by far: BPM detection was very slightly wrong, so the whole track
+        // walks away from the grid. One tempo explains it, so it costs no markers at all - only
+        // the downbeat anchor's tempo changes.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 128.4)]);
+
+            double before = WorstGridError(file, onsets, 0.5);
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 0.5);
+
+            // Half a beat is the ceiling this measure can report - past that the grid is nearer
+            // the NEXT beat - and at 128 BPM that is 234 ms. Reaching the ceiling is the point.
+            Report(before > 0.2, $"a 0.4 BPM error walks the grid right off the beat ({before * 1000:F0} ms by the end)");
+            Report(report.AnchorsAdded == 0 && Math.Abs(file.BPM - 128.4) < 1e-4,
+                   $"correcting it needs no markers at all - the number was the error ({report.AnchorsAdded} added, BPM now {file.BPM:F2})");
+            Report(after < 0.005, $"...and the grid now sits on every beat (worst {after * 1000:F1} ms)");
+            Report(Math.Abs(report.MeasuredBPM - 128.4) < 0.02, $"the measured tempo is reported ({report.MeasuredBPM:F2})");
+        }
+
+        // A real tempo change needs exactly one marker, at the change. More than a handful would
+        // mean it is fitting noise instead of the track.
+        {
+            var file = Track(128, 0.5, 320);
+            var onsets = Onsets(0.5, [(64, 128.0), (600, 126.5)]);
+
+            double before = WorstGridError(file, onsets, 0.5);
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 0.5);
+
+            Report(report.AnchorsAdded == 1, $"one tempo change costs one marker ({report.AnchorsAdded})");
+            Report(before > 0.2 && after < 0.02, $"and it fixes the grid ({before * 1000:F0} ms -> {after * 1000:F0} ms)");
+
+            double change = 0.5 + 64 * 60.0 / 128.0;
+            var placed = file.BeatGridMarkers.Where(m => !m.IsDownbeat).ToList();
+            Report(placed.Count == 1 && Math.Abs(placed[0].Position - change) < 4 * 60.0 / 128.0,
+                   $"the marker lands within a bar of the change (at {placed.FirstOrDefault()?.Position:F2}s, change at {change:F2}s)");
+        }
+
+        // Drift in several steps, which is what a tape transfer or a live recording actually does.
+        {
+            var file = Track(124, 2.0, 400);
+            var onsets = Onsets(2.0, [(128, 124.0), (128, 123.4), (128, 124.7), (400, 123.9)], jitter: 0.004);
+
+            double before = WorstGridError(file, onsets, 2.0);
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 2.0);
+
+            Report(after < 0.025, $"a track that drifts in steps ends up on the grid ({before * 1000:F0} ms -> {after * 1000:F0} ms)");
+            Report(report.AnchorsAdded >= 2 && report.AnchorsAdded <= 8,
+                   $"...for a handful of markers, not one per beat ({report.AnchorsAdded})");
+        }
+
+        // Running it again must be a no-op. If it were not, every press would add anchors and the
+        // grid would ratchet.
+        {
+            var file = Track(124, 2.0, 400);
+            var onsets = Onsets(2.0, [(128, 124.0), (128, 123.4), (400, 124.6)], jitter: 0.004);
+
+            BeatAlign.Apply(file, onsets);
+            int first = file.BeatGridMarkers.Count;
+            var again = BeatAlign.Apply(file, onsets);
+
+            Report(again.AnchorsAdded == 0, $"a second run adds nothing ({again.AnchorsAdded})");
+            Report(file.BeatGridMarkers.Count == first, $"...and the grid is the same size ({first} vs {file.BeatGridMarkers.Count})");
+        }
+
+        // Every judgement is made against the grid the track has NOW, including every correction
+        // already made to it - not against the detected BPM. So a track whose grid has already been
+        // corrected to 126.5, playing at 126.5, is already right and must be left alone, even
+        // though it is 200 ms per minute away from where the base 128 BPM grid would put it.
+        {
+            var file = Track(128, 0.5, 200);
+            BeatGrid.Insert(file.BeatGridMarkers, 0.5, 126.5, true, isReference: true);
+
+            var onsets = Onsets(0.5, [(400, 126.5)]);
+            double[] before = BeatsFrom(file, 0.5);
+            var report = BeatAlign.Apply(file, onsets);
+
+            Report(report.AnchorsAdded == 0 && report.SegmentsRetimed == 0,
+                   $"an already-corrected grid is judged against itself, not the detected BPM ({report.AnchorsAdded} added, {report.SegmentsRetimed} retimed)");
+            Report(Same(before, BeatsFrom(file, 0.5)), "...so not one beat after the downbeat moved");
+
+            // What WAS still wrong is the number the grid was being corrected against. 126.5 is
+            // the track's real tempo, so adopting it says the same thing the anchor was saying -
+            // and now says it with no warp at all, instead of stretching the whole track by 1.2%.
+            Report(Math.Abs(file.BPM - 126.5) < 1e-4, $"...but the BPM it was fighting is corrected ({file.BPM:F2})");
+            Report(file.BeatGridMarkers.Count == 0, "...which leaves the anchor saying nothing, so it goes");
+            Report(!BeatGrid.FromFile(file, 1).IsWarped, "...and the track plays at its own speed, unwarped");
+        }
+
+        // The same thing one segment in: a hand correction after a reference sets the tempo from
+        // there on, and the beats after it are measured against THAT, not against nominal.
+        {
+            var file = Track(128, 0.5, 300);
+            var anchors = file.BeatGridMarkers;
+            BeatGrid.Insert(anchors, 0.5, 128.0, true, isReference: true);
+
+            double at = BeatGrid.FromFile(file, 1).Advance(0.5, 64);
+            BeatGrid.Insert(anchors, at, 126.0, false, isReference: true);
+
+            var onsets = Onsets(0.5, [(64, 128.0), (500, 126.0)]);
+            double[] before = BeatsFrom(file, 0.5);
+            var report = BeatAlign.Apply(file, onsets);
+
+            Report(report.AnchorsAdded == 0 && report.SegmentsRetimed == 0,
+                   $"a corrected segment after a reference is left alone too ({report.AnchorsAdded} added, {report.SegmentsRetimed} retimed)");
+            Report(anchors.Count == 2, $"...and no marker was added inside it ({anchors.Count} anchors)");
+            Report(Same(before, BeatsFrom(file, 0.5)), "...and no beat after the downbeat moved");
+
+            // Two real tempos, so any single target warps one of them. The duration-weighted
+            // average is the target that stretches the track least in total, which is what the
+            // measured tempo already is.
+            Report(file.BPM > 126.0 && file.BPM < 128.0, $"the BPM becomes the track's average, not either half ({file.BPM:F2})");
+        }
+
+        // Corrections made EARLIER IN THE SAME RUN count as the current grid as well: a second
+        // tempo change is measured from the first correction, not from where the track started.
+        {
+            var file = Track(128, 0.5, 400);
+            var onsets = Onsets(0.5, [(64, 128.0), (128, 126.4), (500, 127.3)]);
+
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 0.5);
+
+            Report(report.AnchorsAdded == 2, $"two tempo changes cost two markers, not more ({report.AnchorsAdded})");
+            Report(after < 0.02, $"...because the second is measured from the first (worst {after * 1000:F1} ms)");
+        }
+
+        // The guard rails. A reference the user placed is a promise about where that beat is, and
+        // automatic gridding is not allowed to break it - nor to move the downbeat, nor to reach
+        // behind it into the intro.
+        {
+            var file = Track(128, 8.183, 400);
+            var anchors = file.BeatGridMarkers;
+            BeatGrid.Insert(anchors, file.DownbeatAt, file.BPM, true, isReference: true);
+
+            double reference = BeatGrid.FromFile(file, 1).Advance(file.DownbeatAt, 64);
+            BeatGrid.FromFile(file, 1).TogglePin(anchors, reference);
+
+            double[] intro = [.. BeatGrid.FromFile(file, 1).Beats.Where(b => b.Seconds < file.DownbeatAt).Select(b => b.Seconds)];
+
+            var onsets = Onsets(file.DownbeatAt, [(64, 128.0), (600, 127.1)]);
+            BeatAlign.Apply(file, onsets);
+
+            Report(anchors.Any(a => Math.Abs(a.Position - file.DownbeatAt) < 1e-12), "the downbeat anchor has not moved");
+            Report(anchors.Any(a => Math.Abs(a.Position - reference) < 1e-12), "the reference has not moved");
+
+            // The intro is drawn at the nominal tempo, so correcting the BPM re-spaces it - and it
+            // should, because the intro of a 127 BPM track is 127 too. What must still hold is that
+            // it moved for THAT reason and no other: every intro beat exactly one corrected beat
+            // from the next, counted back from a downbeat that has not moved.
+            double[] introAfter = [.. BeatGrid.FromFile(file, 1).Beats.Where(b => b.Seconds < file.DownbeatAt).Select(b => b.Seconds)];
+            double corrected = 60.0 / file.BPM;
+
+            bool spacedAtNominal = introAfter.Length > 0
+                                   && Math.Abs(file.DownbeatAt - introAfter[^1] - corrected) < 1e-9
+                                   && introAfter.Zip(introAfter.Skip(1)).All(x => Math.Abs(x.Second - x.First - corrected) < 1e-9);
+
+            Report(spacedAtNominal, $"the intro is re-spaced at the corrected tempo, and by nothing else ({introAfter.Length} beats at {file.BPM:F2})");
+            Report(intro.Length != introAfter.Length || !Same(intro, introAfter),
+                   "...which does mean it moved - a corrected BPM is a corrected intro");
+        }
+
+        // The headline case, and the one a real track hits: the track never drifted at all, its
+        // detected BPM was simply a beat out. Correcting the grid onto the wrong number would warp
+        // the whole track by 0.8% for its entire length; correcting the number instead costs
+        // nothing and leaves no markers behind.
+        {
+            var file = Track(124, 8.183, 300);
+            var onsets = Onsets(8.183, [(600, 125.0)]);
+
+            double before = WorstGridError(file, onsets, 8.183);
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 8.183);
+
+            Report(Math.Abs(file.BPM - 125.0) < 1e-4, $"a track detected a beat slow has its BPM corrected ({file.BPM:F2})");
+            Report(file.BeatGridMarkers.Count == 0, $"...with no markers left behind ({file.BeatGridMarkers.Count})");
+            Report(!BeatGrid.FromFile(file, 1).IsWarped, "...and no warp at all, where gridding onto 124 would have stretched everything");
+            Report(before > 0.2 && after < 0.005, $"...and the grid is on the beat ({before * 1000:F0} ms -> {after * 1000:F1} ms)");
+            Report(report.Summary.Contains("set the BPM to 125"), $"...and it says so (\"{report.Summary}\")");
+        }
+
+        // Most tracks were made at a whole number, so a measurement a hair off one is measurement
+        // error. Snapping is safe because of the warp: it does not claim the track is 125, it
+        // makes it 125.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 124.985)]);
+            BeatAlign.Apply(file, onsets);
+
+            Report(file.BPM == 125.0f, $"a measurement a hair off a whole number snaps to it ({file.BPM})");
+        }
+
+        // ...but only a hair. A tape transfer really running at 124.6 keeps 124.6.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 124.6)]);
+            BeatAlign.Apply(file, onsets);
+
+            Report(Math.Abs(file.BPM - 124.6) < 0.01, $"a tempo genuinely between whole numbers is kept ({file.BPM:F2})");
+        }
+
+        // And a difference too small to be worth the rewrite is left alone entirely.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 128.008)]);
+            var report = BeatAlign.Apply(file, onsets);
+
+            Report(file.BPM == 128.0f && report.NominalBPM == 0,
+                   $"a trivial disagreement does not rewrite the BPM ({file.BPM})");
+        }
+
+        // Nothing to go on means nothing happens. Not an empty grid, not a guess - the grid the
+        // track already had.
+        {
+            var file = Track(128, 0.5, 300);
+            var report = BeatAlign.Apply(file, []);
+
+            Report(report.AnchorsAdded == 0 && file.BeatGridMarkers.Count == 0,
+                   "a track with no detectable onsets is left completely alone");
+            Report(report.Summary.Contains("No beats"), $"...and says so (\"{report.Summary}\")");
+        }
+
+        // A breakdown with no drums in it. The beats there cannot be checked, so they are not
+        // touched - and the tracker has to pick the beat up again on the other side, which is what
+        // the widening search window is for.
+        {
+            var file = Track(128, 0.5, 400);
+            var onsets = Onsets(0.5, [(700, 127.6)], drop: k => k >= 64 && k < 160);
+            var report = BeatAlign.Apply(file, onsets);
+            double after = WorstGridError(file, onsets, 0.5);
+
+            Report(report.BeatsMatched > 500, $"beats after a 45-second breakdown are found again ({report.BeatsMatched} matched)");
+            Report(after < 0.02, $"...and the grid still lands on them (worst {after * 1000:F1} ms)");
+        }
+
+        // The bail-out. If the tempo the beats imply is nowhere near the nominal one, the
+        // measurement is wrong far more often than the track is, so nothing is written.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 147.0)]);       // ~15% out: a mis-detected BPM
+            var report = BeatAlign.Apply(file, onsets);
+
+            Report(!report.Changed, $"an unbelievable tempo is refused, not written ({report.AnchorsAdded} markers, {report.SegmentsRetimed} retimed)");
+            Report(file.BeatGridMarkers.Count == 0, "...and the track is left completely ungridded");
+            Report(report.Summary.Contains("left alone"), $"...with a reason (\"{report.Summary}\")");
+        }
+
+        // A few wrong onsets - a syncopated stab, a vocal - must not each become a tempo change.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 128.0)]);
+            onsets.Add(new BeatAlign.Onset(0.5 + 40 * 60.0 / 128.0 + 0.055, 9.0));
+            onsets.Add(new BeatAlign.Onset(0.5 + 41 * 60.0 / 128.0 - 0.060, 9.0));
+            onsets.Add(new BeatAlign.Onset(0.5 + 200 * 60.0 / 128.0 + 0.062, 9.0));
+
+            var report = BeatAlign.Apply(file, onsets);
+            Report(report.AnchorsAdded == 0, $"strong off-beat onsets do not become markers ({report.AnchorsAdded})");
+            Report(report.BeatsMatched > 500 && report.SegmentsRetimed == 0,
+                   $"...the real beat next to them wins the match, however loud they are ({report.BeatsMatched} matched)");
+        }
+
+        // And when a stray is the ONLY thing near a beat - the kick dropped out for a bar and a
+        // syncopated stab is all that is left - it has to be discarded rather than believed, or one
+        // wrong onset becomes a tempo change.
+        {
+            var file = Track(128, 0.5, 300);
+            var onsets = Onsets(0.5, [(600, 128.0)], drop: k => k == 300 || k == 301);
+            onsets.Add(new BeatAlign.Onset(0.5 + 300 * 60.0 / 128.0 + 0.055, 9.0));
+            onsets.Add(new BeatAlign.Onset(0.5 + 301 * 60.0 / 128.0 + 0.058, 9.0));
+            onsets = [.. onsets.OrderBy(x => x.Seconds)];
+
+            var report = BeatAlign.Apply(file, onsets);
+            Report(report.OutliersIgnored >= 2, $"an onset with no real beat beside it is discarded ({report.OutliersIgnored} outliers)");
+            Report(report.AnchorsAdded == 0, $"...and costs no marker ({report.AnchorsAdded})");
+        }
+
+        // Half-tempo matching is the failure that produces a confident, completely wrong grid, so
+        // the search window is capped below half a beat whatever else happens.
+        {
+            var file = Track(128, 0.5, 300);
+            var offbeat = Onsets(0.5 + 30.0 / 128.0, [(600, 128.0)]);       // every onset half a beat late
+            var report = BeatAlign.Apply(file, offbeat);
+
+            Report(report.BeatsMatched == 0, $"onsets half a beat out are not matched at all ({report.BeatsMatched})");
+            Report(report.AnchorsAdded == 0, "...so nothing is written");
+        }
+
+        // What the algorithm writes has to be indistinguishable from a hand edit, because
+        // everything downstream - the warp, Reset, dragging one afterwards - treats it as one.
+        {
+            var file = Track(128, 0.5, 320);
+            var onsets = Onsets(0.5, [(64, 128.0), (600, 126.6)]);
+            BeatAlign.Apply(file, onsets);
+
+            var placed = file.BeatGridMarkers.Where(m => !m.IsDownbeat).ToList();
+            Report(placed.All(m => !m.IsReference),
+                   "automatic markers are adjustments, not references - so they stay draggable");
+            Report(file.BeatGridMarkers.Zip(file.BeatGridMarkers.Skip(1)).All(x => x.First.Position < x.Second.Position),
+                   "the anchor list comes out strictly ordered");
+
+            BeatGrid grid = BeatGrid.FromFile(file, 1);
+            Report(grid.IsWarped, "the grid reports itself warped, so playback will follow it");
+            Report(Math.Abs(grid.PlaybackRateAt(0.0) - 1.0) < 1e-12,
+                   "and the intro still plays at exactly normal speed");
+        }
     }
 
     // ------------------------------------------------------------------
