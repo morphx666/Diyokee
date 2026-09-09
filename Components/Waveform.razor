@@ -65,6 +65,16 @@
     [Parameter]
     public bool GridEditing { get; set; } = false;
 
+    // Whether every bar line is drawn, or only the track's own downbeat. A grid that can hold
+    // several tempo sections has a downbeat per bar, and seeing them all is what makes drift
+    // readable while gridding - but on a deck during a mix they are just noise, so the main
+    // console leaves this off and gets the single cyan line it always had.
+    //
+    // Deliberately a parameter with no setting behind it: the decks hard-code false and Track
+    // Properties hard-codes true. If it ever wants to be a preference, this is where it plugs in.
+    [Parameter]
+    public bool ShowBarLines { get; set; } = false;
+
     // Draws the track in GRID time instead of source time: the audio is stretched onto a uniform
     // beat grid, so a drifting track visibly straightens out. This is a rendering transform only -
     // no audio is touched - and it uses the same BeatGrid.ToGridTime the playback warp would, so
@@ -583,19 +593,25 @@
                 }
                 await ctx.StrokeAsync();
 
-                // Downbeats: the first beat of every bar, at BeatGrid.BeatsPerBar (4). The old code
-                // drew exactly one cyan line, at the analyser's single DownbeatAt; a grid that can
-                // hold several tempo sections has a downbeat per bar, and drawing them all is what
-                // makes bar structure readable while gridding.
-
+                // Downbeats: the first beat of every bar, at BeatGrid.BeatsPerBar (4). Gridding
+                // wants all of them; a deck wants the one line it has always had, so unless bar
+                // lines are asked for only the track's own downbeat is drawn.
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync("#2ef");
-                foreach(var beat in g.Beats) {
-                    if(!beat.IsDownbeat) continue;
-                    double x = ToX(beat.Seconds);
-                    if(x < 0 || x >= cw) continue;
-                    await ctx.MoveToAsync(x, 0);
-                    await ctx.LineToAsync(x, ch);
+                if(ShowBarLines || GridEditing) {
+                    foreach(var beat in g.Beats) {
+                        if(!beat.IsDownbeat) continue;
+                        double x = ToX(beat.Seconds);
+                        if(x < 0 || x >= cw) continue;
+                        await ctx.MoveToAsync(x, 0);
+                        await ctx.LineToAsync(x, ch);
+                    }
+                } else if(g.Beats.Count > 0) {
+                    double x = ToX(g.Beats[g.DownbeatIndex].Seconds);
+                    if(x >= 0 && x < cw) {
+                        await ctx.MoveToAsync(x, 0);
+                        await ctx.LineToAsync(x, ch);
+                    }
                 }
                 await ctx.StrokeAsync();
 
