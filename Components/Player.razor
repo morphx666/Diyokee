@@ -745,6 +745,13 @@
             }
 
             await (waveformFull?.ForceReRender() ?? Task.CompletedTask);
+
+            // SetParameters fills the BPM and key readouts, and it runs here - off the circuit,
+            // after the component has already rendered. ForceReRender only redraws the canvas, so
+            // without this the readouts keep whatever they had when the first render happened:
+            // on a freshly loaded deck that is the empty string, and the BPM stays blank until
+            // something else happens to re-render it, such as pressing play.
+            await InvokeAsync(StateHasChanged);
         });
     }
 
