@@ -68,15 +68,6 @@
     [Parameter]
     public bool Warped { get; set; } = false;
 
-    [Parameter]
-    public int SelectedAnchor { get; set; } = -1;
-
-    [Parameter]
-    public EventCallback<int> SelectedAnchorChanged { get; set; }
-
-    [Parameter]
-    public EventCallback AnchorMoved { get; set; }
-
     // Beat positions as they were when the drag began, drawn behind the live ones so you can see
     // how far the grid has actually travelled. Without it a bend is oddly hard to judge: every
     // reference point moves with the thing you are dragging.
@@ -233,10 +224,9 @@
         activeDrag = Player.Grid.BeginBeatDrag(anchors, grabbed);
         if(!activeDrag.IsValid) return;
 
-        draggingAnchor = activeDrag.IsAnchor ? activeDrag.AnchorBend.Index : activeDrag.Segment;
+        draggingAnchor = activeDrag.Index;
         draggedBeat = grabbed;
         ghostBeats = [.. Player.Grid.Beats.Select(b => b.Seconds)];
-        SelectedAnchorChanged.InvokeAsync(activeDrag.IsAnchor ? activeDrag.AnchorBend.Index : activeDrag.Segment);
     }
 
     private async Task DragAnchor() {
@@ -244,9 +234,8 @@
         if(anchors == null || draggingAnchor < 0) return;
 
         draggedBeat = PointerSeconds();
-        Player.Grid.ApplyBeatDrag(anchors, activeDrag, draggedBeat);
+        BeatGrid.ApplyBeatDrag(anchors, activeDrag, draggedBeat);
         await Player.RefreshBeatGrid();
-        await AnchorMoved.InvokeAsync();
     }
 
     private async Task EndAnchorDrag() {
@@ -254,6 +243,11 @@
         draggedBeat = double.NaN;
         activeDrag = BeatGrid.BeatDrag.None;
         ghostBeats = null;
+
+        // Dragging a beat back where it came from must leave nothing behind, or fidgeting would
+        // quietly accumulate anchors the user never asked for and cannot see.
+        if(Player.File != null) BeatGrid.Prune(Player.File.BeatGridMarkers);
+
         await Player.RefreshBeatGrid();
     }
 

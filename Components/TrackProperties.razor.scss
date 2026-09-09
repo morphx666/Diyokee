@@ -84,3 +84,12 @@
     border-bottom: 1px solid var(--panel-background-color-dark);
     border-bottom: 1px solid var(--panel-background-color-dark);
 }
+// The whole beat grid UI: one toggle. Everything else about the grid happens by dragging a beat
+// in the waveform, so there is nothing here to list, add or delete.
+.grid-toggle {
+    &.active {
+        background-color: #4183c4;
+        border-color: #5a9de0;
+        color: #fff;
+    }
+}

@@ -512,8 +512,7 @@ internal static class GridTest {
         Report(ins.Count == 2, "deleting out of range is ignored");
     }
 
-    // Dragging a beat line directly, which is the primary gesture: grab any beat over the waveform
-    // and pull it onto the audio it should be sitting on.
+    // Dragging a beat line directly - the only gesture the grid editor has.
     static void BeatDragging() {
         Console.WriteLine("\n[15] Dragging a beat line");
 
@@ -523,61 +522,72 @@ internal static class GridTest {
             return (grid, anchors);
         }
 
-        // 120 BPM from 0. Beat 20 is at 10s; drag it to 10.5s and the segment must slow to fit.
+        static BeatGrid Rebuild(List<DFile.BeatGridMarker> anchors)
+            => new([.. anchors.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 600.0, 1, 120.0);
+
+        // Grabbing an ordinary beat pins it: an anchor appears there so the drag is LOCAL.
         var (grid, anchors) = Build((0.0, 120.0));
         var drag = grid.BeginBeatDrag(anchors, 10.0);
-        Report(drag.IsValid && !drag.IsAnchor, "an ordinary beat drags its segment, not an anchor");
-        Report(Near(drag.Beats, 20), "the beat count from the segment start is frozen at 20");
+        Report(drag.IsValid, "an ordinary beat can be grabbed");
+        Report(anchors.Count == 2, $"an anchor is created where it was grabbed, got {anchors.Count}");
+        Report(Near(anchors[1].Position, 10.0), "...at that beat");
 
-        grid.ApplyBeatDrag(anchors, drag, 10.5);
-        Report(Near(anchors[0].Position, 0.0), "the segment's start anchor is pinned");
-        Report(Near(anchors[0].BPM, 60.0 * 20 / 10.5), "the tempo is set so that beat lands where it was dropped");
+        BeatGrid.ApplyBeatDrag(anchors, drag, 10.5);
+        Report(Near(anchors[0].Position, 0.0), "the previous anchor is pinned");
+        Report(Near(anchors[0].BPM, 60.0 * 20 / 10.5), "the stretch back to it is re-timed to land the beat where it was dropped");
+        Report(Near(Rebuild(anchors).Advance(0.0, 20), 10.5, 1e-9), "...and it really does land there");
 
-        var after = new BeatGrid([.. anchors.Select(m => new BeatGrid.Anchor(m.Position, m.BPM, m.IsDownbeat))], 600.0, 1, 120.0);
-        Report(Near(after.Advance(0.0, 20), 10.5, 1e-9), "...and it really does land there");
-        Report(Near(after.Advance(0.0, 40), 21.0, 1e-9), "every later beat in the segment follows");
+        // THE point of pinning: a later drag must not disturb what is already aligned.
+        var (g2, a2) = Build((0.0, 120.0));
+        BeatGrid.ApplyBeatDrag(a2, g2.BeginBeatDrag(a2, 10.0), 10.5);   // fix beat 20
+        double firstFix = a2[0].BPM;
 
-        // A following anchor is fixed, so correcting one section cannot disturb the next.
-        var (g2, a2) = Build((0.0, 120.0), (30.0, 90.0));
-        g2.ApplyBeatDrag(a2, g2.BeginBeatDrag(a2, 10.0), 10.4);
-        Report(Near(a2[1].Position, 30.0) && Near(a2[1].BPM, 90.0), "the next anchor and its tempo are untouched");
+        var g2b = Rebuild(a2);
+        double laterBeat = g2b.Advance(10.5, 40);
+        BeatGrid.ApplyBeatDrag(a2, g2b.BeginBeatDrag(a2, laterBeat), laterBeat + 0.4);
 
-        // Dragging a beat inside the SECOND segment leaves the first alone - which is what anchors
-        // are for: pinning a section you have already got right.
-        var (g3, a3) = Build((0.0, 120.0), (30.0, 120.0));
-        double beatInSecond = 30.0 + 10 * 0.5;
-        g3.ApplyBeatDrag(a3, g3.BeginBeatDrag(a3, beatInSecond), beatInSecond + 0.3);
-        Report(Near(a3[0].BPM, 120.0), "the earlier segment's tempo is untouched");
-        Report(!Near(a3[1].BPM, 120.0), "and the later one has changed");
+        Report(Near(a2[0].BPM, firstFix, 1e-9), "correcting a later beat leaves the earlier section's tempo alone");
+        Report(Near(Rebuild(a2).Advance(0.0, 20), 10.5, 1e-6), "...so the beat fixed first is still where it was put");
 
-        // A beat sitting exactly on an anchor moves the anchor, which re-times both sides.
+        // Dragging a beat that is already an anchor moves that anchor and creates nothing.
+        var (g3, a3) = Build((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
+        int before = a3.Count;
+        var anchorDrag = g3.BeginBeatDrag(a3, 10.0);
+        Report(a3.Count == before, "grabbing an existing anchor does not create another");
+        BeatGrid.ApplyBeatDrag(a3, anchorDrag, 10.5);
+        Report(Near(a3[0].Position, 0.0) && Near(a3[2].Position, 20.0), "...the neighbours stay put");
+        Report(a3[0].BPM < 120.0 && a3[1].BPM > 120.0, "...and both adjacent segments are re-timed");
+
+        // Clamped so an anchor can never reach or cross a neighbour.
         var (g4, a4) = Build((0.0, 120.0), (10.0, 120.0), (20.0, 120.0));
-        var anchorDrag = g4.BeginBeatDrag(a4, 10.0);
-        Report(anchorDrag.IsAnchor, "a beat on an anchor drags the anchor");
-        g4.ApplyBeatDrag(a4, anchorDrag, 10.5);
-        Report(Near(a4[0].Position, 0.0) && Near(a4[2].Position, 20.0), "...and the neighbours stay put");
-        Report(a4[0].BPM < 120.0 && a4[1].BPM > 120.0, "...while both adjacent segments are re-timed");
+        var d4 = g4.BeginBeatDrag(a4, 10.0);
+        BeatGrid.ApplyBeatDrag(a4, d4, 5000.0);
+        Report(a4[1].Position < 20.0 && a4[1].Position > 0.0, $"a drag past the next anchor is clamped to {a4[1].Position:F2}");
 
-        // Clamped by the tempo the drag implies, so a beat can never be dragged onto its own anchor
-        // or produce an absurd tempo.
+        // Fidgeting must leave no trace: drag a beat out and back and the anchor it created is
+        // pruned, because an anchor whose tempo matches the one before it says nothing.
         var (g5, a5) = Build((0.0, 120.0));
         var d5 = g5.BeginBeatDrag(a5, 10.0);
-        g5.ApplyBeatDrag(a5, d5, 0.0001);
-        Report(a5[0].BPM <= 400.0 + 1e-6 && a5[0].BPM > 0, $"dragging hard left clamps the tempo to {a5[0].BPM:F1}");
-        g5.ApplyBeatDrag(a5, d5, 5000.0);
-        Report(a5[0].BPM >= 20.0 - 1e-6, $"dragging hard right clamps it to {a5[0].BPM:F1}");
+        BeatGrid.ApplyBeatDrag(a5, d5, 10.9);
+        BeatGrid.ApplyBeatDrag(a5, d5, 10.0);
+        BeatGrid.Prune(a5);
+        Report(a5.Count == 1, $"dragging out and back leaves no anchor behind, got {a5.Count}");
+        Report(Near(a5[0].BPM, 120.0, 1e-9), "...and the tempo is exactly as it was");
 
-        // Round trip.
+        // A real correction is NOT pruned.
         var (g6, a6) = Build((0.0, 120.0));
-        var d6 = g6.BeginBeatDrag(a6, 10.0);
-        g6.ApplyBeatDrag(a6, d6, 10.9);
-        g6.ApplyBeatDrag(a6, d6, 10.0);
-        Report(Near(a6[0].BPM, 120.0, 1e-9), "dragging out and back restores the tempo exactly");
+        BeatGrid.ApplyBeatDrag(a6, g6.BeginBeatDrag(a6, 10.0), 10.4);
+        BeatGrid.Prune(a6);
+        Report(a6.Count == 2, "a genuine correction keeps its anchor");
 
-        // Degenerate grabs are refused rather than dividing by zero.
-        var (g7, a7) = Build((0.0, 120.0));
-        Report(!g7.BeginBeatDrag(a7, 0.0).IsAnchor || true, "grabbing the first anchor is allowed");
-        Report(!g7.BeginBeatDrag([], 10.0).IsValid, "grabbing with no anchors is refused");
+        // Downbeat anchors carry bar phase, not tempo, so they always survive pruning.
+        var a7 = Anchors((0.0, 120.0), (10.0, 120.0));
+        a7[1].IsDownbeat = true;
+        BeatGrid.Prune(a7);
+        Report(a7.Count == 2, "a downbeat anchor is never pruned");
+
+        var (g8, a8) = Build((0.0, 120.0));
+        Report(!g8.BeginBeatDrag([], 10.0).IsValid, "grabbing with no anchors at all is refused");
     }
 
     // Cue points must be completely unaffected by anything done to the beat grid. They are stored

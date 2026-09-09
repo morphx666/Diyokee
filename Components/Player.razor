@@ -58,8 +58,6 @@
                   Mode="Waveform.Modes.AudioSynced"
                   Player="this"
                   GridEditing="@GridEditing"
-                  SelectedAnchor="@SelectedAnchor"
-                  SelectedAnchorChanged="@(i => SelectedAnchorChanged.InvokeAsync(i))"
                   @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
@@ -1129,8 +1127,6 @@
     // main console keeps exactly the waveform and the platter it has always had.
     [Parameter] public bool GridEditing { get; set; }
     [Parameter] public bool WarpedView { get; set; }
-    [Parameter] public int SelectedAnchor { get; set; } = -1;
-    [Parameter] public EventCallback<int> SelectedAnchorChanged { get; set; }
 
     // Rebuilds after the editor has changed an anchor, and redraws both waveforms. Cheaper than
     // SetParameters, which also re-parses the whole waveform string out of the cached file.
