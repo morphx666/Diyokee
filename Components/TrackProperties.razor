@@ -109,11 +109,21 @@
                 <div class="recalculate" @onclick="ReCalcBpm"><i class="fa-solid fa-arrow-rotate-right"></i></div>
                 <div class="recalculate" @onclick="() => BpmMultiply(2.0)"><i class="fa-solid fa-xmark"></i>2</div>
                 <div class="recalculate" @onclick="() => BpmMultiply(0.5)"><i class="fa-solid fa-divide"></i>2</div>
+            </div>
+
+            <div class="field grid-container">
+                <label>Grid</label>
                 <div class="recalculate grid-toggle @(gridEditing ? "active" : "")"
                      @onclick="ToggleGridEditing"
-                     title="Grid editing: drag any beat in the waveform onto the audio it belongs on">
-                    <i class="fa-solid fa-ruler-horizontal"></i>
+                     title="Drag any beat in the waveform onto the audio it belongs on">
+                    <i class="fa-solid fa-ruler-horizontal"></i> Edit
                 </div>
+                <div class="recalculate grid-reset @(HasCustomGrid ? "" : "disabled")"
+                     @onclick="ResetGrid"
+                     title="Discard every grid change and go back to the detected BPM and downbeat">
+                    <i class="fa-solid fa-rotate-left"></i> Reset
+                </div>
+                <span class="grid-summary">@GridSummary</span>
             </div>
 
             <div class="key-notation-container">
@@ -270,9 +280,32 @@
 
     private bool gridEditing;
 
-    // The entire beat grid UI. Anchors are never listed, added or deleted here: they exist only as
-    // a consequence of dragging a beat, so there is nothing for this to manage.
+    // The entire beat grid UI. Individual markers are never listed here - they are created and
+    // removed on the waveform itself - so this is only the mode switch and a way out.
     private void ToggleGridEditing() => gridEditing = !gridEditing;
+
+    private bool HasCustomGrid => edit?.BeatGridMarkers.Count > 0;
+
+    private string GridSummary {
+        get {
+            if(edit == null) return "";
+
+            int count = edit.BeatGridMarkers.Count;
+            if(count == 0) return "detected";
+
+            // The downbeat anchor is seeded automatically and is not something the user placed, so
+            // counting it would make an untouched grid look edited.
+            int custom = count - 1;
+            return custom <= 0 ? "detected" : $"{custom} marker{(custom == 1 ? "" : "s")}";
+        }
+    }
+
+    private async Task ResetGrid() {
+        if(!HasCustomGrid || player == null) return;
+
+        edit.BeatGridMarkers.Clear();
+        await player.RefreshBeatGrid();
+    }
 
     private async Task Save() {
         File.ApplyEditsFrom(edit);

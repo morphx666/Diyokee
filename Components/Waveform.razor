@@ -371,14 +371,61 @@
         }
     }
 
-    // The editing overlay. Everything here is drawn only while the Grid toggle is on, so ordinary
-    // playback keeps exactly the waveform it had.
+    // The custom markers themselves. Two kinds, and telling them apart is the point:
     //
-    // Anchors are marked, not turned into widgets: the beat lines are what you grab, and a handle
-    // parked at the top of the canvas would just be a second thing to aim at.
-    private async Task RenderGridEditing(Canvas2DContext ctx, BeatGrid g, double cw, double ch, Func<double, double> ToX) {
+    //   a REFERENCE carries the tempo of the segment before it, so it changes nothing - it is
+    //   there to hold a stretch of already-correct grid still while something later is fixed.
+    //   Drawn as a hollow marker in neutral grey.
+    //
+    //   an ADJUSTED marker starts a segment at a different tempo, which is what a drag produces.
+    //   Drawn filled and tinted: amber where the track runs slow and playback is pushed, blue
+    //   where it runs fast and is held back.
+    //
+    // Both get a full-height line and a wedge top and bottom, so they read as boundaries at a
+    // glance without covering the audio.
+    private async Task RenderAnchors(Canvas2DContext ctx, double cw, double ch, Func<double, double> ToX) {
         var anchors = Player.File!.BeatGridMarkers;
+        if(anchors.Count == 0) return;
+
         double nominal = Player.File.BPM;
+
+        for(int i = 0; i < anchors.Count; i++) {
+            double x = ToX(anchors[i].Position);
+            if(x < -10 || x > cw + 10) continue;
+
+            // A marker is a reference when it does not change the tempo it inherited. The first
+            // anchor is the downbeat and is seeded rather than placed, so it counts as one too.
+            bool isReference = i == 0 || Math.Abs(anchors[i].BPM - anchors[i - 1].BPM) < 1e-6;
+            string tint = isReference ? "#c8c8c8" : AnchorTint(anchors[i].BPM, nominal);
+
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync(tint);
+            await ctx.SetLineWidthAsync(isReference ? 1.5f : 2f);
+            await ctx.MoveToAsync(x, 0);
+            await ctx.LineToAsync(x, ch);
+            await ctx.StrokeAsync();
+            await ctx.SetLineWidthAsync(1f);
+
+            // The wedges. Hollow for a reference, solid for an adjustment - readable without
+            // relying on colour alone, which matters when the tint is grey either way.
+            await ctx.SetStrokeStyleAsync(tint);
+            await ctx.SetFillStyleAsync(tint);
+            foreach(int dir in new[] { 1, -1 }) {
+                double baseY = dir > 0 ? 0 : ch;
+                await ctx.BeginPathAsync();
+                await ctx.MoveToAsync(x - 5, baseY);
+                await ctx.LineToAsync(x + 5, baseY);
+                await ctx.LineToAsync(x, baseY + dir * 7);
+                await ctx.ClosePathAsync();
+                if(isReference) await ctx.StrokeAsync(); else await ctx.FillAsync();
+            }
+        }
+    }
+
+    // The editing overlay: what only makes sense while a drag is possible. The markers themselves
+    // are drawn by RenderAnchors in both modes.
+    private async Task RenderGridEditing(Canvas2DContext ctx, BeatGrid g, double cw, double ch, Func<double, double> ToX) {
+        double nominal = Player.File!.BPM;
 
         // Where the beats were when this drag started. Every other reference on screen travels
         // with the grid, so without these it is oddly hard to see how far it has actually moved.
@@ -394,39 +441,6 @@
             }
             await ctx.StrokeAsync();
             await ctx.SetLineDashAsync(Array.Empty<float>());
-        }
-
-        // A tick and a tinted stem where a segment's tempo changes. Amber where the track runs slow
-        // and playback has to be pushed, blue where it runs fast and has to be held back, grey
-        // where it is already on tempo - three states rather than a gradient, because what matters
-        // while gridding is the sign of the error and the eye reads that instantly.
-        for(int i = 0; i < anchors.Count; i++) {
-            double x = ToX(anchors[i].Position);
-            if(x < -10 || x > cw + 10) continue;
-
-            string tint = AnchorTint(anchors[i].BPM, nominal);
-
-            await ctx.BeginPathAsync();
-            await ctx.SetStrokeStyleAsync(tint);
-            await ctx.SetLineWidthAsync(2f);
-            await ctx.MoveToAsync(x, 0);
-            await ctx.LineToAsync(x, ch);
-            await ctx.StrokeAsync();
-            await ctx.SetLineWidthAsync(1f);
-
-            // A small wedge at the top, so an anchor is identifiable at a glance without covering
-            // the audio behind it.
-            await ctx.SetFillStyleAsync(tint);
-            await ctx.BeginPathAsync();
-            await ctx.MoveToAsync(x - 4, 0);
-            await ctx.LineToAsync(x + 4, 0);
-            await ctx.LineToAsync(x, 6);
-            await ctx.ClosePathAsync();
-            await ctx.FillAsync();
-
-            if(anchors[i].IsDownbeat) {
-                await ctx.FillRectAsync(x - 1, ch - 5, 3, 5);
-            }
         }
 
         // The beat under the hand, plus the tempo the drag is producing. The number is the point:
@@ -654,6 +668,11 @@
                 }
                 await ctx.StrokeAsync();
 
+                // Custom markers are drawn whether or not editing is on: they say "this track's
+                // grid has been changed, and here is where", which is exactly what you want to
+                // know before deciding to edit it. Only the ghosts and the drag readout are
+                // edit-mode furniture.
+                if(ShowGridDetail || GridEditing) await RenderAnchors(ctx, cw, ch, ToX);
                 if(GridEditing) await RenderGridEditing(ctx, g, cw, ch, ToX);
             }
 

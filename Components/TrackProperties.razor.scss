@@ -84,12 +84,33 @@
     border-bottom: 1px solid var(--panel-background-color-dark);
     border-bottom: 1px solid var(--panel-background-color-dark);
 }
-// The whole beat grid UI: one toggle. Everything else about the grid happens by dragging a beat
-// in the waveform, so there is nothing here to list, add or delete.
-.grid-toggle {
-    &.active {
+// The whole beat grid UI: a mode switch and a way out. Individual markers are created and removed
+// on the waveform itself, so there is nothing here to list.
+.grid-container {
+    .grid-toggle.active {
         background-color: #4183c4;
         border-color: #5a9de0;
         color: #fff;
+    }
+
+    .grid-reset {
+        &:hover {
+            background-color: #8a3030;
+            border-color: #a54040;
+        }
+
+        // Nothing to reset is worth showing rather than hiding: it is also the readout that says
+        // this track's grid is untouched.
+        &.disabled {
+            opacity: 0.35;
+            pointer-events: none;
+        }
+    }
+
+    .grid-summary {
+        margin-left: 0.4rem;
+        color: #888;
+        font-size: 0.7rem;
+        white-space: nowrap;
     }
 }

@@ -33,6 +33,7 @@ internal static class GridTest {
         Editing();
         BeatDragging();
         Pinning();
+        ReferenceIsImmovable();
         CuePointsSurvive();
 
         Console.WriteLine(failures == 0
@@ -669,6 +670,69 @@ internal static class GridTest {
         var (g5, a5) = Build((0.0, 120.0));
         g5.TogglePin(a5, 0.0);
         Report(a5.Count == 1, "the first anchor cannot be removed");
+    }
+
+    // Reproduces the reported sequence exactly: set a reference, then drag a beat AFTER it, and
+    // demand that NOTHING at or before the reference moved. A reference is meant to be an immovable
+    // beat, so this is the property the whole feature rests on.
+    static void ReferenceIsImmovable() {
+        Console.WriteLine("\n[17] A reference is immovable");
+
+        // A real track: analysis gives a BPM and a downbeat, and no anchors of its own.
+        var file = new DFile { BPM = 120, DownbeatAt = 0.517, Duration = 300 };
+
+        BeatGrid Grid() => BeatGrid.FromFile(file, 1);
+
+        // 1. The user clicks + on a beat to make it a reference. This is what TogglePinAt does,
+        //    including seeding the downbeat anchor the fallback grid was using.
+        var anchors = file.BeatGridMarkers;
+        double reference = Grid().Advance(0.517, 32);
+        BeatGrid.Insert(anchors, file.DownbeatAt, file.BPM, true);
+        Grid().TogglePin(anchors, reference);
+
+        double[] beforeReference = [.. Grid().Beats.Where(b => b.Seconds <= reference + 1e-9).Select(b => b.Seconds)];
+        Console.WriteLine($"      reference at {reference:F4}s, {beforeReference.Length} beats at or before it");
+
+        // 2. The user drags a beat well after the reference.
+        double target = Grid().Advance(reference, 32);
+        var drag = Grid().BeginBeatDrag(anchors, target);
+        BeatGrid.ApplyBeatDrag(anchors, drag, target + 0.30);
+        BeatGrid.PruneDrag(anchors, drag);
+
+        double[] afterEdit = [.. Grid().Beats.Where(b => b.Seconds <= reference + 1e-9).Select(b => b.Seconds)];
+
+        bool sameCount = afterEdit.Length == beforeReference.Length;
+        Report(sameCount, $"the same number of beats sits at or before the reference ({beforeReference.Length} vs {afterEdit.Length})");
+
+        int moved = 0;
+        double worst = 0;
+        if(sameCount) {
+            for(int i = 0; i < afterEdit.Length; i++) {
+                double d = Math.Abs(afterEdit[i] - beforeReference[i]);
+                if(d > 1e-9) {
+                    moved++;
+                    if(d > worst) worst = d;
+                }
+            }
+        }
+        Report(moved == 0, $"not one beat at or before the reference moved ({moved} moved, worst {worst * 1000:F3} ms)");
+
+        // And the reference itself is exactly where it was put.
+        Report(anchors.Any(a => Math.Abs(a.Position - reference) < 1e-9), "the reference itself has not moved");
+
+        // 3. A second edit, further along, must not disturb the first correction either.
+        double corrected = Grid().Advance(reference, 32);
+        double[] beforeSecond = [.. Grid().Beats.Where(b => b.Seconds <= corrected + 1e-9).Select(b => b.Seconds)];
+
+        double target2 = Grid().Advance(corrected, 32);
+        var drag2 = Grid().BeginBeatDrag(anchors, target2);
+        BeatGrid.ApplyBeatDrag(anchors, drag2, target2 - 0.20);
+        BeatGrid.PruneDrag(anchors, drag2);
+
+        double[] afterSecond = [.. Grid().Beats.Where(b => b.Seconds <= corrected + 1e-9).Select(b => b.Seconds)];
+        bool secondOk = afterSecond.Length == beforeSecond.Length
+                        && afterSecond.Zip(beforeSecond).All(x => Math.Abs(x.First - x.Second) < 1e-9);
+        Report(secondOk, "a later edit leaves everything up to the previous edit alone");
     }
 
     // Cue points must be completely unaffected by anything done to the beat grid. They are stored
