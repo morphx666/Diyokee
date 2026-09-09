@@ -634,11 +634,19 @@
                 // version inset them outside grid mode to make grid mode feel different; that was
                 // a change nobody asked for and it made the ordinary waveform harder to read.
                 // Grid mode brightens them instead - same geometry, they just look grabbable.
+                //
+                // A downbeat is skipped here only when something below is going to draw it: the bar
+                // line pass, or the deck's single cyan downbeat. Skipping every downbeat outright
+                // is what made turning bar lines off on the decks DELETE every fourth beat line
+                // rather than demote it to an ordinary one.
+                bool barLines = ShowGridDetail || GridEditing;
+                int trackDownbeat = g.Beats.Count > 0 ? g.DownbeatIndex : -1;
+
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync(GridEditing ? "#b4b4b4" : "#888");
-                foreach(var beat in g.Beats) {
-                    if(beat.IsDownbeat) continue;
-                    double x = ToX(beat.Seconds);
+                for(int i = 0; i < g.Beats.Count; i++) {
+                    if(g.Beats[i].IsDownbeat && (barLines || i == trackDownbeat)) continue;
+                    double x = ToX(g.Beats[i].Seconds);
                     if(x < 0 || x >= cw) continue;
                     await ctx.MoveToAsync(x, 0);
                     await ctx.LineToAsync(x, ch);
@@ -650,7 +658,7 @@
                 // lines are asked for only the track's own downbeat is drawn.
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync("#2ef");
-                if(ShowGridDetail || GridEditing) {
+                if(barLines) {
                     foreach(var beat in g.Beats) {
                         if(!beat.IsDownbeat) continue;
                         double x = ToX(beat.Seconds);
