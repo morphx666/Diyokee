@@ -7,7 +7,7 @@
 @inject IJSRuntime JS
 
 <MouseSupport OnMouseEvent="@HandleMouseEvent">
-    <div class="waveform-container">
+    <div class="waveform-container @(ShowsRuler ? "ruled" : "")">
         <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
         @foreach(var handle in GrabbableBeats()) {
             <div class="beat-handle @(handle.IsAnchor ? "anchored" : "") @(handle.IsReference ? "reference" : "")"
@@ -112,6 +112,10 @@
     //
     // Yields nothing unless grid editing is on, so the ordinary waveform renders exactly as before.
     private readonly record struct BeatHandle(double X, double Seconds, bool IsAnchor, bool IsReference);
+
+    // Whether the top of the canvas is given over to the grid's ruler strip. The zoom controls
+    // live up there too and would otherwise land on top of the flags.
+    private bool ShowsRuler => Mode == Modes.AudioSynced && (ShowGridDetail || GridEditing);
 
     private IEnumerable<BeatHandle> GrabbableBeats() {
         if(!GridEditing || Mode != Modes.AudioSynced || Player?.File == null || canvasWidth == 0) yield break;
@@ -384,6 +388,20 @@
     //
     // Both get a full-height line and a wedge top and bottom, so they read as boundaries at a
     // glance without covering the audio.
+    // A lane for the grid's own furniture. Drawn over the beat lines on purpose: it clips them at
+    // the top, which is what separates "the grid" from "the audio" instead of letting every line
+    // run the whole way up through the flags.
+    private async Task RenderRuler(Canvas2DContext ctx, double cw) {
+        await ctx.SetFillStyleAsync("rgba(14,14,14,0.72)");
+        await ctx.FillRectAsync(0, 0, cw, RulerHeight);
+
+        await ctx.BeginPathAsync();
+        await ctx.SetStrokeStyleAsync("rgba(255,255,255,0.10)");
+        await ctx.MoveToAsync(0, RulerHeight + 0.5);
+        await ctx.LineToAsync(cw, RulerHeight + 0.5);
+        await ctx.StrokeAsync();
+    }
+
     private async Task RenderAnchors(Canvas2DContext ctx, double cw, double ch, Func<double, double> ToX) {
         var anchors = Player.File!.BeatGridMarkers;
         if(anchors.Count == 0) return;
@@ -395,31 +413,56 @@
             if(x < -10 || x > cw + 10) continue;
 
             bool isReference = anchors[i].IsReference;
-            string tint = isReference ? "#c8c8c8" : AnchorTint(anchors[i].BPM, nominal);
+            (int r, int g, int b) tint = isReference ? (200, 200, 200) : AnchorTint(anchors[i].BPM, nominal);
 
-            await ctx.BeginPathAsync();
-            await ctx.SetStrokeStyleAsync(tint);
-            await ctx.SetLineWidthAsync(isReference ? 1.5f : 2f);
-            await ctx.MoveToAsync(x, 0);
-            await ctx.LineToAsync(x, ch);
-            await ctx.StrokeAsync();
-            await ctx.SetLineWidthAsync(1f);
+            // The line, fading out downward instead of a hard bar the full height of the canvas.
+            // An anchor needs to be findable, not to compete with the waveform for the eye - the
+            // old version drew a 2px rule plus a wedge at each end and won that competition every
+            // time. Stepped alpha rather than a real gradient: half a dozen strokes on a handful
+            // of anchors is cheaper than reaching for the gradient API through interop.
+            for(int step = 0; step < FadeSteps; step++) {
+                double y0 = RulerHeight + (ch - RulerHeight) * step / FadeSteps;
+                double y1 = RulerHeight + (ch - RulerHeight) * (step + 1) / FadeSteps;
+                double alpha = 0.5 * (1.0 - (double)step / FadeSteps);
 
-            // The wedges. Hollow for a reference, solid for an adjustment - readable without
-            // relying on colour alone, which matters when the tint is grey either way.
-            await ctx.SetStrokeStyleAsync(tint);
-            await ctx.SetFillStyleAsync(tint);
-            foreach(int dir in new[] { 1, -1 }) {
-                double baseY = dir > 0 ? 0 : ch;
                 await ctx.BeginPathAsync();
-                await ctx.MoveToAsync(x - 5, baseY);
-                await ctx.LineToAsync(x + 5, baseY);
-                await ctx.LineToAsync(x, baseY + dir * 7);
-                await ctx.ClosePathAsync();
-                if(isReference) await ctx.StrokeAsync(); else await ctx.FillAsync();
+                await ctx.SetStrokeStyleAsync(Rgba(tint, alpha));
+                await ctx.MoveToAsync(x, y0);
+                await ctx.LineToAsync(x, y1);
+                await ctx.StrokeAsync();
+            }
+
+            // The flag, in the ruler strip. Hollow for a reference, solid for an adjustment -
+            // readable without relying on colour alone, which matters because the tint is grey
+            // for both a reference and an on-tempo anchor.
+            await ctx.BeginPathAsync();
+            await ctx.MoveToAsync(x - FlagHalfWidth, 1);
+            await ctx.LineToAsync(x + FlagHalfWidth, 1);
+            await ctx.LineToAsync(x + FlagHalfWidth, RulerHeight - 3);
+            await ctx.LineToAsync(x, RulerHeight);
+            await ctx.LineToAsync(x - FlagHalfWidth, RulerHeight - 3);
+            await ctx.ClosePathAsync();
+
+            if(isReference) {
+                await ctx.SetFillStyleAsync(Rgba(tint, 0.15));
+                await ctx.FillAsync();
+                await ctx.SetStrokeStyleAsync(Rgba(tint, 0.95));
+                await ctx.StrokeAsync();
+            } else {
+                await ctx.SetFillStyleAsync(Rgba(tint, 0.95));
+                await ctx.FillAsync();
             }
         }
     }
+
+    // The strip along the top that the flags live in. Everything grid-related that is not a line
+    // through the audio belongs up here, so the waveform itself stays clear.
+    private const double RulerHeight = 11;
+    private const double FlagHalfWidth = 4;
+    private const int FadeSteps = 6;
+
+    private static string Rgba((int R, int G, int B) c, double alpha)
+        => $"rgba({c.R},{c.G},{c.B},{alpha.ToString("0.###", CultureInfo.InvariantCulture)})";
 
     // The editing overlay: what only makes sense while a drag is possible. The markers themselves
     // are drawn by RenderAnchors in both modes.
@@ -463,19 +506,19 @@
             double lx = Math.Clamp(x + 6, 0, cw - metrics.Width - 8);
             await ctx.SetFillStyleAsync("#000000cc");
             await ctx.FillRectAsync(lx, 4, metrics.Width + 8, 16);
-            await ctx.SetFillStyleAsync(AnchorTint(bpm, nominal));
+            await ctx.SetFillStyleAsync(Rgba(AnchorTint(bpm, nominal), 1));
             await ctx.FillTextAsync(label, lx + 4, 16);
         }
     }
 
     // Amber slow, blue fast, grey on tempo. Deliberately not a continuous gradient: the eye reads
     // three states far faster than a hue, and what matters while gridding is the SIGN of the error.
-    private static string AnchorTint(double bpm, double nominal) {
-        if(!(nominal > 0) || !(bpm > 0)) return "#9a9a9a";
+    private static (int R, int G, int B) AnchorTint(double bpm, double nominal) {
+        if(!(nominal > 0) || !(bpm > 0)) return (154, 154, 154);
         double ratio = bpm / nominal;
-        if(ratio < 0.999) return "#e8a33d";
-        if(ratio > 1.001) return "#4db2e8";
-        return "#9a9a9a";
+        if(ratio < 0.999) return (232, 163, 61);
+        if(ratio > 1.001) return (77, 178, 232);
+        return (154, 154, 154);
     }
 
     private async Task RenderWaveformFull() {
@@ -679,7 +722,10 @@
                 // grid has been changed, and here is where", which is exactly what you want to
                 // know before deciding to edit it. Only the ghosts and the drag readout are
                 // edit-mode furniture.
-                if(ShowGridDetail || GridEditing) await RenderAnchors(ctx, cw, ch, ToX);
+                if(barLines) {
+                    await RenderRuler(ctx, cw);
+                    await RenderAnchors(ctx, cw, ch, ToX);
+                }
                 if(GridEditing) await RenderGridEditing(ctx, g, cw, ch, ToX);
             }
 
