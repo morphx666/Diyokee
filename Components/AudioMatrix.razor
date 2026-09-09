@@ -31,15 +31,19 @@
     }
 </div>
 
-<div class="apply-status">
-    <span>@statusMessage</span>
-</div>
+@* Only failures are worth a line here. Saying "changes are applied immediately" on every
+   successful edit is noise: the change is audible, which tells you the same thing better. *@
+@if(statusMessage != "") {
+    <div class="apply-status">
+        <span>@statusMessage</span>
+    </div>
+}
 
 @code {
     private List<AudioDevice> audioDevices { get; set; } = new();
     private bool[][] master = [];
     private bool[][] monitor = [];
-    private string statusMessage = "Changes are applied immediately";
+    private string statusMessage = "";
 
     [Parameter]
     public Diyokee.Settings Settings { get; set; } = default!;
@@ -96,7 +100,7 @@
 
             try {
                 Player.ApplyAudioDeviceChanges();
-                statusMessage = "Changes are applied immediately";
+                statusMessage = "";
 
                 // A device BASS refused is dropped from the settings by the reconcile, so the box
                 // that was just ticked has to come back up rather than claim an output that is not
