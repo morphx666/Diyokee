@@ -87,38 +87,76 @@
 // The whole beat grid UI: a mode switch and a way out. Individual markers are created and removed
 // on the waveform itself, so there is nothing here to list.
 .grid-container {
-    .grid-toggle.active {
-        background-color: #4183c4;
-        border-color: #5a9de0;
-        color: #fff;
-    }
+    // One bordered group with the segments butted together, so the row reads as a single control
+    // rather than three loose words. The divider between segments is a hairline INSIDE the group,
+    // which is a different thing from the free-standing dividers `.recalculate` produces.
+    .segmented {
+        display: flex;
+        align-items: stretch;
+        margin-left: 0.5rem;
+        border: 1px solid var(--panel-background-color-light);
+        border-radius: 5px;
 
-    .grid-reset {
-        &:hover {
-            background-color: #8a3030;
-            border-color: #a54040;
-        }
+        // So a segment's fill reaches the rounded corners instead of squaring them off.
+        overflow: hidden;
 
-        // Nothing to reset is worth showing rather than hiding: it is also the readout that says
-        // this track's grid is untouched.
-        &.disabled {
-            opacity: 0.35;
-            pointer-events: none;
-        }
-    }
+        background-color: #ffffff08;
 
-    .grid-auto {
-        &:hover {
-            background-color: #2f6b4a;
-            border-color: #3d8a60;
-        }
+        .segment {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
 
-        // Measuring takes a few seconds, so the button has to look occupied - otherwise the only
-        // feedback is that nothing happens.
-        &.working {
-            opacity: 1;
-            pointer-events: none;
-            color: #6fd39b;
+            padding: 0.28rem 0.6rem;
+            font-size: 0.72rem;
+            white-space: nowrap;
+            color: var(--ctrl-highlight-soft);
+            cursor: pointer;
+
+            transition: background-color 150ms, color 150ms;
+
+            &:not(:last-child) {
+                border-right: 1px solid var(--panel-background-color-light);
+            }
+
+            i {
+                font-size: 0.7rem;
+                opacity: 0.85;
+            }
+
+            &:hover {
+                background-color: #ffffff14;
+                color: var(--text-white);
+            }
+
+            // Editing is a MODE, so it stays lit for as long as it is on. The other two are
+            // actions and light only under the pointer - that difference is the whole reason a
+            // segmented control suits this row.
+            &.active {
+                background-color: #4183c4;
+                color: #fff;
+
+                i { opacity: 1; }
+            }
+
+            // Measuring takes a few seconds, so the segment has to look occupied - otherwise the
+            // only feedback is that nothing happens.
+            &.working {
+                color: #6fd39b;
+                pointer-events: none;
+            }
+
+            &.danger:hover {
+                background-color: #8a3030;
+                color: #fff;
+            }
+
+            // Nothing to reset is worth showing rather than hiding: it is also the readout that
+            // says this track's grid is untouched.
+            &.disabled {
+                opacity: 0.3;
+                pointer-events: none;
+            }
         }
     }
 

@@ -113,20 +113,26 @@
 
             <div class="field grid-container">
                 <label>Grid</label>
-                <div class="recalculate grid-toggle @(gridEditing ? "active" : "")"
-                     @onclick="ToggleGridEditing"
-                     title="Drag any beat in the waveform onto the audio it belongs on">
-                    <i class="fa-solid fa-ruler-horizontal"></i> Edit
-                </div>
-                <div class="recalculate grid-auto @(gridAligning ? "working" : "")"
-                     @onclick="AutoGrid"
-                     title="Listen to the track from the downbeat on and correct the grid wherever the beats have drifted">
-                    <i class="fa-solid @(gridAligning ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles")"></i> Auto
-                </div>
-                <div class="recalculate grid-reset @(HasCustomGrid ? "" : "disabled")"
-                     @onclick="ResetGrid"
-                     title="Discard every grid change and go back to the detected BPM and downbeat">
-                    <i class="fa-solid fa-rotate-left"></i> Reset
+                @* One control, not three. These used to wear `.recalculate`, the style built for
+                   the bare icon buttons on the Downbeat and BPM rows, so they arrived as low
+                   opacity text with a divider between each - and the dividers read louder than
+                   the buttons did. *@
+                <div class="segmented">
+                    <div class="segment @(gridEditing ? "active" : "")"
+                         @onclick="ToggleGridEditing"
+                         title="Drag any beat in the waveform onto the audio it belongs on">
+                        <i class="fa-solid fa-ruler-horizontal"></i><span>Edit</span>
+                    </div>
+                    <div class="segment @(gridAligning ? "working" : "")"
+                         @onclick="AutoGrid"
+                         title="Listen to the track from the downbeat on and correct the grid wherever the beats have drifted">
+                        <i class="fa-solid @(gridAligning ? "fa-spinner fa-spin" : "fa-wand-magic-sparkles")"></i><span>Auto</span>
+                    </div>
+                    <div class="segment danger @(HasCustomGrid ? "" : "disabled")"
+                         @onclick="ResetGrid"
+                         title="Discard every grid change and go back to the detected BPM and downbeat">
+                        <i class="fa-solid fa-rotate-left"></i><span>Reset</span>
+                    </div>
                 </div>
                 <span class="grid-summary">@GridSummary</span>
             </div>

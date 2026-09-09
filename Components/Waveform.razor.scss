@@ -36,46 +36,52 @@
         cursor: ew-resize;
 
 
-        // The button only exists on hover: one per visible beat, permanently drawn, would bury the
-        // waveform under a row of icons.
+        // The action sits in the ruler strip the flags live in, not over the audio, and only on
+        // hover: one of these per visible beat, permanently drawn, would bury the waveform under a
+        // row of icons. Height matches Waveform.RulerHeight - the canvas is drawn in CSS pixels
+        // (SetTransformAsync applies the device ratio), so the two line up without conversion.
         .beat-action {
             position: absolute;
-            top: 2px;
+            top: 0;
             left: 1px;
             width: 14px;
-            height: 14px;
+            height: 11px;
             padding: 0;
             display: none;
             align-items: center;
             justify-content: center;
             font-size: 8px;
             line-height: 1;
-            border: 1px solid #6a6a6a;
-            border-radius: 2px;
-            background-color: #2a2a2ad9;
-            color: #ddd;
+            // Opaque, not a wash. A translucent fill over an already dark strip left the icon
+            // barely findable, and this appears whenever the pointer is anywhere down the beat -
+            // often nowhere near the button - so it has to read on its own, not only once it is
+            // hovered.
+            border: 0;
+            border-radius: 0 0 3px 3px;
+            background-color: #5a5a5a;
+            box-shadow: 0 0 0 1px #12121299;
+            color: #fff;
             cursor: pointer;
+
+            transition: background-color 120ms;
         }
 
         &:hover .beat-action {
             display: flex;
         }
 
-        // A beat that is already a reference: the button removes it, so it warns rather than invites.
+        // A beat that is already a marker: the action removes it, so it warns from the moment it
+        // appears rather than only once the pointer reaches it.
         &.anchored .beat-action {
-            border-color: #a5544a;
-            color: #ffb4a8;
+            background-color: #8a3030;
 
             &:hover {
-                background-color: #8a3030;
-                color: #fff;
+                background-color: #b04444;
             }
         }
 
         &:not(.anchored) .beat-action:hover {
             background-color: #4183c4;
-            border-color: #5a9de0;
-            color: #fff;
         }
     }
 
@@ -83,6 +89,11 @@
         .zoom-controls {
             opacity: 1;
         }
+    }
+
+    // Clear of the ruler strip when there is one, or the buttons land on top of the marker flags.
+    &.ruled .zoom-controls {
+        top: 15px;
     }
 
     .zoom-controls {
