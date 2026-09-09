@@ -541,24 +541,25 @@
                 BeatGrid g = Player.Grid;
                 double ToX(double seconds) => seconds * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
 
-                // Ordinary beats stay a dim hairline; downbeats are brighter and full height, so
-                // the bar structure is readable without counting. This is where the old single
-                // hardcoded DownbeatAt line went - every downbeat is drawn now, which is the only
-                // way a grid with more than one anchor makes sense.
-                // In grid mode the beat lines ARE the handles, so they run the full height and
-                // brighten - they have to look like something you can take hold of.
+                // Beat lines run the full height of the canvas, as they always have. An earlier
+                // version inset them outside grid mode to make grid mode feel different; that was
+                // a change nobody asked for and it made the ordinary waveform harder to read.
+                // Grid mode brightens them instead - same geometry, they just look grabbable.
                 await ctx.BeginPathAsync();
-                await ctx.SetStrokeStyleAsync(GridEditing ? "#b4b4b4" : "#7a7a7a");
-                double top = GridEditing ? 0 : ch * 0.12;
-                double bottom = GridEditing ? ch : ch * 0.88;
+                await ctx.SetStrokeStyleAsync(GridEditing ? "#b4b4b4" : "#888");
                 foreach(var beat in g.Beats) {
                     if(beat.IsDownbeat) continue;
                     double x = ToX(beat.Seconds);
                     if(x < 0 || x >= cw) continue;
-                    await ctx.MoveToAsync(x, top);
-                    await ctx.LineToAsync(x, bottom);
+                    await ctx.MoveToAsync(x, 0);
+                    await ctx.LineToAsync(x, ch);
                 }
                 await ctx.StrokeAsync();
+
+                // Downbeats: the first beat of every bar, at BeatGrid.BeatsPerBar (4). The old code
+                // drew exactly one cyan line, at the analyser's single DownbeatAt; a grid that can
+                // hold several tempo sections has a downbeat per bar, and drawing them all is what
+                // makes bar structure readable while gridding.
 
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync("#2ef");
