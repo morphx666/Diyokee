@@ -50,6 +50,7 @@
                   Mode="Waveform.Modes.Full"
                   Player="this"
                   Warped="@WarpedView"
+                  ShowGridDetail="@ShowGridDetail"
                   @ref="waveformFull" />
     </div>
 
@@ -58,7 +59,7 @@
                   Mode="Waveform.Modes.AudioSynced"
                   Player="this"
                   GridEditing="@GridEditing"
-                  ShowBarLines="@ShowBarLines"
+                  ShowGridDetail="@ShowGridDetail"
                   @ref="waveform" />
 
         <VuMeter @ref="vuMeter" />
@@ -1130,8 +1131,8 @@
     [Parameter] public bool WarpedView { get; set; }
 
     // Off for the decks, which is what keeps the main console looking as it always did. Track
-    // Properties turns it on because gridding needs to see the bars.
-    [Parameter] public bool ShowBarLines { get; set; }
+    // Properties turns it on because gridding needs to see what the grid is doing.
+    [Parameter] public bool ShowGridDetail { get; set; }
 
     // Rebuilds after the editor has changed an anchor, and redraws both waveforms. Cheaper than
     // SetParameters, which also re-parses the whole waveform string out of the cached file.

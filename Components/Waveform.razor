@@ -65,15 +65,15 @@
     [Parameter]
     public bool GridEditing { get; set; } = false;
 
-    // Whether every bar line is drawn, or only the track's own downbeat. A grid that can hold
-    // several tempo sections has a downbeat per bar, and seeing them all is what makes drift
-    // readable while gridding - but on a deck during a mix they are just noise, so the main
-    // console leaves this off and gets the single cyan line it always had.
+    // Whether the waveform shows what the grid is DOING as well as where the beats are: every bar
+    // line rather than just the track's own downbeat, and the drift ribbon under the overview.
+    // Both make correction readable while gridding and are noise on a deck during a mix, so the
+    // decks leave this off and look exactly as they always have.
     //
     // Deliberately a parameter with no setting behind it: the decks hard-code false and Track
     // Properties hard-codes true. If it ever wants to be a preference, this is where it plugs in.
     [Parameter]
-    public bool ShowBarLines { get; set; } = false;
+    public bool ShowGridDetail { get; set; } = false;
 
     // Draws the track in GRID time instead of source time: the audio is stretched onto a uniform
     // beat grid, so a drifting track visibly straightens out. This is a rendering transform only -
@@ -523,7 +523,7 @@
         // be pushed or held back to keep that stretch on the grid. Amber above the centre line
         // means the track runs slow there and must be sped up; blue below means the opposite. It
         // answers "where does this track wander, and by how much" before you touch anything.
-        if(grid.IsWarped && Player.File != null && Player.File.Duration > 0) {
+        if((ShowGridDetail || GridEditing) && grid.IsWarped && Player.File != null && Player.File.Duration > 0) {
             double duration = Player.File.Duration;
             double ribbonTop = ch - 7;
             double mid = ribbonTop + 3;
@@ -631,7 +631,7 @@
                 // lines are asked for only the track's own downbeat is drawn.
                 await ctx.BeginPathAsync();
                 await ctx.SetStrokeStyleAsync("#2ef");
-                if(ShowBarLines || GridEditing) {
+                if(ShowGridDetail || GridEditing) {
                     foreach(var beat in g.Beats) {
                         if(!beat.IsDownbeat) continue;
                         double x = ToX(beat.Seconds);
