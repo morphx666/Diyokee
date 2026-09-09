@@ -84,6 +84,17 @@
     [Parameter]
     public bool ShowGridDetail { get; set; } = false;
 
+    // Measure lines, in whichever mode this instance is. Independent of ShowGridDetail because
+    // they are the one piece of grid drawing that earns its place during a mix rather than only
+    // while gridding: knowing where the measure falls is how you judge a drop, and that does not
+    // depend on caring how the grid was built. Kept separate so turning it on for the decks does
+    // not also bring the ruler strip, the marker flags and the drift ribbon with it.
+    //
+    // Driven by Settings.Playback.BarLinesWaveform / BarLinesOverview. Grid editing overrides it:
+    // you cannot grid a track without seeing the bars.
+    [Parameter]
+    public bool ShowBarLines { get; set; } = false;
+
     // Draws the track in GRID time instead of source time: the audio is stretched onto a uniform
     // beat grid, so a drifting track visibly straightens out. This is a rendering transform only -
     // no audio is touched - and it uses the same BeatGrid.ToGridTime the playback warp would, so
@@ -457,6 +468,10 @@
 
     // The strip along the top that the flags live in. Everything grid-related that is not a line
     // through the audio belongs up here, so the waveform itself stays clear.
+    // Closest two measure lines may sit in the overview before they are thinned out. Below this
+    // they stop reading as a grid and start reading as hatching.
+    private const double MinBarSpacing = 24;
+
     private const double RulerHeight = 11;
     private const double FlagHalfWidth = 4;
     private const int FadeSteps = 6;
@@ -544,6 +559,16 @@
         BeatGrid grid = Player.Grid;
         bool straighten = Warped && grid.IsWarped;
 
+        // Seconds to an x in this strip. Cue points had this inline; measure lines need exactly
+        // the same answer, and a straightened view that moved one but not the other would put the
+        // grid and the audio in different places.
+        double fullDuration = Player.File?.Duration ?? 0;
+        double fullSpan = straighten && fullDuration > 0 ? grid.ToGridTime(fullDuration) - grid.ToGridTime(0) : 0;
+
+        double ToFullX(double seconds) => straighten && fullSpan > 0
+            ? (grid.ToGridTime(seconds) - grid.ToGridTime(0)) / fullSpan * cw
+            : seconds * Player.SecondsToPosX * step / Player.WaveformBarWidth;
+
         if(straighten) {
             // Draw the track in GRID time: each peak is placed where it WOULD be if the track had
             // played at its nominal tempo throughout. A drifting track visibly straightens, and -
@@ -581,6 +606,48 @@
             }
         }
 
+        // Measure lines, thinned to stay legible. Every bar of a 3.5 minute track is ~106 lines
+        // across the strip, one every 7 px, which reads as hatching rather than a grid. Doubling
+        // the interval until they are far enough apart lands on 4 or 8 bars for a typical track -
+        // a phrase, which is the unit that matters when you are looking at a whole track at once.
+        //
+        // The synced waveform draws every bar instead, because there it is a handful of lines and
+        // the question there is "where is the next measure", not "what shape is this track".
+        if((ShowBarLines || ShowGridDetail) && grid.Beats.Count > 0) {
+            int bars = 0;
+            foreach(BeatGrid.Beat beat in grid.Beats) {
+                if(beat.IsDownbeat) bars++;
+            }
+
+            // `stride < bars` is the termination guard, not an optimisation: this can run before
+            // the canvas has been measured, and with cw at 0 the spacing test is false forever.
+            // The catch around the render swallows exceptions but would not save us from a spin.
+            int stride = 1;
+            while(bars > 0 && stride < bars && cw / bars * stride < MinBarSpacing) stride *= 2;
+
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync("rgba(34,238,255,0.45)");
+
+            // Counted from the track's own downbeat, which is the first one in the list, so the
+            // phrase grid starts where the music does rather than where the array does.
+            int bar = 0;
+            foreach(BeatGrid.Beat beat in grid.Beats) {
+                if(!beat.IsDownbeat) continue;
+
+                if(bar % stride == 0) {
+                    double bx = ToFullX(beat.Seconds);
+                    if(bx >= 0 && bx < cw) {
+                        await ctx.MoveToAsync(bx, 0);
+                        await ctx.LineToAsync(bx, ch);
+                    }
+                }
+
+                bar++;
+            }
+
+            await ctx.StrokeAsync();
+        }
+
         // The drift ribbon: a band along the bottom showing, per segment, how hard playback has to
         // be pushed or held back to keep that stretch on the grid. Amber above the centre line
         // means the track runs slow there and must be sped up; blue below means the opposite. It
@@ -612,14 +679,10 @@
         // Render Cue Points
         if(Player.File?.CuePoints.Count > 0) {
             await ctx.SetStrokeStyleAsync("#f92");
-            double cueDuration = Player.File!.Duration;
-            double cueSpan = straighten && cueDuration > 0 ? grid.ToGridTime(cueDuration) - grid.ToGridTime(0) : 0;
             foreach(CuePoint cp in Player.File.CuePoints) {
                 // In the straightened view a cue has to move with the audio it marks, or it points
-                // at the wrong moment.
-                double x = straighten && cueSpan > 0
-                    ? (grid.ToGridTime(cp.Position) - grid.ToGridTime(0)) / cueSpan * cw
-                    : cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
+                // at the wrong moment. ToFullX handles that for everything placed by time here.
+                double x = ToFullX(cp.Position);
 
                 await ctx.MoveToAsync(x, 0);
                 await ctx.LineToAsync(x, ch);
@@ -682,7 +745,8 @@
                 // line pass, or the deck's single cyan downbeat. Skipping every downbeat outright
                 // is what made turning bar lines off on the decks DELETE every fourth beat line
                 // rather than demote it to an ordinary one.
-                bool barLines = ShowGridDetail || GridEditing;
+                bool barLines = ShowBarLines || ShowGridDetail || GridEditing;
+                bool gridDetail = ShowGridDetail || GridEditing;
                 int trackDownbeat = g.Beats.Count > 0 ? g.DownbeatIndex : -1;
 
                 await ctx.BeginPathAsync();
@@ -722,7 +786,7 @@
                 // grid has been changed, and here is where", which is exactly what you want to
                 // know before deciding to edit it. Only the ghosts and the drag readout are
                 // edit-mode furniture.
-                if(barLines) {
+                if(gridDetail) {
                     await RenderRuler(ctx, cw);
                     await RenderAnchors(ctx, cw, ch, ToX);
                 }

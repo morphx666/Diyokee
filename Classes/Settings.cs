@@ -47,6 +47,14 @@ namespace Diyokee {
             [JsonProperty("beatmatching-display")] public bool BeatmatchingDisplay { get; set; } = false;
             [JsonProperty("enable-track-prescan")] public bool EnablePrescan { get; set; } = false;
             [JsonProperty("snap-to-downbeat-onload")] public bool SnapToDownBeatOnLoad { get; set; } = true;
+
+            // Measure lines, per waveform. Two flags rather than one four-way choice because the
+            // two views answer different questions - the synced waveform says "where is the next
+            // measure", the overview says "what shape is this track" - so wanting one without the
+            // other is an ordinary preference, not a corner case. Grid editing draws them either
+            // way; you cannot grid a track without seeing the bars.
+            [JsonProperty("bar-lines-waveform")] public bool BarLinesWaveform { get; set; } = true;
+            [JsonProperty("bar-lines-overview")] public bool BarLinesOverview { get; set; } = true;
             [JsonProperty("scratch")] public ScratchSettings Scratch { get; set; } = new();
         }
 

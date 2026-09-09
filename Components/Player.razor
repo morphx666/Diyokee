@@ -50,6 +50,7 @@
                   Mode="Waveform.Modes.Full"
                   Player="this"
                   Warped="@WarpedView"
+                  ShowBarLines="@Program.Settings.Playback.BarLinesOverview"
                   ShowGridDetail="@ShowGridDetail"
                   @ref="waveformFull" />
     </div>
@@ -59,6 +60,7 @@
                   Mode="Waveform.Modes.AudioSynced"
                   Player="this"
                   GridEditing="@GridEditing"
+                  ShowBarLines="@Program.Settings.Playback.BarLinesWaveform"
                   ShowGridDetail="@ShowGridDetail"
                   @ref="waveform" />
 
