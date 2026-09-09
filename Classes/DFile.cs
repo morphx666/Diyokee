@@ -25,6 +25,11 @@ namespace Diyokee {
             public double Position { get; set; } = 0;
             public double BPM { get; set; } = 0;
             public bool IsDownbeat { get; set; } = true;
+
+            // A guard rail the user placed on purpose: this beat is asserted to be correct, so
+            // nothing before it may move and it cannot itself be dragged. Distinct from an anchor
+            // a drag left behind, which is only a tempo change and stays adjustable.
+            public bool IsReference { get; set; } = false;
         }
 
         public int Id { get; set; }
@@ -114,11 +119,13 @@ namespace Diyokee {
                     existing.Position = marker.Position;
                     existing.BPM = marker.BPM;
                     existing.IsDownbeat = marker.IsDownbeat;
+                    existing.IsReference = marker.IsReference;
                 } else {
                     BeatGridMarkers.Add(new BeatGridMarker {
                         Position = marker.Position,
                         BPM = marker.BPM,
-                        IsDownbeat = marker.IsDownbeat
+                        IsDownbeat = marker.IsDownbeat,
+                        IsReference = marker.IsReference
                     });
                 }
             }
@@ -139,7 +146,8 @@ namespace Diyokee {
             clone.BeatGridMarkers = [];
             foreach(BeatGridMarker marker in BeatGridMarkers) {
                 clone.BeatGridMarkers.Add(new BeatGridMarker {
-                    Id = marker.Id, Position = marker.Position, BPM = marker.BPM, IsDownbeat = marker.IsDownbeat
+                    Id = marker.Id, Position = marker.Position, BPM = marker.BPM,
+                    IsDownbeat = marker.IsDownbeat, IsReference = marker.IsReference
                 });
             }
 

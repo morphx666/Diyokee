@@ -622,7 +622,7 @@ internal static class GridTest {
         // A pin changes nothing you can see or hear - it takes the tempo already in force.
         var (grid, anchors) = Build((0.0, 120.0));
         var beatsBefore = grid.Beats.Select(b => b.Seconds).ToArray();
-        Report(grid.TogglePin(anchors, 16.0), "double-clicking a beat adds a pin");
+        Report(grid.TogglePin(anchors, 16.0), "placing a reference adds an anchor");
         Report(anchors.Count == 2, "...as an anchor");
 
         var pinned = Rebuild(anchors);
@@ -663,13 +663,43 @@ internal static class GridTest {
         // Double-clicking a pin removes it.
         var (g4, a4) = Build((0.0, 120.0));
         g4.TogglePin(a4, 16.0);
-        Report(!Rebuild(a4).TogglePin(a4, 16.0), "double-clicking a pin reports removal");
+        Report(!Rebuild(a4).TogglePin(a4, 16.0), "removing a reference reports it");
         Report(a4.Count == 1, "...and it is gone");
 
         // The downbeat anchor is what the grid hangs from and cannot be unpinned away.
         var (g5, a5) = Build((0.0, 120.0));
         g5.TogglePin(a5, 0.0);
         Report(a5.Count == 1, "the first anchor cannot be removed");
+
+        // A reference is flagged as one, which is what tells it apart from an anchor a drag left
+        // behind - the two are drawn differently and only one of them is auto-prunable.
+        var (g6, a6) = Build((0.0, 120.0));
+        g6.TogglePin(a6, 16.0);
+        var placed = a6.Single(m => Math.Abs(m.Position - 16.0) < 1e-9);
+        Report(placed.IsReference, "a placed reference is flagged as one");
+
+        var g6b = Rebuild(a6);
+        double dragged = g6b.Advance(16.0, 8);
+        var d6 = g6b.BeginBeatDrag(a6, dragged);
+        Report(!a6.Single(m => Math.Abs(m.Position - dragged) < 1e-9).IsReference,
+               "an anchor a drag leaves behind is not");
+
+        // ...and a reference is never pruned, whatever its tempo happens to say.
+        BeatGrid.PruneDrag(a6, d6);
+        Report(a6.Any(m => Math.Abs(m.Position - 16.0) < 1e-9), "a reference survives a prune");
+
+        // A reference is still DRAGGABLE. Immovable describes what it protects, not itself: moving
+        // it re-times the two segments either side, and the anchor before it is the guard rail.
+        var (g7, a7) = Build((0.0, 120.0));
+        g7.TogglePin(a7, 16.0);
+        var g7b = Rebuild(a7);
+        var refDrag = g7b.BeginBeatDrag(a7, 16.0);
+        Report(refDrag.IsValid, "a reference can be grabbed");
+
+        BeatGrid.ApplyBeatDrag(a7, refDrag, 16.4);
+        Report(Near(a7.Single(m => m.IsReference && Math.Abs(m.Position - 16.4) < 1e-9).Position, 16.4),
+               "...and moved");
+        Report(Near(a7[0].Position, 0.0), "...with the anchor before it left where it was");
     }
 
     // Reproduces the reported sequence exactly: set a reference, then drag a beat AFTER it, and
@@ -716,6 +746,38 @@ internal static class GridTest {
             }
         }
         Report(moved == 0, $"not one beat at or before the reference moved ({moved} moved, worst {worst * 1000:F3} ms)");
+
+        // The intro. Beats extrapolated BACK from the downbeat are before every anchor, so nothing
+        // may move them either - the first anchor is a guard rail like any other. This is the exact
+        // shape of the reported "mess before the reference": a track whose downbeat is 8 s in has
+        // ~17 beats behind it, and they all re-spaced.
+        var intro = new DFile { BPM = 124, DownbeatAt = 8.183, Duration = 300 };
+        var introAnchors = intro.BeatGridMarkers;
+        BeatGrid.Insert(introAnchors, intro.DownbeatAt, intro.BPM, true);
+
+        BeatGrid IntroGrid() => BeatGrid.FromFile(intro, 1);
+
+        double[] introBefore = [.. IntroGrid().Beats.Where(b => b.Seconds < intro.DownbeatAt).Select(b => b.Seconds)];
+        Console.WriteLine($"      {introBefore.Length} beats extrapolated before the downbeat at {intro.DownbeatAt}s");
+
+        double introTarget = IntroGrid().Advance(intro.DownbeatAt, 32);
+        var introDrag = IntroGrid().BeginBeatDrag(introAnchors, introTarget);
+        BeatGrid.ApplyBeatDrag(introAnchors, introDrag, introTarget + 0.4);
+
+        double[] introAfter = [.. IntroGrid().Beats.Where(b => b.Seconds < intro.DownbeatAt).Select(b => b.Seconds)];
+
+        bool introCount = introAfter.Length == introBefore.Length;
+        Report(introCount, $"the intro still has the same number of beats ({introBefore.Length} vs {introAfter.Length})");
+
+        int introMoved = 0;
+        double introWorst = 0;
+        if(introCount) {
+            for(int i = 0; i < introAfter.Length; i++) {
+                double d = Math.Abs(introAfter[i] - introBefore[i]);
+                if(d > 1e-9) { introMoved++; if(d > introWorst) introWorst = d; }
+            }
+        }
+        Report(introMoved == 0, $"not one beat before the downbeat moved ({introMoved} moved, worst {introWorst * 1000:F1} ms)");
 
         // And the reference itself is exactly where it was put.
         Report(anchors.Any(a => Math.Abs(a.Position - reference) < 1e-9), "the reference itself has not moved");

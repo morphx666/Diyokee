@@ -16,7 +16,7 @@ namespace Diyokee;
 // BPM + DownbeatAt pair is not a second code path - it is the one-anchor case of this one. Check 1
 // of tools/gridtest is the standing proof that it reproduces the old grid exactly.
 public sealed class BeatGrid {
-    public readonly record struct Anchor(double Position, double BPM, bool IsDownbeat);
+    public readonly record struct Anchor(double Position, double BPM, bool IsDownbeat, bool IsReference = false);
 
     // X is the pixel offset the waveform draws at, carried alongside Seconds because every consumer
     // needed both and computing it twice invited them to disagree.
@@ -51,12 +51,12 @@ public sealed class BeatGrid {
     // The one place that knows how a DFile becomes a grid. Falls back to the BPM + DownbeatAt pair
     // when the track has no anchors of its own, which is every track until one is edited.
     public static BeatGrid FromFile(DFile file, double secondsToPosX) {
-        List<Anchor> anchors = [.. file.BeatGridMarkers.Select(m => new Anchor(m.Position, m.BPM, m.IsDownbeat))];
+        List<Anchor> anchors = [.. file.BeatGridMarkers.Select(m => new Anchor(m.Position, m.BPM, m.IsDownbeat, m.IsReference))];
 
         // No anchors of its own, which is every track until one is edited: fall back to the pair
         // analysis produces. This is the ONLY compatibility mechanism, and it is why there is one
         // code path here rather than a legacy one and a new one.
-        if(anchors.Count == 0 && file.DownbeatAt >= 0) anchors.Add(new Anchor(file.DownbeatAt, file.BPM, true));
+        if(anchors.Count == 0 && file.DownbeatAt >= 0) anchors.Add(new Anchor(file.DownbeatAt, file.BPM, true, true));
 
         return new BeatGrid(anchors, file.Duration, secondsToPosX, file.BPM);
     }
@@ -71,8 +71,19 @@ public sealed class BeatGrid {
         List<double> before = [];
         List<double> forward = [];
 
-        // Backwards from the first anchor, at its tempo, down to the start of the track.
-        double back = SecondsPerBeat(0);
+        // Backwards from the first anchor, down to the start of the track, at the NOMINAL tempo -
+        // deliberately not segment 0's.
+        //
+        // A drag whose previous anchor is the first one re-times segment 0. If the extrapolation
+        // followed that tempo, every beat before the first anchor would move with it: on a track
+        // whose downbeat is 8 s in, that is the whole intro re-spacing because something 30 s away
+        // was corrected. The first anchor is a guard rail like any other, and nothing behind a
+        // guard rail may move.
+        //
+        // The fallback keeps the harness's three-argument constructor honest, and for an unedited
+        // track the two tempos are the same number anyway, which is why check 1 still matches the
+        // pre-BeatGrid grid bit for bit.
+        double back = nominalBPM > 0 ? 60.0 / nominalBPM : SecondsPerBeat(0);
         if(back > 0 && !double.IsInfinity(back)) {
             for(double t = anchors[0].Position - back; t >= 0; t -= back) before.Add(t);
         }
@@ -269,6 +280,11 @@ public sealed class BeatGrid {
         if(anchors.Count == 0) return BeatDrag.None;
 
         int index = anchors.FindIndex(a => Math.Abs(a.Position - beatSeconds) < 1e-6);
+
+        // A reference is draggable like any other beat. "Immovable" is about what a reference
+        // protects, not about the reference itself: dragging it re-times the two segments either
+        // side, so beats between it and the PREVIOUS anchor move - and that previous anchor is the
+        // guard rail for this drag. Nothing behind it can be reached.
         bool created = index < 0;
         if(created) index = Insert(anchors, beatSeconds, TempoAt(beatSeconds), false);
 
@@ -289,7 +305,7 @@ public sealed class BeatGrid {
     // tempo change - so a general sweep would delete every pin the moment anything was dragged.
     public static void PruneDrag(List<DFile.BeatGridMarker> anchors, BeatDrag drag) {
         if(!drag.Created || drag.Index <= 0 || drag.Index >= anchors.Count) return;
-        if(anchors[drag.Index].IsDownbeat) return;
+        if(anchors[drag.Index].IsDownbeat || anchors[drag.Index].IsReference) return;
 
         if(Math.Abs(anchors[drag.Index].BPM - anchors[drag.Index - 1].BPM) < 1e-6) anchors.RemoveAt(drag.Index);
     }
@@ -312,7 +328,7 @@ public sealed class BeatGrid {
             return false;
         }
 
-        Insert(anchors, beatSeconds, TempoAt(beatSeconds), false);
+        Insert(anchors, beatSeconds, TempoAt(beatSeconds), false, isReference: true);
         return true;
     }
 
@@ -329,14 +345,16 @@ public sealed class BeatGrid {
 
     // A new anchor, inserted in order. Its tempo defaults to whatever was already in force there,
     // so dropping one changes nothing until it is bent or its BPM is set - you place it, then edit.
-    public static int Insert(List<DFile.BeatGridMarker> anchors, double position, double bpm, bool isDownbeat) {
+    public static int Insert(List<DFile.BeatGridMarker> anchors, double position, double bpm,
+                            bool isDownbeat, bool isReference = false) {
         int at = anchors.FindIndex(m => m.Position > position);
         if(at < 0) at = anchors.Count;
 
         anchors.Insert(at, new DFile.BeatGridMarker {
             Position = position,
             BPM = bpm,
-            IsDownbeat = isDownbeat
+            IsDownbeat = isDownbeat,
+            IsReference = isReference
         });
         return at;
     }

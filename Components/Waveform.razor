@@ -10,10 +10,10 @@
     <div class="waveform-container">
         <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
         @foreach(var handle in GrabbableBeats()) {
-            <div class="beat-handle @(handle.IsAnchor ? "anchored" : "")"
+            <div class="beat-handle @(handle.IsAnchor ? "anchored" : "") @(handle.IsReference ? "reference" : "")"
                  style="left:@(handle.X.ToString("0.##", CultureInfo.InvariantCulture))px">
                 <button class="beat-action"
-                        title="@(handle.IsAnchor ? "Remove this beat reference" : "Make this beat a reference - nothing before it will move")"
+                        title="@(handle.IsAnchor ? "Remove this marker" : "Make this beat a reference - it becomes immovable and nothing before it can change")"
                         @onclick="() => TogglePinAt(handle.Seconds)"
                         @onclick:stopPropagation="true"
                         @onmousedown:stopPropagation="true">
@@ -111,7 +111,7 @@
     // in the app. Native CSS hover costs nothing and has no latency.
     //
     // Yields nothing unless grid editing is on, so the ordinary waveform renders exactly as before.
-    private readonly record struct BeatHandle(double X, double Seconds, bool IsAnchor);
+    private readonly record struct BeatHandle(double X, double Seconds, bool IsAnchor, bool IsReference);
 
     private IEnumerable<BeatHandle> GrabbableBeats() {
         if(!GridEditing || Mode != Modes.AudioSynced || Player?.File == null || canvasWidth == 0) yield break;
@@ -126,7 +126,8 @@
             double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
             if(x < 0 || x >= cw) continue;
 
-            yield return new BeatHandle(x, beat.Seconds, anchors.Any(a => Math.Abs(a.Position - beat.Seconds) < 1e-6));
+            var anchor = anchors.FirstOrDefault(a => Math.Abs(a.Position - beat.Seconds) < 1e-6);
+            yield return new BeatHandle(x, beat.Seconds, anchor != null, anchor?.IsReference ?? false);
         }
     }
 
@@ -138,7 +139,7 @@
         var anchors = Player.File.BeatGridMarkers;
         if(anchors.Count == 0) {
             if(Player.File.DownbeatAt < 0 || !(Player.File.BPM > 0)) return;
-            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
+            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true, isReference: true);
         }
 
         Player.Grid.TogglePin(anchors, seconds);
@@ -287,7 +288,7 @@
         var anchors = Player.File.BeatGridMarkers;
         if(anchors.Count == 0) {
             if(Player.File.DownbeatAt < 0 || !(Player.File.BPM > 0)) return;
-            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
+            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true, isReference: true);
         }
 
         double grabbed = NearestGrabbableBeat(mouseState.X - (canvasBounds?.X ?? 0));
@@ -393,9 +394,7 @@
             double x = ToX(anchors[i].Position);
             if(x < -10 || x > cw + 10) continue;
 
-            // A marker is a reference when it does not change the tempo it inherited. The first
-            // anchor is the downbeat and is seeded rather than placed, so it counts as one too.
-            bool isReference = i == 0 || Math.Abs(anchors[i].BPM - anchors[i - 1].BPM) < 1e-6;
+            bool isReference = anchors[i].IsReference;
             string tint = isReference ? "#c8c8c8" : AnchorTint(anchors[i].BPM, nominal);
 
             await ctx.BeginPathAsync();
