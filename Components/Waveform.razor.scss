@@ -18,7 +18,22 @@
         left: calc(50% - var(--cursor-width) / 2);
         width: 3px;
         height: 100%;
-        background-color: color-mix(in srgb, var(--led-red), transparent 40%);        
+        background-color: color-mix(in srgb, var(--led-red), transparent 40%);
+
+        // Decorative only. Without this it sits over the middle of the canvas and swallows the
+        // hover for whichever beat is under the playhead.
+        pointer-events: none;
+    }
+
+    // Invisible grab strips over the beat lines while grid editing is on. Width is the same reach
+    // the hit test uses, so what the cursor promises is exactly what a press will grab.
+    .beat-handle {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 14px;
+        margin-left: -7px;
+        cursor: ew-resize;
     }
 
     &:hover {

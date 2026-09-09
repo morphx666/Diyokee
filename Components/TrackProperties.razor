@@ -109,6 +109,11 @@
                 <div class="recalculate" @onclick="ReCalcBpm"><i class="fa-solid fa-arrow-rotate-right"></i></div>
                 <div class="recalculate" @onclick="() => BpmMultiply(2.0)"><i class="fa-solid fa-xmark"></i>2</div>
                 <div class="recalculate" @onclick="() => BpmMultiply(0.5)"><i class="fa-solid fa-divide"></i>2</div>
+                <div class="recalculate grid-toggle @(gridEditing ? "active" : "")"
+                     @onclick="ToggleGridEditing"
+                     title="Grid editing: drag any beat in the waveform onto the audio it belongs on">
+                    <i class="fa-solid fa-ruler-horizontal"></i>
+                </div>
             </div>
 
             <div class="key-notation-container">
@@ -189,8 +194,11 @@
                 Color = "#82871f"
             })"
             MinimalMode="true"
+            GridEditing="@gridEditing"
+            ShowGridDetail="true"
             @ref="player" />
     </div>
+
 
     <div class="filename ellipsis">@edit.Filename</div>
 </ModalDialog>
@@ -260,9 +268,21 @@
 
     public bool IsOpen { get => dialog.IsOpen; }
 
+    private bool gridEditing;
+
+    // The entire beat grid UI. Anchors are never listed, added or deleted here: they exist only as
+    // a consequence of dragging a beat, so there is nothing for this to manage.
+    private void ToggleGridEditing() => gridEditing = !gridEditing;
+
     private async Task Save() {
         File.ApplyEditsFrom(edit);
         await FilesComponent.UpdateFile(File);
+
+        // Rebuild the working copy from what was actually persisted. The clone is only refreshed
+        // when the dialog is opened on a DIFFERENT file, so without this, reopening it on the same
+        // track would reuse a copy whose new anchors still carry Id 0 and re-insert them.
+        edit = (DFile)File.Clone();
+
         Close();
     }
 

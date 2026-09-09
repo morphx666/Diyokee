@@ -2,12 +2,16 @@
 @using Blazor.Extensions.Canvas
 @using Blazor.Extensions.Canvas.Canvas2D
 @using Diyokee
+@using System.Globalization
 @using static Diyokee.DFile
 @inject IJSRuntime JS
 
 <MouseSupport OnMouseEvent="@HandleMouseEvent">
-    <div class="waveform-container">
+    <div class="waveform-container" @ondblclick="HandleDoubleClick">
         <BECanvas Width="@canvasWidth" Height="@canvasHeight" @ref="canvas" />
+        @foreach(double x in GrabbableBeatXs()) {
+            <div class="beat-handle" style="left:@(x.ToString("0.##", CultureInfo.InvariantCulture))px"></div>
+        }
         <div class="cursor" style="@GetCursorCss()"></div>
         @if(EnableZoomControls && Mode == Modes.AudioSynced) {
             <div class="zoom-controls">
@@ -56,8 +60,61 @@
     [Parameter]
     public bool EnableZoomControls { get; set; } = true;
 
+    // Grid editing. While this is on, the synced waveform stops being the platter and mousedown
+    // grabs an anchor handle instead - the two cannot share the left button.
+    [Parameter]
+    public bool GridEditing { get; set; } = false;
+
+    // Whether the waveform shows what the grid is DOING as well as where the beats are: every bar
+    // line rather than just the track's own downbeat, and the drift ribbon under the overview.
+    // Both make correction readable while gridding and are noise on a deck during a mix, so the
+    // decks leave this off and look exactly as they always have.
+    //
+    // Deliberately a parameter with no setting behind it: the decks hard-code false and Track
+    // Properties hard-codes true. If it ever wants to be a preference, this is where it plugs in.
+    [Parameter]
+    public bool ShowGridDetail { get; set; } = false;
+
+    // Draws the track in GRID time instead of source time: the audio is stretched onto a uniform
+    // beat grid, so a drifting track visibly straightens out. This is a rendering transform only -
+    // no audio is touched - and it uses the same BeatGrid.ToGridTime the playback warp would, so
+    // the picture cannot disagree with what a warped deck would do.
+    [Parameter]
+    public bool Warped { get; set; } = false;
+
+    // Beat positions as they were when the drag began, drawn behind the live ones so you can see
+    // how far the grid has actually travelled. Without it a bend is oddly hard to judge: every
+    // reference point moves with the thing you are dragging.
+    private double[]? ghostBeats;
+    private BeatGrid.BeatDrag activeDrag = BeatGrid.BeatDrag.None;
+    private int draggingAnchor = -1;
+    private double draggedBeat = double.NaN;
+
     [CascadingParameter]
     private MouseState mouseState { get; set; } = default!;
+
+    // A transparent strip over each visible beat, so the pointer can show ew-resize when it is over
+    // something draggable.
+    //
+    // Done with real elements rather than a hit test, because MouseSupport only attaches its
+    // mousemove listener while a button is held - there are no hover events to react to at all -
+    // and adding them would put a SignalR round trip on every pixel of every drag-capable control
+    // in the app. Native CSS hover costs nothing and has no latency.
+    //
+    // Yields nothing unless grid editing is on, so the ordinary waveform renders exactly as before.
+    private IEnumerable<double> GrabbableBeatXs() {
+        if(!GridEditing || Mode != Modes.AudioSynced || Player?.File == null || canvasWidth == 0) yield break;
+
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double cw = canvasWidth / canvasRatio;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double pbh = PlaybackHead / tempoFactor;
+
+        foreach(var beat in Player.Grid.Beats) {
+            double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+            if(x >= 0 && x < cw) yield return x;
+        }
+    }
 
     public async Task ForceReRender() {
         forceReRender = true;
@@ -122,13 +179,21 @@
                     // are computed either way, so only consult them when the buttons are shown.
                     bool onZoomButtons = EnableZoomControls
                                          && (zoomControlsBounds?.Contains(mouseState.X, mouseState.Y) ?? false);
-                    if(!onZoomButtons) {
+
+                    // In grid mode the left button belongs to the anchors, not the platter. The two
+                    // cannot share it, which is the whole reason grid editing is a mode.
+                    if(GridEditing) {
+                        if(!onZoomButtons) BeginAnchorDrag();
+                    } else if(!onZoomButtons) {
                         scratching = true;
                         Player.BeginScratch();
                     }
-                } else if(scratching) {
-                    scratching = false;
-                    Player.EndScratch();
+                } else {
+                    if(scratching) {
+                        scratching = false;
+                        Player.EndScratch();
+                    }
+                    if(draggingAnchor >= 0) await EndAnchorDrag();
                 }
             }
         }
@@ -139,11 +204,121 @@
             case Modes.AudioSynced:
                 // Dragging right pulls the record backwards, hence the negated delta.
                 if(scratching) Player.ScratchBy(-mouseState.DeltaX);
+                else if(draggingAnchor >= 0) await DragAnchor();
                 break;
             case Modes.Full:
                 PlaybackHead = (long)((mouseState.X - canvasBounds!.X) * Player.WaveformWidth / canvasWidth);
                 break;
         }
+    }
+
+    // The beat within reach of a canvas x, or NaN. Generous enough to grab without squinting,
+    // tight enough that at normal zoom you cannot take the wrong one - and the same width as the
+    // .beat-handle strips, so what the ew-resize cursor promises is what a press actually gets.
+    private double NearestGrabbableBeat(double px) {
+        const double ReachPx = 7;
+
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double head = PlaybackHead / tempoFactor;
+
+        double bestDistance = ReachPx;
+        double found = double.NaN;
+
+        foreach(var beat in Player.Grid.Beats) {
+            double x = beat.Seconds * Player.SecondsToPosX / tempoFactor + cw2 - head;
+            double distance = Math.Abs(px - x);
+            if(distance < bestDistance) {
+                bestDistance = distance;
+                found = beat.Seconds;
+            }
+        }
+
+        return found;
+    }
+
+    // Seconds under the pointer, on the synced waveform. The centre of the canvas is the playhead.
+    private double PointerSeconds() {
+        double tempoFactor = BpmAwareScale ? Player.ReScaleTempoFader() + 1.0 : 1.0;
+        double cw2 = canvasWidth / (canvasRatio * 2);
+        double px = mouseState.X - (canvasBounds?.X ?? 0);
+        double head = PlaybackHead / tempoFactor;
+        return (px - cw2 + head) * tempoFactor / Player.SecondsToPosX;
+    }
+
+    // ANY beat line is a handle, grabbable anywhere down the canvas - not a separate widget parked
+    // at the top. The beat you are aiming at is the thing you touch.
+    //
+    // The grid has to have anchors before a beat can be dragged, so the first grab seeds one from
+    // the downbeat the analyser found. That keeps "turn Grid on and drag a beat" working as the
+    // first thing anyone tries, rather than doing nothing until an anchor is added by hand.
+    private void BeginAnchorDrag() {
+        if(Player.File == null) return;
+
+        var anchors = Player.File.BeatGridMarkers;
+        if(anchors.Count == 0) {
+            if(Player.File.DownbeatAt < 0 || !(Player.File.BPM > 0)) return;
+            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
+        }
+
+        double grabbed = NearestGrabbableBeat(mouseState.X - (canvasBounds?.X ?? 0));
+        if(double.IsNaN(grabbed)) return;
+
+        activeDrag = Player.Grid.BeginBeatDrag(anchors, grabbed);
+        if(!activeDrag.IsValid) return;
+
+        draggingAnchor = activeDrag.Index;
+        draggedBeat = grabbed;
+        ghostBeats = [.. Player.Grid.Beats.Select(b => b.Seconds)];
+    }
+
+    // Double-clicking a beat pins it: everything before that point is then protected from any
+    // later drag, because a bend can only ever re-time the two segments either side of the anchor
+    // being dragged. Double-clicking a pin removes it.
+    //
+    // The two presses of the double-click each begin and end a drag first, but a press that never
+    // moves applies no bend and PruneDrag removes the anchor it created, so they leave nothing
+    // behind and this runs last on a clean grid.
+    private async Task HandleDoubleClick(MouseEventArgs e) {
+        if(!GridEditing || Mode != Modes.AudioSynced || Player.File == null) return;
+
+        var anchors = Player.File.BeatGridMarkers;
+        if(anchors.Count == 0) {
+            if(Player.File.DownbeatAt < 0 || !(Player.File.BPM > 0)) return;
+            BeatGrid.Insert(anchors, Player.File.DownbeatAt, Player.File.BPM, true);
+        }
+
+        double beat = NearestGrabbableBeat(e.ClientX - (canvasBounds?.X ?? 0));
+        if(double.IsNaN(beat)) return;
+
+        Player.Grid.TogglePin(anchors, beat);
+        await Player.RefreshBeatGrid();
+    }
+
+    private async Task DragAnchor() {
+        var anchors = Player.File?.BeatGridMarkers;
+        if(anchors == null || draggingAnchor < 0) return;
+
+        draggedBeat = PointerSeconds();
+        BeatGrid.ApplyBeatDrag(anchors, activeDrag, draggedBeat);
+        await Player.RefreshBeatGrid();
+    }
+
+    private async Task EndAnchorDrag() {
+        BeatGrid.BeatDrag finished = activeDrag;
+
+        draggingAnchor = -1;
+        draggedBeat = double.NaN;
+        activeDrag = BeatGrid.BeatDrag.None;
+        ghostBeats = null;
+
+        // Dragging a beat back where it came from must leave nothing behind, or fidgeting would
+        // quietly accumulate anchors the user never asked for and cannot see. Only this drag's own
+        // anchor is considered - a pin the user placed deliberately looks identical to a redundant
+        // anchor, so a general sweep would delete every pin the moment anything was dragged.
+        if(Player.File != null) BeatGrid.PruneDrag(Player.File.BeatGridMarkers, finished);
+
+        await Player.RefreshBeatGrid();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -190,6 +365,100 @@
         }
     }
 
+    // The editing overlay. Everything here is drawn only while the Grid toggle is on, so ordinary
+    // playback keeps exactly the waveform it had.
+    //
+    // Anchors are marked, not turned into widgets: the beat lines are what you grab, and a handle
+    // parked at the top of the canvas would just be a second thing to aim at.
+    private async Task RenderGridEditing(Canvas2DContext ctx, BeatGrid g, double cw, double ch, Func<double, double> ToX) {
+        var anchors = Player.File!.BeatGridMarkers;
+        double nominal = Player.File.BPM;
+
+        // Where the beats were when this drag started. Every other reference on screen travels
+        // with the grid, so without these it is oddly hard to see how far it has actually moved.
+        if(ghostBeats != null) {
+            await ctx.SetLineDashAsync([2f, 3f]);
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync("#ff6b3d55");
+            foreach(double seconds in ghostBeats) {
+                double gx = ToX(seconds);
+                if(gx < 0 || gx >= cw) continue;
+                await ctx.MoveToAsync(gx, 0);
+                await ctx.LineToAsync(gx, ch);
+            }
+            await ctx.StrokeAsync();
+            await ctx.SetLineDashAsync(Array.Empty<float>());
+        }
+
+        // A tick and a tinted stem where a segment's tempo changes. Amber where the track runs slow
+        // and playback has to be pushed, blue where it runs fast and has to be held back, grey
+        // where it is already on tempo - three states rather than a gradient, because what matters
+        // while gridding is the sign of the error and the eye reads that instantly.
+        for(int i = 0; i < anchors.Count; i++) {
+            double x = ToX(anchors[i].Position);
+            if(x < -10 || x > cw + 10) continue;
+
+            string tint = AnchorTint(anchors[i].BPM, nominal);
+
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync(tint);
+            await ctx.SetLineWidthAsync(2f);
+            await ctx.MoveToAsync(x, 0);
+            await ctx.LineToAsync(x, ch);
+            await ctx.StrokeAsync();
+            await ctx.SetLineWidthAsync(1f);
+
+            // A small wedge at the top, so an anchor is identifiable at a glance without covering
+            // the audio behind it.
+            await ctx.SetFillStyleAsync(tint);
+            await ctx.BeginPathAsync();
+            await ctx.MoveToAsync(x - 4, 0);
+            await ctx.LineToAsync(x + 4, 0);
+            await ctx.LineToAsync(x, 6);
+            await ctx.ClosePathAsync();
+            await ctx.FillAsync();
+
+            if(anchors[i].IsDownbeat) {
+                await ctx.FillRectAsync(x - 1, ch - 5, 3, 5);
+            }
+        }
+
+        // The beat under the hand, plus the tempo the drag is producing. The number is the point:
+        // dragging a beat is really setting a tempo, and this is what it is being set to.
+        if(!double.IsNaN(draggedBeat) && draggingAnchor >= 0) {
+            double x = ToX(draggedBeat);
+
+            await ctx.BeginPathAsync();
+            await ctx.SetStrokeStyleAsync("#fff");
+            await ctx.SetLineWidthAsync(2f);
+            await ctx.MoveToAsync(x, 0);
+            await ctx.LineToAsync(x, ch);
+            await ctx.StrokeAsync();
+            await ctx.SetLineWidthAsync(1f);
+
+            double bpm = g.TempoAt(draggedBeat);
+            string label = $"{bpm:0.00}";
+            await ctx.SetFontAsync("11px sans-serif");
+            var metrics = await ctx.MeasureTextAsync(label);
+
+            double lx = Math.Clamp(x + 6, 0, cw - metrics.Width - 8);
+            await ctx.SetFillStyleAsync("#000000cc");
+            await ctx.FillRectAsync(lx, 4, metrics.Width + 8, 16);
+            await ctx.SetFillStyleAsync(AnchorTint(bpm, nominal));
+            await ctx.FillTextAsync(label, lx + 4, 16);
+        }
+    }
+
+    // Amber slow, blue fast, grey on tempo. Deliberately not a continuous gradient: the eye reads
+    // three states far faster than a hue, and what matters while gridding is the SIGN of the error.
+    private static string AnchorTint(double bpm, double nominal) {
+        if(!(nominal > 0) || !(bpm > 0)) return "#9a9a9a";
+        double ratio = bpm / nominal;
+        if(ratio < 0.999) return "#e8a33d";
+        if(ratio > 1.001) return "#4db2e8";
+        return "#9a9a9a";
+    }
+
     private async Task RenderWaveformFull() {
         if(Player.Peaks.Length == 0) return;
 
@@ -208,24 +477,87 @@
 
         await ctx.SetFillStyleAsync(CssColor);
 
-        // Render waveform
-        int lastI = -1;
         double step = cw / Player.Peaks.Length;
         double barWidth = step < 1 ? 1 : step - 1;
-        for(int x = 0; x < cw; x++) {
-            int i = (int)(x / step);
-            if(i == lastI) continue;
-            lastI = i;
+        BeatGrid grid = Player.Grid;
+        bool straighten = Warped && grid.IsWarped;
 
-            double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
-            await ctx.FillRectAsync(x, y, barWidth, ch - y * 2);
+        if(straighten) {
+            // Draw the track in GRID time: each peak is placed where it WOULD be if the track had
+            // played at its nominal tempo throughout. A drifting track visibly straightens, and -
+            // the reason this is worth doing - the error ACCUMULATES, so a 10 ms slip at an anchor
+            // that is invisible up close is a second of skew by the end of the track and obvious
+            // here. That is what makes gridding accurate despite a waveform whose own resolution
+            // is only 50 ms.
+            //
+            // Sampling x from the grid rather than iterating peaks, because the map is not linear:
+            // one output pixel no longer corresponds to one peak.
+            double duration = Player.File?.Duration ?? 0;
+            if(duration > 0) {
+                double gridSpan = grid.ToGridTime(duration) - grid.ToGridTime(0);
+                if(gridSpan > 0) {
+                    for(int x = 0; x < cw; x++) {
+                        double gridSeconds = grid.ToGridTime(0) + x / cw * gridSpan;
+                        int i = (int)(grid.FromGridTime(gridSeconds) / duration * Player.Peaks.Length);
+                        if(i < 0 || i >= Player.Peaks.Length) continue;
+
+                        double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
+                        await ctx.FillRectAsync(x, y, 1, ch - y * 2);
+                    }
+                }
+            }
+        } else {
+            // Render waveform
+            int lastI = -1;
+            for(int x = 0; x < cw; x++) {
+                int i = (int)(x / step);
+                if(i == lastI) continue;
+                lastI = i;
+
+                double y = ch2 - Player.Peaks[i] / Player.MaxPeak * ch2;
+                await ctx.FillRectAsync(x, y, barWidth, ch - y * 2);
+            }
+        }
+
+        // The drift ribbon: a band along the bottom showing, per segment, how hard playback has to
+        // be pushed or held back to keep that stretch on the grid. Amber above the centre line
+        // means the track runs slow there and must be sped up; blue below means the opposite. It
+        // answers "where does this track wander, and by how much" before you touch anything.
+        if((ShowGridDetail || GridEditing) && grid.IsWarped && Player.File != null && Player.File.Duration > 0) {
+            double duration = Player.File.Duration;
+            double ribbonTop = ch - 7;
+            double mid = ribbonTop + 3;
+
+            await ctx.SetFillStyleAsync("#ffffff14");
+            await ctx.FillRectAsync(0, ribbonTop, cw, 7);
+
+            for(int x = 0; x < cw; x++) {
+                double seconds = x / cw * duration;
+                double rate = grid.PlaybackRateAt(seconds);
+                if(Math.Abs(rate - 1.0) < 1e-9) continue;
+
+                // Saturating at 2% keeps a wildly mis-set anchor from flattening everything else.
+                double magnitude = Math.Clamp((rate - 1.0) / 0.02, -1, 1);
+                double height = Math.Abs(magnitude) * 3;
+
+                await ctx.SetFillStyleAsync(rate > 1.0 ? "#e8a33d" : "#4db2e8");
+                await ctx.FillRectAsync(x, rate > 1.0 ? mid - height : mid, 1, Math.Max(1, height));
+            }
+
+            await ctx.SetFillStyleAsync(CssColor);
         }
 
         // Render Cue Points
         if(Player.File?.CuePoints.Count > 0) {
             await ctx.SetStrokeStyleAsync("#f92");
+            double cueDuration = Player.File!.Duration;
+            double cueSpan = straighten && cueDuration > 0 ? grid.ToGridTime(cueDuration) - grid.ToGridTime(0) : 0;
             foreach(CuePoint cp in Player.File.CuePoints) {
-                double x = cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
+                // In the straightened view a cue has to move with the audio it marks, or it points
+                // at the wrong moment.
+                double x = straighten && cueSpan > 0
+                    ? (grid.ToGridTime(cp.Position) - grid.ToGridTime(0)) / cueSpan * cw
+                    : cp.Position * Player.SecondsToPosX * step / Player.WaveformBarWidth;
 
                 await ctx.MoveToAsync(x, 0);
                 await ctx.LineToAsync(x, ch);
@@ -274,18 +606,41 @@
                 await ctx.FillRectAsync(x, y, wfw - 1, ch - y * 2);
             }
 
-            // Render beat markers
+            // Render the beat grid
             if(Player.File != null) {
+                BeatGrid g = Player.Grid;
+                double ToX(double seconds) => seconds * Player.SecondsToPosX / tempoFactor + cw2 - pbh;
+
+                // Beat lines run the full height of the canvas, as they always have. An earlier
+                // version inset them outside grid mode to make grid mode feel different; that was
+                // a change nobody asked for and it made the ordinary waveform harder to read.
+                // Grid mode brightens them instead - same geometry, they just look grabbable.
                 await ctx.BeginPathAsync();
-                await ctx.SetStrokeStyleAsync("#888");
-                // A plain loop, not ForEach with an async lambda: that lambda was async void, so
-                // every marker's draw calls were launched without ever being awaited and only
-                // arrived in the right order because BeginBatch happened to buffer them. Reading
-                // the list into a local also pins the generation being drawn, since the player
-                // publishes a new one by assignment when a track loads.
-                var markers = Player.BeatMarkers;
-                foreach(var beatMarker in markers) {
-                    double x = beatMarker.X / tempoFactor + cw2 - pbh;
+                await ctx.SetStrokeStyleAsync(GridEditing ? "#b4b4b4" : "#888");
+                foreach(var beat in g.Beats) {
+                    if(beat.IsDownbeat) continue;
+                    double x = ToX(beat.Seconds);
+                    if(x < 0 || x >= cw) continue;
+                    await ctx.MoveToAsync(x, 0);
+                    await ctx.LineToAsync(x, ch);
+                }
+                await ctx.StrokeAsync();
+
+                // Downbeats: the first beat of every bar, at BeatGrid.BeatsPerBar (4). Gridding
+                // wants all of them; a deck wants the one line it has always had, so unless bar
+                // lines are asked for only the track's own downbeat is drawn.
+                await ctx.BeginPathAsync();
+                await ctx.SetStrokeStyleAsync("#2ef");
+                if(ShowGridDetail || GridEditing) {
+                    foreach(var beat in g.Beats) {
+                        if(!beat.IsDownbeat) continue;
+                        double x = ToX(beat.Seconds);
+                        if(x < 0 || x >= cw) continue;
+                        await ctx.MoveToAsync(x, 0);
+                        await ctx.LineToAsync(x, ch);
+                    }
+                } else if(g.Beats.Count > 0) {
+                    double x = ToX(g.Beats[g.DownbeatIndex].Seconds);
                     if(x >= 0 && x < cw) {
                         await ctx.MoveToAsync(x, 0);
                         await ctx.LineToAsync(x, ch);
@@ -293,12 +648,7 @@
                 }
                 await ctx.StrokeAsync();
 
-                // Render downbeat marker
-                await ctx.BeginPathAsync();
-                await ctx.SetStrokeStyleAsync("#2ef");
-                await ctx.MoveToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, 0);
-                await ctx.LineToAsync(Player.File.DownbeatAt * Player.SecondsToPosX + cw2 - pbh, ch);
-                await ctx.StrokeAsync();
+                if(GridEditing) await RenderGridEditing(ctx, g, cw, ch, ToX);
             }
 
             // Render loop

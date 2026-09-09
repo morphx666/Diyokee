@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Correctness harness for Classes/BeatGrid.cs. Not part of Diyokee.sln and not shipped;
+    see the header of Program.cs for how to run it.
+
+    It compiles the real BeatGrid source rather than a copy, so it always tests what ships.
+    No BASS and no audio, so unlike enginetest it runs anywhere in well under a second.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>gridtest</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\Classes\BeatGrid.cs" Link="BeatGrid.cs" />
+    <Compile Include="..\..\Classes\DFile.cs" Link="DFile.cs" />
+    <Compile Include="..\..\Classes\GZip.cs" Link="GZip.cs" />
+  </ItemGroup>
+
+</Project>
