@@ -26,8 +26,27 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
   ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
 - Use the Jump and Cue buttons to switch between Loop/Jump and Cue tabs.
   ![image](https://github.com/user-attachments/assets/0487c141-c905-4c06-971a-43369ebf5403)
+- Drag the synced waveform to scratch. Touch and release behavior is under Settings > Playback.
+- In Track Properties, the Grid row edits a track's beat grid:
+  - **Edit** - drag any beat line onto the audio it belongs on. Hover a beat and click **+** to pin it as a reference; nothing before a reference can move.
+  - **Auto** - measures the track and corrects the grid for you, including the BPM if that was the error. It leaves the track alone when it cannot follow it.
+  - **Reset** - undo every grid change.
 - Since 2025/11/19 Diyokee supports MIDI controllers. Click the Settings button and scroll down to the MIDI section to select the MIDI device and create a profile for your controller.
   ![image](https://github.com/user-attachments/assets/7c2dbdbd-50ed-4b91-b639-5a5c2206ab96)
+
+## What's new since 2026-04-14
+
+- **Scratching** - drag the synced waveform. Vinyl or bend on touch, inertia or brake on release.
+- **Flexible beat grid** - a track can now hold more than one tempo, so a track that drifts can be gridded end to end. Playback follows the grid, so it stays on the beat.
+- **Automatic gridding** - one button corrects the grid by measuring the track rather than by eye.
+- **Live audio matrix** - output routing changes apply immediately instead of needing a restart.
+- **Dropbox** as a media provider.
+- **Measure lines** on both waveforms, with a toggle for each.
+- **Settings dialog** reorganized into categories.
+- **VU meters** can show only the level being played, rather than that plus the track's own.
+- VU beat indicator now follows the track's downbeat instead of the start of the track.
+- Track Properties edits no longer reach a loaded deck until you press Save.
+- Fixes: searching from a provider's root folder, cue/jump/beat-snap on a paused deck, unavailable drives in the folder browser, ARM Linux detection, and a busy indicator while a folder is being analyzed.
 
 ## Notable missing features and known bugs
 - Pitch/key adjustments don't seem to work on platforms other than Windows
@@ -35,7 +54,6 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - A fancy screen for remote connections to the stream
 - The settings dialog does not yet support streaming configuration
 - Searching is quite limited and a bit buggy
-- Song Key detection is not _yet_ supported
 - State preservation is only partially implemented and the way it works sucks
 - Making changes to the MIDI profiles or changing the MIDI controller requires restarting the application
 - ...and probably many more
@@ -43,11 +61,11 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 ## Latest Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
-Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-04-14
-Linux|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-04-14
-Linux|Arm64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-04-14
-MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-04-14
-MacOS|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-04-14
+Windows|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-win-x64.zip)|2026-09-09
+Linux|x64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-x64.zip)|2026-09-09
+Linux|Arm64|Working|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-linux-arm64.zip)|2026-09-09
+MacOS|x64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-x64.zip)|2026-09-09
+MacOS|Arm64|Working[^1]|[<img src="https://xfx.net/ftp/diyokee-releases/dlicon.png">](https://xfx.net/ftp/diyokee-releases/diyokee-osx-arm64.zip)|2026-09-09
 
 ## Acknowledgments
 
