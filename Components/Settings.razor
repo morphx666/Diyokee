@@ -4,13 +4,9 @@
 @using Un4seen.Bass
 @inject IDbContextFactory<CacheDbContext> CacheDbContextFactory;
 
-<ModalDialog
-    Title="Settings"
-    Buttons = "dlgButtons"
-    @ref="dialog"
-    Movable=true>>
+<ModalDialog Title="Settings" Buttons="dlgButtons" @ref="dialog" Movable=true>
 
-    @if(settings == null) return;
+    @if (settings == null) return;
 
     @* A category list beside one panel, rather than every setting in one scroll. The dialog holds
        roughly forty controls across six unrelated concerns, and the Playback section alone had
@@ -23,9 +19,9 @@
        mid-capture, and neither survives being torn down and rebuilt. *@
     <div class="settings-layout">
         <nav class="settings-nav">
-            @foreach(var item in Nav) {
-                <div class="nav-item @(section == item.Section ? "active" : "")"
-                     @onclick="() => section = item.Section">
+            @foreach (var item in Nav)
+            {
+                <div class="nav-item @(section == item.Section ? "active" : "")" @onclick="() => section = item.Section">
                     <i class="fa-solid @item.Icon"></i><span>@item.Label</span>
                 </div>
             }
@@ -41,7 +37,8 @@
                         <label for="key-notation">Key Notation</label>
                         <div class="select-container">
                             <InputSelect id="key-notation" class="key-notation-select-container" @bind-value="settings.KeyNotation">
-                                @foreach(var notation in Enum.GetNames(typeof(KeyTools.Notations))) {
+                                @foreach (var notation in Enum.GetNames(typeof(KeyTools.Notations)))
+                                {
                                     <option value="@notation">@notation</option>
                                 }
                             </InputSelect>
@@ -63,14 +60,14 @@
                 <div class="group">
                     <div class="group-title">Media Providers</div>
                     <div class="media-providers scroller">
-                        @foreach(var provider in settings.MediaProviders) {
-                            <MediaProvider
-                                Provider="provider"
-                                OnDeleteProvider="@(() => DeleteProvider(provider))" />
+                        @foreach (var provider in settings.MediaProviders)
+                        {
+                            <MediaProvider Provider="provider" OnDeleteProvider="@(() => DeleteProvider(provider))" />
                         }
                         <div class="add-provider-menu">
                             <button class="button-add-provider" onclick="@ToggleAddMenu"><i class="fa-solid fa-circle-plus"></i></button>
-                            @if(showAddMenu) {
+                            @if (showAddMenu)
+                            {
                                 <div class="add-provider-dropdown">
                                     <button onclick="@(() => AddProvider("local"))"><i class="fa-solid fa-folder"></i> Local</button>
                                     <button onclick="@(() => AddProvider("dropbox"))"><i class="fa-brands fa-dropbox"></i> Dropbox</button>
@@ -131,7 +128,8 @@
                         <span class="info">(drag the synced waveform)</span>
                     </div>
 
-                    @if(settings.Playback.Scratch.Enabled) {
+                    @if (settings.Playback.Scratch.Enabled)
+                    {
                         <div class="field">
                             <label for="scratch-touch-mode">On touch</label>
                             <div class="select-container">
@@ -154,9 +152,12 @@
 
                         <div class="field">
                             <label for="scratch-spin-up">@(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop ? "Brake time" : "Spin-up time")</label>
-                            @if(settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop) {
+                            @if (settings.Playback.Scratch.ReleaseMode == ReleaseModes.Stop)
+                            {
                                 <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.BrakeTime" />
-                            } else {
+                            }
+                            else
+                            {
                                 <InputNumber id="scratch-spin-up" step="0.01" @bind-value="settings.Playback.Scratch.SpinUpTime" />
                             }
                             <span class="info">seconds (0 = instant)</span>
@@ -182,7 +183,8 @@
                         <label for="tempo-range">Tempo Range -/+</label>
                         <div class="select-container">
                             <InputSelect id="tempo-range" @bind-value="settings.Playback.TempoRange">
-                                @foreach(var tempoRange in TempoRanges) {
+                                @foreach (var tempoRange in TempoRanges)
+                                {
                                     <option value="@tempoRange">@tempoRange</option>
                                 }
                             </InputSelect>
@@ -197,7 +199,8 @@
                         <label for="eq-profile">Equalizer Profile</label>
                         <div class="select-container">
                             <InputSelect id="eq-profile" @bind-value="settings.Playback.EqProfile">
-                                @foreach(var profile in settings.EqualizerProfiles) {
+                                @foreach (var profile in settings.EqualizerProfiles)
+                                {
                                     <option value="@profile.Name">@profile.Name</option>
                                 }
                             </InputSelect>
@@ -214,7 +217,8 @@
 
             @* ---------------------------------------------------------------- Players *@
             <div class="panel @(section == Sections.Players ? "active" : "")">
-                @foreach(var playerObj in settings.Playback.Players.Select((player, index) => new { player, index })) {
+                @foreach (var playerObj in settings.Playback.Players.Select((player, index) => new { player, index }))
+                {
                     <div class="group">
                         <div class="group-title">Player @(playerObj.index + 1)</div>
 
@@ -224,9 +228,7 @@
                         </div>
                         <div class="field">
                             <label for="@($"player{playerObj.index}-color")">Color</label>
-                            <InputText class="as-number"
-                                       id="@($"player{playerObj.index}-color")"
-                                       @bind-value="playerObj.player.Color" />
+                            <InputText class="as-number" id="@($"player{playerObj.index}-color")" @bind-value="playerObj.player.Color" />
                             <input type="color" class="color" id="@($"player{playerObj.index}-color-picker")" @bind-value="playerObj.player.Color" />
                         </div>
                         <div class="field">
@@ -237,10 +239,21 @@
                 }
 
                 <div class="group">
-                    <div class="group-title">VU Meter Colours</div>
+                    <div class="group-title">VU Meters</div>
+
+                    <div class="field">
+                        <label for="vu-mode">Show</label>
+                        <div class="select-container">
+                            <InputSelect id="vu-mode" @bind-value="settings.Playback.VuMode">
+                                <option value="@VuModes.Played">Playing level only</option>
+                                <option value="@VuModes.Both">Playing level and the track's own</option>
+                            </InputSelect>
+                        </div>
+                    </div>
 
                     <div class="vu-colors">
-                        @foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-") && !e.Key.Contains("-alt"))) {
+                        @foreach (var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-") && !e.Key.Contains("-alt")))
+                        {
                             <div class="field">
                                 <label for=@vuColor.Key>@(textInfo.ToTitleCase(vuColor.Key.Replace("vu-", "").Replace("color", "").Replace("-", " ")))</label>
                                 <input type="color" class="color" id=@vuColor.Key @bind=@settings.UIElements[vuColor.Key] />
@@ -255,10 +268,7 @@
                 <div class="group">
                     <div class="group-title">Controllers</div>
                     <p class="note">Changing the MIDI device or profile requires restarting the app.</p>
-                    <MidiControllers
-                        Settings="settings"
-                        MidiProfiles="midiProfiles"
-                        @ref="midiControllersComponent"/>
+                    <MidiControllers Settings="settings" MidiProfiles="midiProfiles" @ref="midiControllersComponent" />
                 </div>
             </div>
         </div>
@@ -279,12 +289,12 @@
     private readonly record struct NavItem(Sections Section, string Label, string Icon);
 
     private static readonly NavItem[] Nav = [
-        new(Sections.General,  "General",  "fa-sliders"),
-        new(Sections.Audio,    "Audio",    "fa-volume-high"),
-        new(Sections.Library,  "Library",  "fa-folder-open"),
+        new(Sections.General, "General", "fa-sliders"),
+        new(Sections.Audio, "Audio", "fa-volume-high"),
+        new(Sections.Library, "Library", "fa-folder-open"),
         new(Sections.Playback, "Playback", "fa-play"),
-        new(Sections.Players,  "Players",  "fa-record-vinyl"),
-        new(Sections.Midi,     "MIDI",     "fa-plug"),
+        new(Sections.Players, "Players", "fa-record-vinyl"),
+        new(Sections.Midi, "MIDI", "fa-plug"),
     ];
 
     private Sections section = Sections.General;
@@ -314,18 +324,22 @@
 
     TextInfo textInfo = CultureInfo.CurrentCulture.TextInfo;
 
-    public void Close() {
+    public void Close()
+    {
         dialog.Close();
 
         OnClose.InvokeAsync();
     }
 
-    public async void Save() {
-        foreach(var mp in Program.MidiControllersProfiles) {
+    public async void Save()
+    {
+        foreach (var mp in Program.MidiControllersProfiles)
+        {
             File.Delete(MidiControllerProfile.GetProfilePath(mp.Name));
         }
 
-        foreach(var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-color-") && !e.Key.Contains("-alt") && !e.Key.Contains("-off"))) {
+        foreach (var vuColor in settings.UIElements.Where(e => e.Key.StartsWith("vu-color-") && !e.Key.Contains("-alt") && !e.Key.Contains("-off")))
+        {
             settings.UIElements[vuColor.Key + "-alt"] = vuColor.Value + (vuColor.Value.Length > 4 ? "88" : "8"); // Add alpha to create the alternate color for peak levels
         }
 
@@ -338,46 +352,55 @@
         await OnSave.InvokeAsync();
     }
 
-    private void DeleteProvider(Diyokee.Settings.MediaProvider provider) {
+    private void DeleteProvider(Diyokee.Settings.MediaProvider provider)
+    {
         settings.MediaProviders.Remove(provider);
     }
 
     private bool showAddMenu = false;
 
-    private void ToggleAddMenu() {
+    private void ToggleAddMenu()
+    {
         showAddMenu = !showAddMenu;
     }
 
-    private void AddProvider(string type) {
+    private void AddProvider(string type)
+    {
         showAddMenu = false;
         var newProvider = type == "dropbox"
-            ? new Diyokee.Settings.MediaProvider() {
-                  Type = "dropbox",
-                  Name = "New Dropbox Provider",
-                  RootDirectory = ""
-              }
-            : new Diyokee.Settings.MediaProvider() {
-                  Type = "local",
-                  Name = "New Local Provider",
-                  RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
-              };
+            ? new Diyokee.Settings.MediaProvider()
+            {
+                Type = "dropbox",
+                Name = "New Dropbox Provider",
+                RootDirectory = ""
+            }
+            : new Diyokee.Settings.MediaProvider()
+            {
+                Type = "local",
+                Name = "New Local Provider",
+                RootDirectory = MediaProviders.MediaProviderLocal.DefaultDirectory
+            };
         settings.MediaProviders.Add(newProvider);
     }
 
-    private async Task CleanupDatabase() { // TODO: Add feedback to let the user know this process is running. Also report how many files were deleted
+    private async Task CleanupDatabase()
+    { // TODO: Add feedback to let the user know this process is running. Also report how many files were deleted
         int filesDeleted = 0;
 
-        using(CacheDbContext? context = await CacheDbContextFactory.CreateDbContextAsync()) {
+        using (CacheDbContext? context = await CacheDbContextFactory.CreateDbContextAsync())
+        {
             context?.Files
                .AsEnumerable()
                .Where(f => !MediaProviders.BassStreamFactory.IsRemote(f.Filename) && !File.Exists(f.Filename))
                .ToList()
-               .ForEach(f => {
+               .ForEach(f =>
+               {
                    context.Files.Remove(f);
                    filesDeleted++;
                });
 
-            if(filesDeleted > 0) {
+            if (filesDeleted > 0)
+            {
                 //Logger.LogInformation($"Deleted {filesDeleted} orphaned file{(filesDeleted == 1 ? "" : "s")} from the database");
 
                 context?.Database.ExecuteSqlRaw("VACUUM");
@@ -386,8 +409,10 @@
         }
     }
 
-    protected override void OnParametersSet() {
-        if(settings == null) {
+    protected override void OnParametersSet()
+    {
+        if (settings == null)
+        {
             settings = (Diyokee.Settings)Program.Settings.Clone();
             midiProfiles = Program.MidiControllersProfiles.Select(p => (MidiControllerProfile)p.Clone()).ToList();
         }
@@ -395,8 +420,10 @@
         base.OnParametersSet();
     }
 
-    protected override void OnAfterRender(bool firstRender) {
-        if(firstRender) {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
             dialog.Open();
             InvokeAsync(StateHasChanged);
         }

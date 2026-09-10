@@ -22,6 +22,13 @@
     private int vuSize = 5;
 
     public async void SetLevel(double real, double monitor, int beat) {
+        // In Played mode the track's own level IS the played level as far as this meter is
+        // concerned, so the dimmed band between them has nowhere to appear. Collapsed here rather
+        // than at render time for a second reason: MonitorBeats calls this every millisecond, and
+        // resolving it first means a source level that is not being displayed - a loud track
+        // behind a closed fader - cannot get past the guard below and force a redraw at 1 kHz.
+        if(Program.Settings.Playback.VuMode != VuModes.Both) real = monitor;
+
         if(levelReal == real && levelMonitor == monitor && beat == this.beat) return;
         levelReal = real;
         levelMonitor = monitor;

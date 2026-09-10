@@ -4,6 +4,19 @@ using Newtonsoft.Json;
 using System.Text.Json;
 
 namespace Diyokee {
+    // What the VU meters show. Both is how they have always behaved: a bright bar at the level
+    // actually being heard, with the track's own level continuing above it in the dimmed colours.
+    // That upper band is useful for judging a track's headroom before you bring the fader up, and
+    // is a distraction to anyone who only wants to see what is going out.
+    //
+    // Deliberately here rather than in ScratchModes.cs: PrepareReleases link-includes Settings.cs
+    // and AudioDevice.cs only, so a settings type in its own file has to be added to that project
+    // by hand - which is exactly the trap ScratchModes.cs fell into.
+    public enum VuModes {
+        Played,     // only the level being heard
+        Both        // plus the track's own level, dimmed, above it
+    }
+
     public class Settings {
         public class EqualizerProfile {
             public string Name { get; set; } = string.Empty;
@@ -55,6 +68,7 @@ namespace Diyokee {
             // way; you cannot grid a track without seeing the bars.
             [JsonProperty("bar-lines-waveform")] public bool BarLinesWaveform { get; set; } = true;
             [JsonProperty("bar-lines-overview")] public bool BarLinesOverview { get; set; } = true;
+            [JsonProperty("vu-mode")] public VuModes VuMode { get; set; } = VuModes.Both;
             [JsonProperty("scratch")] public ScratchSettings Scratch { get; set; } = new();
         }
 
