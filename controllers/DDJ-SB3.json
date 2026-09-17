@@ -1,4 +1,4 @@
-{
+﻿{
   "Name": "DDJ-SB3",
   "Enabled": true,
   "General": {
@@ -8,7 +8,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "BrowseUp": {
       "EventType": 0,
@@ -16,7 +19,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "BrowseDown": {
       "EventType": 0,
@@ -24,7 +30,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "ExpandFolder": {
       "EventType": 0,
@@ -32,7 +41,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "LoadSelectedFileToPlayer0": {
       "EventType": 0,
@@ -40,7 +52,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "LoadSelectedFileToPlayer1": {
       "EventType": 0,
@@ -48,7 +63,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "Gain": {
       "EventType": 0,
@@ -56,15 +74,21 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "Crossfader": {
-      "EventType": 0,
-      "Note": -1,
-      "Channel": -1,
-      "Velocity": -1,
-      "Parameter": -1,
-      "Controller": -1
+      "EventType": 64,
+      "Note": 31,
+      "Channel": 6,
+      "Velocity": 3,
+      "Parameter": 799,
+      "Controller": 31,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     }
   },
   "Players": [
@@ -76,7 +100,10 @@
         "Channel": 0,
         "Velocity": 127,
         "Parameter": 32523,
-        "Controller": 11
+        "Controller": 11,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Stop": {
         "EventType": 0,
@@ -84,7 +111,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Cue": {
         "EventType": 1,
@@ -92,7 +122,10 @@
         "Channel": 0,
         "Velocity": 127,
         "Parameter": 32524,
-        "Controller": 12
+        "Controller": 12,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "SnapToBeatMarker": {
         "EventType": 0,
@@ -100,7 +133,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoadSelectedFile": {
         "EventType": 1,
@@ -108,7 +144,10 @@
         "Channel": 6,
         "Velocity": 127,
         "Parameter": 32582,
-        "Controller": 70
+        "Controller": 70,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "BpmMatch": {
         "EventType": 0,
@@ -116,7 +155,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Volume": {
         "EventType": 64,
@@ -124,7 +166,10 @@
         "Channel": 0,
         "Velocity": 102,
         "Parameter": 26131,
-        "Controller": 19
+        "Controller": 19,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Tempo": {
         "EventType": 10,
@@ -132,31 +177,43 @@
         "Channel": 0,
         "Velocity": 0,
         "Parameter": 82,
-        "Controller": 82
+        "Controller": 82,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqHi": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 12,
+        "Note": 58,
+        "Channel": 0,
+        "Velocity": 0,
+        "Parameter": 58,
+        "Controller": 58,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqMid": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 14,
+        "Note": 65,
+        "Channel": 0,
+        "Velocity": 0,
+        "Parameter": 65,
+        "Controller": 65,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqLow": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 64,
+        "Note": 15,
+        "Channel": 0,
+        "Velocity": 66,
+        "Parameter": 16911,
+        "Controller": 15,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Color": {
         "EventType": 0,
@@ -164,7 +221,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "TempoUp": {
         "EventType": 0,
@@ -172,7 +232,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "TempoDown": {
         "EventType": 0,
@@ -180,7 +243,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopJumpLockToggle": {
         "EventType": 0,
@@ -188,7 +254,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopToggle": {
         "EventType": 0,
@@ -196,7 +265,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopSizeIncrease": {
         "EventType": 0,
@@ -204,7 +276,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopSizeDecrease": {
         "EventType": 0,
@@ -212,7 +287,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpSizeIncrease": {
         "EventType": 0,
@@ -220,7 +298,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpSizeDecrease": {
         "EventType": 0,
@@ -228,7 +309,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpForward": {
         "EventType": 0,
@@ -236,7 +320,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpBackward": {
         "EventType": 0,
@@ -244,7 +331,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JogWheelForward": {
         "EventType": 0,
@@ -252,7 +342,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JogWheelBackward": {
         "EventType": 0,
@@ -260,7 +353,32 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
+      },
+      "JogTouch": {
+        "EventType": 1,
+        "Note": 54,
+        "Channel": 0,
+        "Velocity": 127,
+        "Parameter": 32566,
+        "Controller": 54,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
+      },
+      "JogWheel": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 0,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33,
+        "Mode": 1,
+        "RelativeFormat": 2,
+        "TicksPerRevolution": 731
       }
     },
     {
@@ -271,7 +389,10 @@
         "Channel": 1,
         "Velocity": 127,
         "Parameter": 32523,
-        "Controller": 11
+        "Controller": 11,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Stop": {
         "EventType": 0,
@@ -279,7 +400,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Cue": {
         "EventType": 10,
@@ -287,7 +411,10 @@
         "Channel": 0,
         "Velocity": 0,
         "Parameter": 37,
-        "Controller": 37
+        "Controller": 37,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "SnapToBeatMarker": {
         "EventType": 0,
@@ -295,7 +422,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoadSelectedFile": {
         "EventType": 1,
@@ -303,7 +433,10 @@
         "Channel": 6,
         "Velocity": 127,
         "Parameter": 32583,
-        "Controller": 71
+        "Controller": 71,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "BpmMatch": {
         "EventType": 0,
@@ -311,7 +444,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Volume": {
         "EventType": 64,
@@ -319,7 +455,10 @@
         "Channel": 1,
         "Velocity": 73,
         "Parameter": 18707,
-        "Controller": 19
+        "Controller": 19,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Tempo": {
         "EventType": 10,
@@ -327,31 +466,43 @@
         "Channel": 1,
         "Velocity": 0,
         "Parameter": 58,
-        "Controller": 58
+        "Controller": 58,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqHi": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 12,
+        "Note": 65,
+        "Channel": 1,
+        "Velocity": 0,
+        "Parameter": 65,
+        "Controller": 65,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqMid": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 14,
+        "Note": 63,
+        "Channel": 1,
+        "Velocity": 0,
+        "Parameter": 63,
+        "Controller": 63,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "EqLow": {
-        "EventType": 0,
-        "Note": -1,
-        "Channel": -1,
-        "Velocity": -1,
-        "Parameter": -1,
-        "Controller": -1
+        "EventType": 64,
+        "Note": 15,
+        "Channel": 1,
+        "Velocity": 67,
+        "Parameter": 17167,
+        "Controller": 15,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "Color": {
         "EventType": 0,
@@ -359,7 +510,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "TempoUp": {
         "EventType": 0,
@@ -367,7 +521,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "TempoDown": {
         "EventType": 0,
@@ -375,7 +532,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopJumpLockToggle": {
         "EventType": 0,
@@ -383,7 +543,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopToggle": {
         "EventType": 0,
@@ -391,7 +554,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopSizeIncrease": {
         "EventType": 0,
@@ -399,7 +565,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "LoopSizeDecrease": {
         "EventType": 0,
@@ -407,7 +576,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpSizeIncrease": {
         "EventType": 0,
@@ -415,7 +587,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpSizeDecrease": {
         "EventType": 0,
@@ -423,7 +598,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpForward": {
         "EventType": 0,
@@ -431,7 +609,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JumpBackward": {
         "EventType": 0,
@@ -439,7 +620,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JogWheelForward": {
         "EventType": 0,
@@ -447,7 +631,10 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
       },
       "JogWheelBackward": {
         "EventType": 0,
@@ -455,7 +642,32 @@
         "Channel": -1,
         "Velocity": -1,
         "Parameter": -1,
-        "Controller": -1
+        "Controller": -1,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
+      },
+      "JogTouch": {
+        "EventType": 1,
+        "Note": 54,
+        "Channel": 1,
+        "Velocity": 127,
+        "Parameter": 32566,
+        "Controller": 54,
+        "Mode": 0,
+        "RelativeFormat": 0,
+        "TicksPerRevolution": 0
+      },
+      "JogWheel": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 1,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33,
+        "Mode": 1,
+        "RelativeFormat": 2,
+        "TicksPerRevolution": 731
       }
     }
   ],
@@ -466,7 +678,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "Pitch": {
       "EventType": 0,
@@ -474,7 +689,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "FirstKey": {
       "EventType": 0,
@@ -482,7 +700,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "LastKey": {
       "EventType": 0,
@@ -490,7 +711,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     },
     "TargetPlayer": {
       "EventType": 0,
@@ -498,7 +722,10 @@
       "Channel": -1,
       "Velocity": -1,
       "Parameter": -1,
-      "Controller": -1
+      "Controller": -1,
+      "Mode": 0,
+      "RelativeFormat": 0,
+      "TicksPerRevolution": 0
     }
   }
 }
