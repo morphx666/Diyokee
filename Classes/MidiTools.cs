@@ -15,8 +15,16 @@ namespace Diyokee {
         private int midiStream = -1;
 
         public void Start() {
-            var profile = Program.MidiControllersProfiles.FirstOrDefault(p => p.Name == Program.Settings.MidiProfileName) ?? Program.MidiControllersProfiles[0];
-            if(profile == null) profile = new();
+            // Indexing [0] here threw ArgumentOutOfRangeException whenever no profiles were loaded
+            // - which the settings dialog can produce, since deleting the last profile is allowed
+            // - and it ran before the null check below could supply the empty profile that check
+            // was plainly meant to provide. Falling back through FirstOrDefault() keeps that
+            // intent, and the device still opens: every event then arrives unmapped instead of
+            // taking the console down mid-render.
+            MidiControllerProfile profile = Program.MidiControllersProfiles.FirstOrDefault(p => p.Name == Program.Settings.MidiProfileName)
+                                            ?? Program.MidiControllersProfiles.FirstOrDefault()
+                                            ?? new();
+            if(Program.MidiControllersProfiles.Count == 0) Program.Logger?.LogWarning("No MIDI controller profiles loaded - no MIDI input will be mapped");
             if(midiStream != -1) Stop();
 
             midiStream = BassMidi.BASS_MIDI_StreamCreate(16, 0, 0);
@@ -114,9 +122,13 @@ namespace Diyokee {
                                 case BASSMIDIEvent.MIDI_EVENT_NOTE:
                                     if(mapping.EventType == midiEvent.eventtype &&
                                         mapping.Channel == midiEvent.chan) {
+                                        // These read MidiControllersProfiles[0] rather than the
+                                        // selected profile, so the playable range came from
+                                        // whichever profile sorted first in controllers/ no matter
+                                        // what was chosen - and threw when the list was empty.
                                         int keyNumber = midiEvent.param & 0xFF;
-                                        int firstKey = Program.MidiControllersProfiles[0].Keyboard.FirstKey.Note;
-                                        int lastKey = Program.MidiControllersProfiles[0].Keyboard.LastKey.Note;
+                                        int firstKey = profile.Keyboard.FirstKey.Note;
+                                        int lastKey = profile.Keyboard.LastKey.Note;
                                         if(keyNumber >= firstKey && keyNumber <= lastKey) {
                                             handled = true;
                                             OnMidiEvent?.Invoke(prop.Name, "keyboard", mapping, midiEvent);
@@ -143,12 +155,33 @@ namespace Diyokee {
             // TODO: Handle multiple MIDI devices - should we listen to all devices or just a specific one?
             BASS_MIDI_DEVICEINFO[] midiDevices = GetMidiDevices();
             int deviceIndex = midiDevices.ToList().FindIndex(d => d.name == Program.Settings.MidiDeviceName);
-            if(deviceIndex != -1) {
-                if(!midiDevices[deviceIndex].IsInitialized) {
-                    BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero);
-                    BassMidi.BASS_MIDI_InStart(deviceIndex);
+
+            // Every failure here used to be silent, which is why a controller that Windows listed
+            // and BASS could not see looked exactly like one that was simply not configured. Say
+            // which it was, and always name what BASS can actually see.
+            string available = midiDevices.Length == 0 ? "none" : string.Join(", ", midiDevices.Select(d => $"'{d.name}'"));
+
+            if(deviceIndex == -1) {
+                if(Program.Settings.MidiDeviceName == "") {
+                    Program.Logger?.LogInformation($"No MIDI controller selected - MIDI inputs available: {available}");
+                } else {
+                    Program.Logger?.LogWarning($"MIDI controller '{Program.Settings.MidiDeviceName}' not found - MIDI inputs available: {available}");
                 }
+                return;
             }
+
+            if(midiDevices[deviceIndex].IsInitialized) return;
+
+            if(!BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero)) {
+                Program.Logger?.LogError($"Failed to open MIDI controller '{midiDevices[deviceIndex].name}': {Bass.BASS_ErrorGetCode()}");
+                return;
+            }
+            if(!BassMidi.BASS_MIDI_InStart(deviceIndex)) {
+                Program.Logger?.LogError($"Failed to start MIDI controller '{midiDevices[deviceIndex].name}': {Bass.BASS_ErrorGetCode()}");
+                return;
+            }
+
+            Program.Logger?.LogInformation($"MIDI controller '{midiDevices[deviceIndex].name}' listening, using profile '{profile.Name}'");
         }
 
         public void Stop() {

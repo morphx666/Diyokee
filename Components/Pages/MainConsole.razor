@@ -550,6 +550,14 @@
                     InvokeAsync(StateHasChanged);
                     return;
                 default:
+                    // FirstKey and LastKey mark the ends of the playable range rather than two
+                    // separate actions, but MidiTools matches a note against both of them, so one
+                    // key press lands here twice. Acting on both played, pitched and stopped the
+                    // deck twice per press and pushed the key onto midiPressedKeys twice. Both
+                    // dispatches still happen - the settings dialog needs them to learn either
+                    // end of the range - so drop one of them here, where the action lives.
+                    if(propertyName != nameof(MidiControllerProfile.KeyboardMapping.FirstKey)) return;
+
                     if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
                         if(player1 == null || player1.File == null) return;
 
