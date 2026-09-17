@@ -134,7 +134,13 @@
     private MidiControllerProfile.MidiMapping mapping = new();
     private bool isEditingName = false;
 
-    private BASS_MIDI_DEVICEINFO[] MidiDevices => MidiTools.GetMidiDevices();
+    // This was an expression-bodied property that called into BASS, and the markup reads it five
+    // times, so every render of this dialog enumerated the MIDI devices five times over - while
+    // the learn handler asks for a render on every event, so moving one fader could drive hundreds
+    // of enumerations. The answer can only change when a device is plugged or unplugged, which is
+    // what the refresh button beside the dropdown is for.
+    private BASS_MIDI_DEVICEINFO[] midiDevices = [];
+    private BASS_MIDI_DEVICEINFO[] MidiDevices => midiDevices;
     private string SelectedProfileName {
         get => selectedProfile?.Name ?? string.Empty;
         set {
@@ -154,6 +160,8 @@
     public Diyokee.Settings Settings { get; set; } = default!;
 
     protected override Task OnInitializedAsync() {
+        midiDevices = MidiTools.GetMidiDevices();
+
         if(MidiProfiles.Count > 0) {
             selectedProfile = MidiProfiles.FirstOrDefault(p => p.Name == Settings.MidiProfileName) ?? MidiProfiles[0];
             Program.MidiTools.OnMidiEvent += MidiEventsHandler;
@@ -168,6 +176,7 @@
     }
 
     private void ReloadDevices() {
+        midiDevices = MidiTools.GetMidiDevices();
         InvokeAsync(StateHasChanged);
     }
 
