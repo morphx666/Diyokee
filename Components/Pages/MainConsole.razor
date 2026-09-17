@@ -393,7 +393,7 @@
                 : midiEvent.param;
     }
 
-    private void HandleMidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
+    private void HandleMidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent, double timestamp) {
         if(!enableMidiEvents) return;
 
         int velocity = (midiEvent.param >> 8) & 0xFF;
@@ -539,6 +539,23 @@
                     return;
                 case "JogWheelBackward":
                     if(mapping.Velocity == ((midiEvent.param >> 8) & 0xFF)) targetPlayer.JogWheelBackward();
+                    return;
+
+                // The two below are deliberately the only cases here that do not go through
+                // InvokeAsync. Everything else is a UI action and belongs on the renderer; a
+                // platter is a control path, and the whole point of taking it off the renderer is
+                // that it does not queue behind a render. They run on the MIDI callback thread.
+                case "JogTouch":
+                    if(velocity > 0) targetPlayer.BeginScratch(); else targetPlayer.EndScratch();
+                    return;
+                case "JogWheel":
+                    // An absolute mapping here would be a mis-learn rather than a valid setup: a
+                    // platter has no position to report, so a value read as one is meaningless.
+                    if(mapping.Mode != MidiControllerProfile.MappingModes.Relative) return;
+
+                    targetPlayer.ScratchByTicks(
+                        MidiControllerProfile.DecodeRelative(MidiValue(midiEvent), mapping.RelativeFormat),
+                        mapping.TicksPerRevolution);
                     return;
                 case "Tempo":
                     double tempo = 1.0 - value;

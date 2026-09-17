@@ -7,6 +7,16 @@ namespace Diyokee {
         [AttributeUsage(AttributeTargets.Property)]
         public class DoNotRender : Attribute { }
 
+        // A control that reports where it is, or one that reports how far it has just moved.
+        // A platter is the second kind: it has no position to report, only ticks since the last
+        // message, so nothing about its value means anything without knowing which kind it is.
+        public enum MappingModes { Absolute, Relative }
+
+        // How a relative control signs a tick count into a 7-bit value. All three are in common
+        // use, and a single message cannot tell them apart - +1 is 0x01 in all three - which is
+        // why the learn flow captures a burst and turns the control both ways.
+        public enum RelativeFormats { TwosComplement, SignedBit, BinaryOffset }
+
         public class MidiMapping {
             public BASSMIDIEvent EventType { get; set; } = BASSMIDIEvent.MIDI_EVENT_NONE;
             public int Note { get; set; } = -1;
@@ -14,6 +24,28 @@ namespace Diyokee {
             public int Velocity { get; set; } = -1;
             public int Parameter { get; set; } = -1;
             public int Controller { get; set; } = -1;
+
+            // Absent from an existing profile JSON, so every profile written before this keeps
+            // deserializing and every control in it stays absolute, which is what it was.
+            public MappingModes Mode { get; set; } = MappingModes.Absolute;
+            public RelativeFormats RelativeFormat { get; set; } = RelativeFormats.TwosComplement;
+
+            // Ticks in one full turn of the platter. Zero means not calibrated, and the jog path
+            // does nothing at all until it is rather than inventing a scale - a wrong value here
+            // is not a slightly wrong feel, it is the record moving the wrong distance.
+            public int TicksPerRevolution { get; set; }
+        }
+
+        // Decoding a relative value with the wrong format does not scale the answer, it inverts or
+        // wraps it, so the format belongs to the mapping rather than being guessed per message.
+        public static int DecodeRelative(int value, RelativeFormats format) {
+            value &= 0x7F;
+            return format switch {
+                RelativeFormats.TwosComplement => value < 64 ? value : value - 128,
+                RelativeFormats.SignedBit => (value & 0x40) != 0 ? -(value & 0x3F) : value & 0x3F,
+                RelativeFormats.BinaryOffset => value - 64,
+                _ => 0,
+            };
         }
 
         public class GeneralMapping {
@@ -53,6 +85,13 @@ namespace Diyokee {
             public MidiMapping JumpBackward { get; set; } = new();
             public MidiMapping JogWheelForward { get; set; } = new();
             public MidiMapping JogWheelBackward { get; set; } = new();
+
+            // The platter proper, as opposed to the two discrete nudges above, which stay for
+            // controllers that have no platter. JogTouch is the capacitive top plate, a note on
+            // and off; JogWheel is the rotation, a relative CC. Both are picked up by the
+            // dispatcher and by the settings UI by property name, like every other mapping.
+            public MidiMapping JogTouch { get; set; } = new();
+            public MidiMapping JogWheel { get; set; } = new();
         }
 
         public class KeyboardMapping {

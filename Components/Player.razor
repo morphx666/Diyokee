@@ -362,6 +362,25 @@
 
     private double gestureOffsetSeconds;
 
+    // One revolution of a 33 1/3 rpm record.
+    private const double VinylSecondsPerRevolution = 60.0 / (100.0 / 3.0);
+
+    // The platter's own entry point, alongside ScratchBy for the mouse. A jog wheel has no
+    // position to report - only how far it has turned since the last message - so the ticks are
+    // integrated here into the same displacement the mouse builds and handed to the same servo.
+    // Nothing differentiates, for exactly the reason written above ScratchBy.
+    //
+    // Ticks become seconds through the platter, not through the waveform: a revolution is 1.8
+    // seconds of audio whatever the zoom happens to be. An uncalibrated mapping does nothing at
+    // all rather than picking a scale, because a wrong scale here does not feel slightly off - it
+    // moves the record the wrong distance.
+    public void ScratchByTicks(int ticks, int ticksPerRevolution) {
+        if(engine == null || !engine.IsTouched || ticksPerRevolution <= 0) return;
+
+        gestureOffsetSeconds += (double)ticks / ticksPerRevolution * VinylSecondsPerRevolution;
+        engine.SetGestureTarget(gestureOffsetSeconds);
+    }
+
     public void EndScratch() {
         if(engine == null || !engine.IsTouched) return;
         engine.Release();

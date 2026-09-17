@@ -5,7 +5,11 @@ using Un4seen.Bass.AddOn.Midi;
 
 namespace Diyokee {
     public class MidiTools {
-        public delegate void MidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent);
+        // timestamp is the driver clock BASS hands to MIDIINPROC, in seconds. It was being
+        // discarded. It is the only clock in the system that reflects when the controller actually
+        // moved rather than when the server got round to the event, which is what a jog wheel
+        // needs and what no amount of work further down the path can reconstruct.
+        public delegate void MidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent, double timestamp);
 
         // Declared nullable because "-=" compiles to Delegate.Remove, which returns null once the
         // last handler is removed - assigning that back to a non-nullable field is what produced
@@ -108,7 +112,7 @@ namespace Diyokee {
             dispatchTable = table;
         }
 
-        internal void DispatchEvent(BASS_MIDI_EVENT midiEvent) {
+        internal void DispatchEvent(BASS_MIDI_EVENT midiEvent, double timestamp) {
             bool handled = false;
 
             if(dispatchTable.TryGetValue(DispatchKey(midiEvent.eventtype, midiEvent.chan), out List<DispatchEntry>? entries)) {
@@ -116,11 +120,11 @@ namespace Diyokee {
                     DispatchEntry entry = entries[i];
                     if(!Matches(entry, midiEvent)) continue;
                     handled = true;
-                    OnMidiEvent?.Invoke(entry.PropertyName, entry.Section, entry.Mapping, midiEvent);
+                    OnMidiEvent?.Invoke(entry.PropertyName, entry.Section, entry.Mapping, midiEvent, timestamp);
                 }
             }
 
-            if(!handled) OnMidiEvent?.Invoke("unknown", "", null!, midiEvent);
+            if(!handled) OnMidiEvent?.Invoke("unknown", "", null!, midiEvent, timestamp);
         }
 
         private bool Matches(DispatchEntry entry, BASS_MIDI_EVENT midiEvent) {
@@ -167,7 +171,7 @@ namespace Diyokee {
 
                 BASS_MIDI_EVENT[] midiEvents = BassMidi.BASS_MIDI_ConvertEvents(bytes, BASSMIDIEventMode.BASS_MIDI_EVENTS_STRUCT);
                 if(midiEvents != null) {
-                    foreach(BASS_MIDI_EVENT midiEvent in midiEvents) DispatchEvent(midiEvent);
+                    foreach(BASS_MIDI_EVENT midiEvent in midiEvents) DispatchEvent(midiEvent, time);
                 }
 
                 BassMidi.BASS_MIDI_StreamEvents(midiStream, BASSMIDIEventMode.BASS_MIDI_EVENTS_RAW, 0, buffer, length);

@@ -39,6 +39,13 @@
     <button class="button-edit-profile-name" onclick="@EditMode"><i class="fa-solid fa-pen"></i></button>
 </div>
 
+@if(isListening || lastCapture != "") {
+    <div class="capture-status @(isListening ? "listening" : "")">
+        <i class="fa-solid @(isListening ? "fa-spinner" : "fa-circle-check")"></i>
+        <span>@(isListening ? ListeningHint : lastCapture)</span>
+    </div>
+}
+
 @if(selectedProfile != null) {
     <div class="sections-container">
         <div class="general">
@@ -134,6 +141,28 @@
     private MidiControllerProfile.MidiMapping mapping = new();
     private bool isEditingName = false;
 
+    // A button is learned from its first event. Anything continuous is sampled instead, because
+    // one value cannot say how a platter signs its ticks, nor how many of them make a turn, nor -
+    // for a 14-bit fader - which half of the CC pair is the half worth mapping. See MidiBurst.
+    //
+    // The window starts on the first event rather than on arming, so taking a moment to reach for
+    // the control costs nothing.
+    private const int BurstMs = 1200;
+    private const int JogBurstMs = 5000;
+
+    private readonly List<MidiBurst.Sample> burst = [];
+    private readonly object burstLock = new();
+    private CancellationTokenSource? burstCts;
+    private string lastCapture = string.Empty;
+
+    private bool LearningJogWheel => listeningProperty == nameof(MidiControllerProfile.PlayerMapping.JogWheel);
+
+    private string ListeningHint => listeningProperty switch {
+        nameof(MidiControllerProfile.PlayerMapping.JogWheel) => "Turn the platter one full revolution, then back again",
+        nameof(MidiControllerProfile.PlayerMapping.JogTouch) => "Touch the platter and let go",
+        _ => "Move or press the control",
+    };
+
     // This was an expression-bodied property that called into BASS, and the markup reads it five
     // times, so every render of this dialog enumerated the MIDI devices five times over - while
     // the learn handler asks for a render on every event, so moving one fader could drive hundreds
@@ -206,19 +235,66 @@
         listeningProperty = propertyName;
         listeningSection = section;
         detectedProperty = $"{sectionName}{propertyName}";
+        lastCapture = string.Empty;
+
+        burstCts?.Cancel();
+        burstCts = null;
+        lock(burstLock) burst.Clear();
+
         InvokeAsync(StateHasChanged);
     }
 
-    private void MidiEventsHandler(string propertyName, string sectionName, MidiControllerProfile.MidiMapping fromMapping, BASS_MIDI_EVENT midiEvent) {
+    private void StartBurstWindow() {
+        burstCts?.Cancel();
+        burstCts = new CancellationTokenSource();
+
+        _ = Task.Delay(LearningJogWheel ? JogBurstMs : BurstMs, burstCts.Token)
+                .ContinueWith(_ => FinishBurst(), TaskContinuationOptions.NotOnCanceled);
+    }
+
+    private void FinishBurst() {
+        List<MidiBurst.Sample> samples;
+        lock(burstLock) {
+            samples = [.. burst];
+            burst.Clear();
+        }
+
+        if(!isListening || samples.Count == 0) return;
+
+        // The mapping being learned says whether this is a platter. Nothing about the values has
+        // to be guessed at, which is the whole reason the caller passes it - see MidiBurst.
+        if(MidiBurst.Analyse(samples, LearningJogWheel) is not MidiBurst.Result result) {
+            StopListening();
+            return;
+        }
+
         mapping = new MidiControllerProfile.MidiMapping {
-            EventType = midiEvent.eventtype,
-            Parameter = midiEvent.param,
-            Channel = midiEvent.chan,
-            Note = midiEvent.param & 0xFF,
-            Velocity = (midiEvent.param >> 8) & 0xFF,
-            Controller = midiEvent.param & 0xFF
+            EventType = result.EventType,
+            Channel = result.Channel,
+            Note = result.Selector,
+            Controller = result.Selector,
+
+            // Kept because several mappings still match on the whole param, and one of them -
+            // BrowseUp against BrowseDown on a single encoder - has nothing else to go on.
+            Parameter = result.ModalParam,
+            Velocity = (result.ModalParam >> 8) & 0xFF,
+
+            Mode = result.Mode,
+            RelativeFormat = result.Format,
+
+            // The prompt asked for one revolution, so the distance turned is the scale. Turning
+            // more or less than asked gives a proportionally wrong scale and no error, which is
+            // why the summary reports the count rather than swallowing it.
+            TicksPerRevolution = result.Mode == MidiControllerProfile.MappingModes.Relative ? result.TotalTicks : 0,
         };
 
+        lastCapture = result.Summary;
+        RecordMapping(listeningSection);
+    }
+
+    private void MidiEventsHandler(string propertyName, string sectionName, MidiControllerProfile.MidiMapping fromMapping, BASS_MIDI_EVENT midiEvent, double timestamp) {
+        // The highlight that lets the user wiggle a control and watch its mapping light up needs
+        // every event, armed or not, so this runs first and unconditionally.
         string newDetectedProperty = $"{sectionName}{propertyName}";
         if(detectedProperty == newDetectedProperty) {
             detectedProperty = string.Empty;
@@ -226,11 +302,34 @@
         }
         detectedProperty = newDetectedProperty;
 
-        if(listeningProperty == propertyName || (isListening && propertyName == "unknown")) {
-            RecordMapping(listeningSection);
-        } else {
+        bool armed = isListening && (listeningProperty == propertyName || propertyName == "unknown");
+        if(!armed) {
             InvokeAsync(StateHasChanged);
+            return;
         }
+
+        // A button is decided by its first event. There is nothing a second one would add, and
+        // waiting out a window for one would just feel broken.
+        if(midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_NOTE) {
+            mapping = new MidiControllerProfile.MidiMapping {
+                EventType = midiEvent.eventtype,
+                Parameter = midiEvent.param,
+                Channel = midiEvent.chan,
+                Note = midiEvent.param & 0xFF,
+                Velocity = (midiEvent.param >> 8) & 0xFF,
+                Controller = midiEvent.param & 0xFF
+            };
+            lastCapture = $"note {midiEvent.param & 0xFF} ch {midiEvent.chan}";
+            RecordMapping(listeningSection);
+            return;
+        }
+
+        bool first;
+        lock(burstLock) {
+            first = burst.Count == 0;
+            burst.Add(new MidiBurst.Sample(midiEvent.eventtype, midiEvent.chan, midiEvent.param));
+        }
+        if(first) StartBurstWindow();
     }
 
     private void RecordMapping(object section) {
@@ -246,6 +345,10 @@
         isListening = false;
         listeningProperty = string.Empty;
 
+        burstCts?.Cancel();
+        burstCts = null;
+        lock(burstLock) burst.Clear();
+
         InvokeAsync(StateHasChanged);
     }
 
@@ -254,6 +357,10 @@
     // kept allocating a mapping and requesting a re-render of a component that was no longer shown.
     public void Dispose() {
         Program.MidiTools.OnMidiEvent -= MidiEventsHandler;
+
+        // Otherwise a window armed as the dialog closed would fire into a disposed component.
+        burstCts?.Cancel();
+        burstCts = null;
     }
 
     private bool HasMapping(string propertyName, object section) {
