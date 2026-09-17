@@ -379,6 +379,20 @@
         Program.MidiTools.Start();
     }
 
+    // Where BASS put the 0-127 value of a continuous control for this event type.
+    //
+    // BASS_MIDI_ConvertEvents gives a dedicated event type to the handful of CCs that have one -
+    // CC 7 becomes MIDI_EVENT_VOLUME, CC 11 MIDI_EVENT_EXPRESSION, CC 1 MIDI_EVENT_MODULATION -
+    // and for those param holds the value outright. Every other CC arrives as MIDI_EVENT_CONTROL
+    // with the value packed into the high byte and the controller number in the low one. Reading
+    // param the wrong way for the event at hand does not misread the value slightly, it reads a
+    // completely different number, so this is the only place that decides.
+    private static int MidiValue(BASS_MIDI_EVENT midiEvent) {
+        return midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL
+                ? (midiEvent.param >> 8) & 0xFF
+                : midiEvent.param;
+    }
+
     private void HandleMidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent) {
         if(!enableMidiEvents) return;
 
@@ -397,7 +411,13 @@
                     InvokeAsync(mediaProviderContainerUI!.FoldersUI!.ExpandSelectedFolder);
                     return;
                 case "Crossfader":
-                    double crossfaderValue = 1.0 - midiEvent.param / 127.0;
+                    // This read the whole param, which is right only for a crossfader on CC 11,
+                    // arriving as MIDI_EVENT_EXPRESSION - which is what the XDJ-RR sends, so it
+                    // worked there. The DDJ-SB3 sends CC 31, where param is (value << 8) | 31, and
+                    // the arithmetic collapsed to two reachable positions: 1 - 31/127 = 0.76 with
+                    // the fader at the very bottom, and a negative number that SetValue clamps to
+                    // 0 for every other value. Hence a smooth fader behaving like a two-way switch.
+                    double crossfaderValue = 1.0 - MidiValue(midiEvent) / 127.0;
                     InvokeAsync(() => crossFader!.SetValue(crossfaderValue, true));
                     return;
                 case "BrowseUp":
@@ -417,7 +437,10 @@
                     }
                     return;
                 case "Gain":
-                    double gainValue = ((midiEvent.param >> 8) & 0xFF) / 127.0;
+                    // The mirror of the crossfader bug, and reachable the same way: assuming the
+                    // value is always in the high byte reads 0 for every event of a type that puts
+                    // it in param, so a gain mapped to CC 11 would sit at zero and never move.
+                    double gainValue = MidiValue(midiEvent) / 127.0;
                     InvokeAsync(() => mainGain!.SetValue(gainValue, true));
                     return;
             }
@@ -429,8 +452,7 @@
             else if(section == "player1") targetPlayer = player2;
             if(targetPlayer == null) return;
 
-            bool isControlEvent = midiEvent.eventtype == BASSMIDIEvent.MIDI_EVENT_CONTROL;
-            double value = isControlEvent ? ((midiEvent.param >> 8) & 0xFF) / 127.0 : midiEvent.param / 127.0;
+            double value = MidiValue(midiEvent) / 127.0;
 
             var PlayerAction = (Action fcn) => {
                 if(velocity > 0) {
