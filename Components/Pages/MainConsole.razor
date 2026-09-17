@@ -546,7 +546,7 @@
                 // platter is a control path, and the whole point of taking it off the renderer is
                 // that it does not queue behind a render. They run on the MIDI callback thread.
                 case "JogTouch":
-                    if(velocity > 0) targetPlayer.BeginScratch(); else targetPlayer.EndScratch();
+                    targetPlayer.JogTouchChanged(velocity > 0);
                     return;
                 case "JogWheel":
                     // An absolute mapping here would be a mis-learn rather than a valid setup: a

@@ -374,11 +374,70 @@
     // seconds of audio whatever the zoom happens to be. An uncalibrated mapping does nothing at
     // all rather than picking a scale, because a wrong scale here does not feel slightly off - it
     // moves the record the wrong distance.
-    public void ScratchByTicks(int ticks, int ticksPerRevolution) {
-        if(engine == null || !engine.IsTouched || ticksPerRevolution <= 0) return;
+    // The platter's touch sensor is the intended way to engage a scratch, and on hardware that
+    // holds that signal steady while the platter is gripped it still is. The DDJ-SB3 does not: it
+    // pulses the note on and then straight off, so every rotation arrived with the gesture
+    // disengaged and was silently discarded - the platter mapped perfectly and did nothing.
+    //
+    // Turning a platter is itself unambiguous evidence that a hand is on it, so rotation engages
+    // the gesture when touch has not already done so, and stillness ends it. Touch still does the
+    // job it was meant to, and on a controller that reports it properly nothing here changes.
+    private bool jogAutoEngaged;
+    private DateTime lastJogTickAt = DateTime.MinValue;
 
+    // How long the platter must sit still before an auto-engaged gesture is released. Long enough
+    // to ride out the gap between ticks when the platter is crawling, short enough that letting go
+    // feels immediate. At 731 ticks per revolution even a very slow turn ticks far faster.
+    private static readonly TimeSpan JogIdleRelease = TimeSpan.FromMilliseconds(180);
+
+    public void ScratchByTicks(int ticks, int ticksPerRevolution) {
+        if(engine == null || ticksPerRevolution <= 0) return;
+
+        if(!engine.IsTouched) {
+            BeginScratch();
+
+            // Still not engaged means scratching is switched off or the deck has no track, and
+            // neither is something to keep retrying per tick.
+            if(!engine.IsTouched) return;
+            jogAutoEngaged = true;
+        }
+
+        lastJogTickAt = DateTime.UtcNow;
         gestureOffsetSeconds += (double)ticks / ticksPerRevolution * VinylSecondsPerRevolution;
         engine.SetGestureTarget(gestureOffsetSeconds);
+    }
+
+    // Called for both edges of the platter's touch sensor. A release is honoured only once the
+    // platter has actually stopped, because on this hardware the sensor drops out mid-turn and
+    // acting on that would cut a gesture the platter is still driving.
+    public void JogTouchChanged(bool touched) {
+        if(touched) {
+            // Re-grabbing an already engaged gesture would reset the accumulated displacement and
+            // jump the record, so only a fresh grab begins one.
+            if(engine == null || !engine.IsTouched) BeginScratch();
+            jogAutoEngaged = false;
+            lastJogTickAt = DateTime.UtcNow;
+            return;
+        }
+
+        if(DateTime.UtcNow - lastJogTickAt > JogIdleRelease) {
+            EndScratch();
+            jogAutoEngaged = false;
+        } else {
+            // The hand let go of the sensor but the platter is still moving. Hand it to the idle
+            // check rather than stopping a gesture in progress.
+            jogAutoEngaged = true;
+        }
+    }
+
+    // Runs on the MonitorPlayback tick. The fields it reads are written from the MIDI thread; both
+    // are single values whose worst case is releasing one tick early or late.
+    private void ReleaseIdleJog() {
+        if(!jogAutoEngaged || engine == null || !engine.IsTouched) return;
+        if(DateTime.UtcNow - lastJogTickAt < JogIdleRelease) return;
+
+        jogAutoEngaged = false;
+        EndScratch();
     }
 
     public void EndScratch() {
@@ -1569,6 +1628,7 @@
             await Task.Delay(delay);
 
             UpdateWarp();
+            ReleaseIdleJog();
 
             // A braked release finishes on the audio thread; the deck is parked here.
             if(engine != null && engine.ConsumeBrakeCompleted()) {
