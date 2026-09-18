@@ -155,10 +155,20 @@
     private CancellationTokenSource? burstCts;
     private string lastCapture = string.Empty;
 
-    private bool LearningJogWheel => listeningProperty == nameof(MidiControllerProfile.PlayerMapping.JogWheel);
+    // Both platter rotations, not just the one named JogWheel. JogBend is the same encoder read
+    // with the plate free, so it needs everything the platter learn does - the long window, the
+    // relative decode, the tick scale. Being absent from here meant it was analysed as an ordinary
+    // absolute control: it came back Mode=Absolute with TicksPerRevolution=0, and since the JogBend
+    // dispatch drops anything that is not Relative, learning the bend through the UI switched it
+    // off. The shipped profiles predate that path and carry hand-written relative values, which is
+    // why nothing looked wrong until someone re-learned one.
+    private bool LearningPlatter => listeningProperty
+            is nameof(MidiControllerProfile.PlayerMapping.JogWheel)
+            or nameof(MidiControllerProfile.PlayerMapping.JogBend);
 
     private string ListeningHint => listeningProperty switch {
-        nameof(MidiControllerProfile.PlayerMapping.JogWheel) => "Turn the platter one full revolution, then back again",
+        nameof(MidiControllerProfile.PlayerMapping.JogWheel) => "Hold the top plate and turn it one full revolution, then back again",
+        nameof(MidiControllerProfile.PlayerMapping.JogBend) => "Touching only the side, turn the platter one full revolution, then back again",
         nameof(MidiControllerProfile.PlayerMapping.JogTouch) => "Touch the platter and let go",
         _ => "Move or press the control",
     };
@@ -248,7 +258,7 @@
         burstCts?.Cancel();
         burstCts = new CancellationTokenSource();
 
-        _ = Task.Delay(LearningJogWheel ? JogBurstMs : BurstMs, burstCts.Token)
+        _ = Task.Delay(LearningPlatter ? JogBurstMs : BurstMs, burstCts.Token)
                 .ContinueWith(_ => FinishBurst(), TaskContinuationOptions.NotOnCanceled);
     }
 
@@ -263,7 +273,7 @@
 
         // The mapping being learned says whether this is a platter. Nothing about the values has
         // to be guessed at, which is the whole reason the caller passes it - see MidiBurst.
-        if(MidiBurst.Analyse(samples, LearningJogWheel) is not MidiBurst.Result result) {
+        if(MidiBurst.Analyse(samples, LearningPlatter, OtherPlatterControl()) is not MidiBurst.Result result) {
             StopListening();
             return;
         }
@@ -282,14 +292,39 @@
             Mode = result.Mode,
             RelativeFormat = result.Format,
 
-            // The prompt asked for one revolution, so the distance turned is the scale. Turning
-            // more or less than asked gives a proportionally wrong scale and no error, which is
-            // why the summary reports the count rather than swallowing it.
-            TicksPerRevolution = result.Mode == MidiControllerProfile.MappingModes.Relative ? result.TotalTicks : 0,
+            // NOT the distance turned - the prompt asks for a revolution and the return, so that
+            // number is two of them, and using it is what made every platter scratch at half the
+            // hand's speed. MidiBurst.Revolution measures the revolution itself. Turning more or
+            // less than asked still gives a proportionally wrong scale and no error, which is why
+            // the summary reports both counts rather than swallowing them.
+            TicksPerRevolution = result.Mode == MidiControllerProfile.MappingModes.Relative ? result.TicksPerRevolution : 0,
         };
 
         lastCapture = result.Summary;
         RecordMapping(listeningSection);
+    }
+
+    // The other half of the platter pair, if it has already been learned. Holding the top plate
+    // and turning makes the controller report the same movement on both jog CCs at once, so
+    // without this the second learn is a coin toss between the control being aimed at and the one
+    // already mapped - and two mappings on one CC means the bend fires during every scratch.
+    // Learn either one first; whichever is learned second is then pinned to what is left.
+    private (BASSMIDIEvent, int, int)? OtherPlatterControl() {
+        string other = listeningProperty switch {
+            nameof(MidiControllerProfile.PlayerMapping.JogWheel) => nameof(MidiControllerProfile.PlayerMapping.JogBend),
+            nameof(MidiControllerProfile.PlayerMapping.JogBend) => nameof(MidiControllerProfile.PlayerMapping.JogWheel),
+            _ => string.Empty,
+        };
+
+        if(other.Length == 0) return null;
+        if(listeningSection?.GetType().GetProperty(other)?.GetValue(listeningSection)
+                is not MidiControllerProfile.MidiMapping m) return null;
+
+        // Only a calibrated platter is worth excluding. An unmapped or absolute sibling says
+        // nothing about which CC this one is.
+        if(m.Mode != MidiControllerProfile.MappingModes.Relative || m.Controller < 0) return null;
+
+        return (m.EventType, m.Channel, m.Controller);
     }
 
     private void MidiEventsHandler(string propertyName, string sectionName, MidiControllerProfile.MidiMapping fromMapping, BASS_MIDI_EVENT midiEvent, double timestamp) {

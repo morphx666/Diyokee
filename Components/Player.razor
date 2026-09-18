@@ -387,10 +387,31 @@
 
     // How long the platter must sit still before an auto-engaged gesture is released. Long enough
     // to ride out the gap between ticks when the platter is crawling, short enough that letting go
-    // feels immediate. At 731 ticks per revolution even a very slow turn ticks far faster.
+    // feels immediate. At a few hundred ticks per revolution even a very slow turn ticks far
+    // faster.
     private static readonly TimeSpan JogIdleRelease = TimeSpan.FromMilliseconds(180);
 
+    // The two platter CCs are not as exclusive as they look. The rim's CC keeps reporting while
+    // the top plate is held, so one physical turn arrives twice, and each half is read as a
+    // different gesture: the scratch moved the record and the bend pushed the tempo fader at the
+    // same time. That is not a scratch - a scratch changes position, never tempo - and on a
+    // stopped deck it was worse still, because the rim's copy scrubbed too and the record moved
+    // twice as far as the hand did.
+    //
+    // So the top plate wins. While it is the one being used, the rim's CC is dropped outright
+    // rather than merged: the hand is on the record, and what the record does is the hand's to
+    // say. `lastTopPlateAt` is set only once a gesture is actually engaged, so with scratching
+    // switched off the rim still bends as it always did.
+    private DateTime lastTopPlateAt = DateTime.MinValue;
+    private bool jogTouchHeld;
+
+    private bool TopPlateActive => jogTouchHeld || DateTime.UtcNow - lastTopPlateAt < JogIdleRelease;
+
     public void ScratchByTicks(int ticks, int ticksPerRevolution) {
+        ScratchByTicks(ticks, ticksPerRevolution, true);
+    }
+
+    private void ScratchByTicks(int ticks, int ticksPerRevolution, bool fromTopPlate) {
         if(engine == null || ticksPerRevolution <= 0) return;
 
         if(!engine.IsTouched) {
@@ -402,7 +423,10 @@
             jogAutoEngaged = true;
         }
 
-        lastJogTickAt = DateTime.UtcNow;
+        DateTime now = DateTime.UtcNow;
+        lastJogTickAt = now;
+        if(fromTopPlate) lastTopPlateAt = now;
+
         gestureOffsetSeconds += (double)ticks / ticksPerRevolution * VinylSecondsPerRevolution;
         engine.SetGestureTarget(gestureOffsetSeconds);
     }
@@ -421,14 +445,22 @@
     public void JogBendByTicks(int ticks, int ticksPerRevolution) {
         if(engine == null || File == null || ticksPerRevolution <= 0) return;
 
-        if(!IsPlaying) {
-            ScratchByTicks(ticks, ticksPerRevolution);
+        // A gesture is already running off the top plate, and this is the same turn reported a
+        // second time. Drop it, and drop anything banked with it, so neither the bend nor the
+        // scrub below doubles what the record is already doing.
+        if(TopPlateActive) {
+            Interlocked.Exchange(ref pendingBendTicks, 0);
             return;
         }
 
-        // Banked rather than acted on here. At 731 ticks a revolution a hand on the rim is worth
-        // hundreds of messages a second, and the fader is a rendered control - MonitorPlayback
-        // spends them at its own rate instead.
+        if(!IsPlaying) {
+            ScratchByTicks(ticks, ticksPerRevolution, false);
+            return;
+        }
+
+        // Banked rather than acted on here. At a few hundred ticks a revolution a hand on the rim
+        // is worth hundreds of messages a second, and the fader is a rendered control -
+        // MonitorPlayback spends them at its own rate instead.
         Interlocked.Add(ref pendingBendTicks, ticks);
         pendingBendScale = ticksPerRevolution;
     }
@@ -458,6 +490,13 @@
         lastBendSampleAt = now;
 
         int ticks = Interlocked.Exchange(ref pendingBendTicks, 0);
+
+        // The same rule as in JogBendByTicks, applied where it is final: nothing the rim said can
+        // move the tempo while the record is being held. This catches the ticks banked in the
+        // instant before the plate was grabbed, which would otherwise land as one bend after it.
+        // Falling through rather than returning is deliberate - a bend already under way when the
+        // hand arrived still has to be put back, and that is what the tail below does.
+        if(TopPlateActive) ticks = 0;
 
         if(ticks != 0 && IsPlaying && File != null && pendingBendScale > 0 && elapsed is > 0 and < 1) {
             // The first push of a bend remembers where the fader was, so that however the bend
@@ -509,8 +548,17 @@
             if(engine == null || !engine.IsTouched) BeginScratch();
             jogAutoEngaged = false;
             lastJogTickAt = DateTime.UtcNow;
+
+            // Hardware that holds this signal for the whole grab hands the platter to the top
+            // plate from the moment of contact, before a single tick has arrived. Hardware that
+            // only pulses it - the DDJ-SB3 - drops straight back out below, and the rotation
+            // itself does the same job through lastTopPlateAt. Gated on the gesture having
+            // actually engaged, so a deck with scratching switched off keeps bending from the rim.
+            jogTouchHeld = engine?.IsTouched ?? false;
             return;
         }
+
+        jogTouchHeld = false;
 
         if(DateTime.UtcNow - lastJogTickAt > JogIdleRelease) {
             EndScratch();
@@ -533,6 +581,10 @@
     }
 
     public void EndScratch() {
+        // Cleared whether or not there was a gesture to end: a stale hold would keep the rim
+        // locked out of bending for as long as the deck lived.
+        jogTouchHeld = false;
+
         if(engine == null || !engine.IsTouched) return;
         engine.Release();
     }

@@ -25,7 +25,8 @@ namespace Diyokee {
             MidiControllerProfile.MappingModes Mode,
             MidiControllerProfile.RelativeFormats Format,
             int NetTicks,       // signed total, decoded with Format
-            int TotalTicks,     // total distance turned - one revolution, if that is what was done
+            int TotalTicks,     // total distance turned, both directions counted
+            int TicksPerRevolution,  // the furthest it got from where it started - see Revolution
             int ModalParam,     // the commonest raw param, for the mappings that match on it
             bool FormatIsCertain,
             string Summary);
@@ -45,7 +46,15 @@ namespace Diyokee {
         }
 
         /// <param name="relative">True when the mapping being learned is a platter.</param>
-        public static Result? Analyse(IReadOnlyList<Sample> samples, bool relative) {
+        /// <param name="exclude">
+        /// A control that is known to be something else, and must not win. This exists for the
+        /// platter pair: one turn of the wheel with the plate held reports on BOTH the top plate's
+        /// CC and the rim's, in near-equal numbers, so whichever happened to arrive more often won
+        /// and the two mappings could silently learn the same CC. Whichever of the pair is learned
+        /// second passes the first, and the ambiguity disappears.
+        /// </param>
+        public static Result? Analyse(IReadOnlyList<Sample> samples, bool relative,
+                                      (BASSMIDIEvent Type, int Channel, int Selector)? exclude = null) {
             if(samples.Count == 0) return null;
 
             // Whatever moved most is the control being learned. A burst also picks up everything
@@ -55,6 +64,15 @@ namespace Diyokee {
                 .GroupBy(s => (Type: s.EventType, Channel: s.Channel, Selector: Selector(s)))
                 .OrderByDescending(g => g.Count())
                 .ToList();
+
+            // Dropped before the winner is picked, never after - the point is to let the runner-up
+            // win. Never drops the last group standing, so an exclusion that turns out to match
+            // everything leaves the old behaviour rather than failing the learn.
+            if(exclude is { } skip) {
+                List<IGrouping<(BASSMIDIEvent Type, int Channel, int Selector), Sample>> kept =
+                    groups.Where(g => g.Key != skip).ToList();
+                if(kept.Count > 0) groups = kept;
+            }
 
             IGrouping<(BASSMIDIEvent Type, int Channel, int Selector), Sample> top = groups[0];
 
@@ -92,12 +110,13 @@ namespace Diyokee {
                 return new Result(type, channel, selector, values.Count,
                                   MidiControllerProfile.MappingModes.Absolute,
                                   MidiControllerProfile.RelativeFormats.TwosComplement,
-                                  0, 0, modalParam, true, $"{what}, {detail}");
+                                  0, 0, 0, modalParam, true, $"{what}, {detail}");
             }
 
             (MidiControllerProfile.RelativeFormats format, bool certain) = InferFormat(values);
             int net = values.Sum(v => MidiControllerProfile.DecodeRelative(v, format));
             int total = values.Sum(v => Math.Abs(MidiControllerProfile.DecodeRelative(v, format)));
+            int perRevolution = Revolution(values, format);
 
             // Not a gate, a warning. Arm the platter and then sweep a fader by mistake and every
             // number below is meaningless; nothing else in the app would ever say so.
@@ -106,8 +125,35 @@ namespace Diyokee {
                           : "";
 
             return new Result(type, channel, selector, values.Count,
-                              MidiControllerProfile.MappingModes.Relative, format, net, total, modalParam, certain,
-                              $"{what}, relative {FormatName(format)}, {values.Count} events, {total} ticks{caveat}");
+                              MidiControllerProfile.MappingModes.Relative, format, net, total, perRevolution,
+                              modalParam, certain,
+                              $"{what}, relative {FormatName(format)}, {values.Count} events, "
+                              + $"{total} ticks turned, {perRevolution} per revolution{caveat}");
+        }
+
+        // What one revolution is worth, which is the number the platter's whole feel is geared to.
+        //
+        // It cannot be the total distance turned, and that is the trap this used to fall into. The
+        // prompt asks for a revolution AND THE RETURN, because turning both ways is the only thing
+        // that pins the format down - see InferFormat - so the total covers two revolutions. Using
+        // it geared every platter ever learned to half the distance the hand actually moved: the
+        // scratch tracked the hand perfectly and simply did it at half speed, which does not read
+        // as a scale error, it reads as the engine being sluggish.
+        //
+        // So measure instead of halving. A running sum of the ticks climbs to one revolution and
+        // comes back, and the height it reached is the answer. A user who turns one way and stops
+        // gives that same answer from the same code, which is why this beats dividing by two - and
+        // jitter that reverses for a tick or two cancels here where the total would add it in.
+        private static int Revolution(List<int> values, MidiControllerProfile.RelativeFormats format) {
+            long running = 0, high = 0, low = 0;
+
+            foreach(int v in values) {
+                running += MidiControllerProfile.DecodeRelative(v, format);
+                if(running > high) high = running;
+                if(running < low) low = running;
+            }
+
+            return (int)(high - low);
         }
 
         // Used only to warn, never to decide. An absolute control sweeps: it travels a long way, it
