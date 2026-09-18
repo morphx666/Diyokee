@@ -89,6 +89,12 @@
     private TrackProperties? trackProperties = null;
     private bool showTrackProperties = false;
 
+    // The Track Properties preview deck while that dialog is up, null otherwise. MainConsole owns
+    // MIDI dispatch and this dialog is two levels below it, so this is how deck A's controls find
+    // their way to the preview - read per event rather than cached, because the dialog comes and
+    // goes and the ref is cleared on close.
+    public Player? TrackPropertiesPlayer => trackProperties?.PreviewPlayer;
+
     private int sortIndex = 0;
     private bool sortAscending = true;
 

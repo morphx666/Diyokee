@@ -304,6 +304,12 @@
 
     public bool IsOpen { get => dialog.IsOpen; }
 
+    // The preview deck, but only while the dialog is actually on screen. MainConsole redirects
+    // deck A's MIDI here (see HandlePreviewMidiEvent there), so this has to go null the moment
+    // the dialog does - otherwise the controller would keep driving a deck nobody can see. The
+    // @ref is set a render before Open() is called, hence the IsOpen test rather than a null one.
+    public Player? PreviewPlayer => dialog is { IsOpen: true } ? player : null;
+
     private bool gridEditing;
 
     // The entire beat grid UI. Individual markers are never listed here - they are created and

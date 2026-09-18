@@ -393,6 +393,78 @@
                 : midiEvent.param;
     }
 
+    // The deck mappings the Track Properties preview can honour. It is a MinimalMode player: a
+    // waveform, a volume fader and the four transport buttons, and nothing else. There is no tempo
+    // fader, no EQ, no filters and no loop panel, and several of the Player methods behind those
+    // missing controls dereference them - UpdateSettings reads EqControls.EqProfile, SetTempo and
+    // SyncBPMToOtherPlayer read faderTempo - so this is a whitelist of what the preview actually
+    // has rather than a filtered copy of the deck switch below. Everything else is dropped, which
+    // is the point: a mapping with nowhere to go here must not fall through to the live deck A.
+    //
+    // Each of these has a visible counterpart in the dialog, so the controller and the screen
+    // agree about what just happened.
+    private void HandlePreviewMidiEvent(Player preview, string propertyName, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent, int velocity) {
+        // Anything that moves the playhead or lights a button asks the preview to re-render, since
+        // nothing else is going to. The deck cases below get that from MainConsole's own render.
+        void Transport(Action action) {
+            action();
+            _ = preview.Refresh();
+        }
+
+        // Play is passed false throughout: the preview has no OtherPlayer, so there is nothing to
+        // drop in on and Play would take the plain path whatever it was handed.
+        switch(propertyName) {
+            case "PlayPause":
+                if(velocity > 0) Transport(() => preview.Play(false));
+                return;
+            case "Stop":
+                if(velocity > 0) Transport(() => preview.Stop(false));
+                return;
+            case "Cue":
+                Transport(() => {
+                    if(velocity > 0) preview.Play(false); else preview.Stop(true);
+                });
+                return;
+            case "SnapToBeatMarker":
+                if(velocity > 0) Transport(preview.SnapToClosestBeatMarker);
+                return;
+            case "Volume":
+                double volume = MidiValue(midiEvent) / 127.0;
+                InvokeAsync(() => preview.SetTrackVolume(volume));
+                return;
+            case "JogWheelForward":
+                if(mapping.Velocity == velocity) Transport(preview.JogWheelForward);
+                return;
+            case "JogWheelBackward":
+                if(mapping.Velocity == velocity) Transport(preview.JogWheelBackward);
+                return;
+
+            // Off the renderer, exactly as on the deck: the platter is a control path and the
+            // whole reason it does not go through InvokeAsync is that it must not queue behind a
+            // render. The waveform follows the audio on its own timer, so nothing is needed here.
+            case "JogTouch":
+                preview.JogTouchChanged(velocity > 0);
+                return;
+            case "JogWheel":
+                if(mapping.Mode != MidiControllerProfile.MappingModes.Relative) return;
+
+                preview.ScratchByTicks(
+                    MidiControllerProfile.DecodeRelative(MidiValue(midiEvent), mapping.RelativeFormat),
+                    mapping.TicksPerRevolution);
+                return;
+            case "JogBend":
+                // A paused preview scrubs, which is what this is for while gridding. A playing one
+                // would want to bend the tempo fader the deck version reaches for, and the preview
+                // has none - JogBendByTicks banks the ticks and ApplyPendingBend drops them.
+                if(mapping.Mode != MidiControllerProfile.MappingModes.Relative) return;
+
+                preview.JogBendByTicks(
+                    MidiControllerProfile.DecodeRelative(MidiValue(midiEvent), mapping.RelativeFormat),
+                    mapping.TicksPerRevolution);
+                return;
+        }
+    }
+
     private void HandleMidiEvent(string propertyName, string section, MidiControllerProfile.MidiMapping mapping, BASS_MIDI_EVENT midiEvent, double timestamp) {
         if(!enableMidiEvents) return;
 
@@ -447,6 +519,16 @@
         }
 
         if(section.StartsWith("player")) {
+            // Deck A's controls drive the Track Properties preview for as long as that dialog is
+            // open. The dialog is modal, so the preview is the only deck the user can see or aim
+            // at, and a platter that still moved the real deck A would be acting on something
+            // hidden behind it. Deck B is deliberately left alone: it may well be what the room
+            // is hearing, and nothing about editing a track's grid says to take it away.
+            if(section == "player0" && filesComponent?.TrackPropertiesPlayer is Player preview) {
+                HandlePreviewMidiEvent(preview, propertyName, mapping, midiEvent, velocity);
+                return;
+            }
+
             Player? targetPlayer = null;
             if(section == "player0") targetPlayer = player1;
             else if(section == "player1") targetPlayer = player2;

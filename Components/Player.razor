@@ -1370,6 +1370,12 @@
 
     public bool SnapToBeatMarkers => BeatMarkers.Count > 0 && !mouseState.ShiftDown;
 
+    // A deck normally re-renders because its parent does - MainConsole renders constantly, so the
+    // two on the console pick up transport changes for free. The TrackProperties preview has no
+    // such traffic and MIDI reaches it without going through its parent at all, so anything that
+    // changes what the transport row draws has to ask for the render itself.
+    public Task Refresh() => InvokeAsync(StateHasChanged);
+
     public void SnapToClosestBeatMarker() {
         if(BeatMarkers.Count == 0) return;
         SeekSeconds(GetClosestBeatMarker());
