@@ -6,64 +6,30 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 
 ## Basic usage
 
-- To load a track into a player, drag & drop the track or select the track and click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12"> button.
-  You can also use `Shift+Ctrl+A` or `Shift+Ctrl+B` keys on your keyboard to load a track into the A or B player, respectively.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/play.svg" width="12"> button to start playing.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/stop.svg" width="12"> button to stop playback and move to the beginning of the track.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button to define a cue point. At this moment, only one cue point can be defined, and it will always snap to the nearest beat marker.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/forward-step.svg" width="12"> button to jump to the cue point. Leave the button pressed to temporarily play the track from the cue point.
-- Click the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/arrow-right-from-bracket.svg" width="12"> button to sync the track to the other player
-- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/volume-high.svg" width="12"> fader to change the volume.
-- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/music.svg" width="12"> fader to change the tempo (BPM).
-- Use the Hi/Mid/Low knobs to change the track's equalization.  
-  Right-click over the Eq control to [display a menu with several presets](http:/xfx.net/ftp/diyokee-releases/diyokee-switch-eq-profiles.mp4) from popular mixing consoles.
-- Use the fader between the two players to cross-fade between them.
-- Faders and knobs can be used by clicking and dragging or by moving the mouse over them and using the scroll wheel.
-- Use the <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/left-long.svg" width="12"> and <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/right-long.svg" width="12"> buttons under the SYNC section to perform small tempo adjustments.
-- You can click and drag over both waveforms (synced and full) to change the playback position.
-- Search for files in the textbox at the bottom of the files list. The search is recursive.
-- Double-click a track in the files list to open the Track Properties dialog.
-  ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
-- Use the Jump and Cue buttons to switch between Loop/Jump and Cue tabs.
+The controls are the usual ones. What is worth knowing:
+
+- Load a track by dragging it onto a player or selecting it and clicking <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/eject.svg" width="12">, or with `Shift+Ctrl+A` / `Shift+Ctrl+B`. `Shift+Ctrl+S` opens Settings.
+- **Holding `Shift` suppresses beat snapping** wherever it would otherwise apply - setting the cue, jumping, dragging the playhead.
+- Faders and knobs take the scroll wheel as well as click and drag.
+- Right-click the Eq control for [presets from popular mixing consoles](http:/xfx.net/ftp/diyokee-releases/diyokee-switch-eq-profiles.mp4).
+- The <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/down-left-and-up-right-to-center.svg" width="12"> button sets the deck's single cue point; hold <img src="https://raw.githubusercontent.com/morphx666/Diyokee/refs/heads/master/wwwroot/images/readme/forward-step.svg" width="12"> to play from it. The Cue tab keeps as many named cue points as you like.
+- Use the Jump and Cue buttons to switch between the Loop/Jump and Cue tabs.
   ![image](https://github.com/user-attachments/assets/0487c141-c905-4c06-971a-43369ebf5403)
-- Drag the synced waveform to scratch. Touch and release behavior is under Settings > Playback.
-- In Track Properties, the Grid row edits a track's beat grid:
+- The search box under the file list is recursive and matches file names.
+- Drag the synced waveform to scratch. Touch and release behaviour is under Settings > Playback.
+- Double-click a track for Track Properties.
+  ![image](https://github.com/user-attachments/assets/ca1c7bf1-2785-458c-be03-500d362e8cde)
+- In Track Properties, the Grid row edits the track's beat grid:
   - **Edit** - drag any beat line onto the audio it belongs on. Hover a beat and click **+** to pin it as a reference; nothing before a reference can move.
   - **Auto** - measures the track and corrects the grid for you, including the BPM if that was the error. It leaves the track alone when it cannot follow it.
   - **Reset** - undo every grid change.
-- Since 2025/11/19 Diyokee supports MIDI controllers. Click the Settings button and scroll down to the MIDI section to select the MIDI device and create a profile for your controller.
+- MIDI controllers are configured under Settings > MIDI: pick the device, then build a profile for it.
   ![image](https://github.com/user-attachments/assets/7c2dbdbd-50ed-4b91-b639-5a5c2206ab96)
 
-## What's new since 2026-04-14
-
-- **Scratching** - drag the synced waveform, or use the platters on your controller. Vinyl or bend on touch, inertia or brake on release.
-- **Jog wheels** - rest your hand on the platter and the track follows it like a record: it stops where you hold it, moves where you move it, and picks up again when you let go. Push the outer rim while the track is playing and it runs a little fast or a little slow for as long as you keep pushing - gently for a small change, harder for a bigger one - then settles back to where it was. With the deck stopped, turning the platter from the top or the side scrubs through the track.
-- **Your controller is found again** - a Windows update had made MIDI controllers invisible to Diyokee. If yours stopped being detected, that is why, and it works again now.
-- **MIDI changes apply as soon as you save them** - picking a different controller, switching profile or remapping a single control no longer means restarting Diyokee.
-- **Learning a control** now watches it for a moment instead of taking the very first thing it sends, so jog wheels and finer faders are picked up correctly. Just work the control while it is listening; for a platter, turn it one full revolution and back when asked, which is also how it learns how far a turn should move the music.
-- **MIDI feels quicker** across the board, which matters most while scratching.
-- **Flexible beat grid** - a track can now hold more than one tempo, so a track that drifts can be gridded end to end. Playback follows the grid, so it stays on the beat.
-- **Automatic gridding** - one button corrects the grid by measuring the track rather than by eye.
-- **Live audio matrix** - output routing changes apply immediately instead of needing a restart.
-- **Dropbox** as a media provider.
-- **Measure lines** on both waveforms, with a toggle for each.
-- **Settings dialog** reorganized into categories.
-- **VU meters** can show only the level being played, rather than that plus the track's own.
-- VU beat indicator now follows the track's downbeat instead of the start of the track.
-- Track Properties edits no longer reach a loaded deck until you press Save.
-- Fixes: a crossfader mapped to a controller now sweeps across its whole range instead of jumping between two positions; Diyokee says so in its log when it cannot open your controller, rather than doing nothing and looking broken; searching from a provider's root folder; cue/jump/beat-snap on a paused deck; unavailable drives in the folder browser; ARM Linux detection; and a busy indicator while a folder is being analyzed.
-
 ## Notable missing features and known bugs
-- Pitch/key adjustments don't seem to work on platforms other than Windows
-- Accessing shared folders from Linux/macOS appears to be broken - you can still manually type/paste the folder path, but the file browser is lacking support to detect such sources
-- A fancy screen for remote connections to the stream
-- The settings dialog does not yet support streaming configuration
-- Searching is quite limited and a bit buggy
-- State preservation is only partially implemented and the way it works sucks
-- Scratching with a hand on the platter is not yet reliable on every controller - some report the touch on and off again while you are still turning, which can drop the scratch mid-gesture
-- The MIDI section of the settings dialog is crowded and hard to read
-- ...and probably many more
-  
+
+See [KNOWN-ISSUES.md](KNOWN-ISSUES.md).
+
 ## Latest Releases
 Platform|Architecture|Status|Download|Release Date
 ---|---|---|:---:|---
