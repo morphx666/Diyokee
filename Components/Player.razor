@@ -430,47 +430,72 @@
         // hundreds of messages a second, and the fader is a rendered control - MonitorPlayback
         // spends them at its own rate instead.
         Interlocked.Add(ref pendingBendTicks, ticks);
+        pendingBendScale = ticksPerRevolution;
     }
 
     private int pendingBendTicks;
-    private int bendDirection;
+    private int pendingBendScale;
+    private bool bending;
     private double bendBaseTempo;
+    private double appliedBend;
     private DateTime lastBendAt = DateTime.MinValue;
+    private DateTime lastBendSampleAt = DateTime.MinValue;
 
-    // The same step the SYNC arrows take, so holding the rim and holding the arrow feel alike.
-    private const double BendAmount = 0.1;
+    // How far the fader is pushed when the rim is travelling as fast as the record plays. The SYNC
+    // arrows step a flat 0.1 because a mouse has no speed to report; a platter does, so the bend
+    // follows how hard it is being pushed and this is only the ceiling.
+    private const double MaxBend = 0.25;
+
+    // The fader is a rendered control, so it is moved only when the bend has actually changed by
+    // something a listener could hear.
+    private const double BendStep = 0.005;
 
     private void ApplyPendingBend() {
         if(faderTempo == null) return;
 
+        DateTime now = DateTime.UtcNow;
+        double elapsed = (now - lastBendSampleAt).TotalSeconds;
+        lastBendSampleAt = now;
+
         int ticks = Interlocked.Exchange(ref pendingBendTicks, 0);
 
-        if(ticks != 0 && IsPlaying && File != null) {
+        if(ticks != 0 && IsPlaying && File != null && pendingBendScale > 0 && elapsed is > 0 and < 1) {
             // The first push of a bend remembers where the fader was, so that however the bend
             // wanders afterwards there is one true value to come back to.
-            if(bendDirection == 0) bendBaseTempo = faderTempo.Value;
+            if(!bending) {
+                bending = true;
+                bendBaseTempo = faderTempo.Value;
+                appliedBend = 0;
+            }
 
-            int direction = Math.Sign(ticks);
-            if(direction != bendDirection) {
-                bendDirection = direction;
+            // Rate rather than distance, expressed against the speed the record itself travels at:
+            // 1.0 means the rim is being pushed exactly as fast as the music plays. That keeps the
+            // feel the same whatever the platter's tick resolution turns out to be.
+            double atPlaybackSpeed = pendingBendScale / VinylSecondsPerRevolution;
+            double howHard = ticks / elapsed / atPlaybackSpeed;
+            double offset = Math.Clamp(howHard, -1, 1) * MaxBend;
 
-                // The fader runs backwards - larger is slower, which is why SlowDown adds - so
-                // turning the platter forwards has to subtract.
-                double bent = Math.Clamp(bendBaseTempo - direction * BendAmount, 0, 1);
+            if(Math.Abs(offset - appliedBend) >= BendStep) {
+                appliedBend = offset;
+
+                // The fader runs backwards - larger is slower, which is why SlowDown is the one
+                // that adds - so pushing the platter forwards has to subtract.
+                double bent = Math.Clamp(bendBaseTempo - offset, 0, 1);
                 _ = InvokeAsync(() => faderTempo.SetValue(bent, true));
             }
 
-            lastBendAt = DateTime.UtcNow;
+            lastBendAt = now;
             return;
         }
 
-        if(bendDirection == 0) return;
-        if(IsPlaying && DateTime.UtcNow - lastBendAt < JogIdleRelease) return;
+        if(!bending) return;
+        if(IsPlaying && now - lastBendAt < JogIdleRelease) return;
 
         // The rim has stopped, or the deck has. Put the tempo back exactly as releasing the SYNC
         // arrow does.
         double restore = bendBaseTempo;
-        bendDirection = 0;
+        bending = false;
+        appliedBend = 0;
         _ = InvokeAsync(() => faderTempo.SetValue(restore, true));
     }
 
