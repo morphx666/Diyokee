@@ -413,9 +413,11 @@
     //   stopped   there is nothing to bend, and the obvious reading of turning the platter is to
     //             scrub, which is what dragging the waveform does with a mouse. So it scrubs, by
     //             the same path and with the same gearing as a scratch.
-    //   playing   the track keeps playing at its own tempo and is nudged along or held back, the
-    //             way leaning on a running record is - not grabbed, which is what the top plate
-    //             is for.
+    //   playing   the track keeps its position and is pushed along or held back by running a
+    //             little fast or a little slow for as long as the rim keeps moving. That is what
+    //             the SYNC arrows beside the tempo fader do while held, so this drives the same
+    //             fader by the same amount - the two controls agree, and the tempo readout
+    //             follows the bend instead of quietly disagreeing with it.
     public void JogBendByTicks(int ticks, int ticksPerRevolution) {
         if(engine == null || File == null || ticksPerRevolution <= 0) return;
 
@@ -424,24 +426,52 @@
             return;
         }
 
-        // Banked rather than applied here. At 731 ticks a revolution a hand on the platter is
-        // worth hundreds of messages a second, and a seek apiece is neither needed to feel smooth
-        // nor kind to the decoder - MonitorPlayback spends them at its own rate.
+        // Banked rather than acted on here. At 731 ticks a revolution a hand on the rim is worth
+        // hundreds of messages a second, and the fader is a rendered control - MonitorPlayback
+        // spends them at its own rate instead.
         Interlocked.Add(ref pendingBendTicks, ticks);
-        pendingBendScale = ticksPerRevolution;
     }
 
     private int pendingBendTicks;
-    private int pendingBendScale;
+    private int bendDirection;
+    private double bendBaseTempo;
+    private DateTime lastBendAt = DateTime.MinValue;
+
+    // The same step the SYNC arrows take, so holding the rim and holding the arrow feel alike.
+    private const double BendAmount = 0.1;
 
     private void ApplyPendingBend() {
-        if(engine == null || File == null || pendingBendScale <= 0 || !IsPlaying) return;
+        if(faderTempo == null) return;
 
         int ticks = Interlocked.Exchange(ref pendingBendTicks, 0);
-        if(ticks == 0) return;
 
-        double target = PositionSeconds + (double)ticks / pendingBendScale * VinylSecondsPerRevolution;
-        SeekSeconds(Math.Clamp(target, 0, LengthSeconds));
+        if(ticks != 0 && IsPlaying && File != null) {
+            // The first push of a bend remembers where the fader was, so that however the bend
+            // wanders afterwards there is one true value to come back to.
+            if(bendDirection == 0) bendBaseTempo = faderTempo.Value;
+
+            int direction = Math.Sign(ticks);
+            if(direction != bendDirection) {
+                bendDirection = direction;
+
+                // The fader runs backwards - larger is slower, which is why SlowDown adds - so
+                // turning the platter forwards has to subtract.
+                double bent = Math.Clamp(bendBaseTempo - direction * BendAmount, 0, 1);
+                _ = InvokeAsync(() => faderTempo.SetValue(bent, true));
+            }
+
+            lastBendAt = DateTime.UtcNow;
+            return;
+        }
+
+        if(bendDirection == 0) return;
+        if(IsPlaying && DateTime.UtcNow - lastBendAt < JogIdleRelease) return;
+
+        // The rim has stopped, or the deck has. Put the tempo back exactly as releasing the SYNC
+        // arrow does.
+        double restore = bendBaseTempo;
+        bendDirection = 0;
+        _ = InvokeAsync(() => faderTempo.SetValue(restore, true));
     }
 
     // Called for both edges of the platter's touch sensor. A release is honoured only once the
