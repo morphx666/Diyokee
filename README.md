@@ -36,7 +36,12 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 
 ## What's new since 2026-04-14
 
-- **Scratching** - drag the synced waveform. Vinyl or bend on touch, inertia or brake on release.
+- **Scratching** - drag the synced waveform, or use the platters on your controller. Vinyl or bend on touch, inertia or brake on release.
+- **Jog wheels** - rest your hand on the platter and the track follows it like a record: it stops where you hold it, moves where you move it, and picks up again when you let go. Push the outer rim while the track is playing and it runs a little fast or a little slow for as long as you keep pushing - gently for a small change, harder for a bigger one - then settles back to where it was. With the deck stopped, turning the platter from the top or the side scrubs through the track.
+- **Your controller is found again** - a Windows update had made MIDI controllers invisible to Diyokee. If yours stopped being detected, that is why, and it works again now.
+- **MIDI changes apply as soon as you save them** - picking a different controller, switching profile or remapping a single control no longer means restarting Diyokee.
+- **Learning a control** now watches it for a moment instead of taking the very first thing it sends, so jog wheels and finer faders are picked up correctly. Just work the control while it is listening; for a platter, turn it one full revolution and back when asked, which is also how it learns how far a turn should move the music.
+- **MIDI feels quicker** across the board, which matters most while scratching.
 - **Flexible beat grid** - a track can now hold more than one tempo, so a track that drifts can be gridded end to end. Playback follows the grid, so it stays on the beat.
 - **Automatic gridding** - one button corrects the grid by measuring the track rather than by eye.
 - **Live audio matrix** - output routing changes apply immediately instead of needing a restart.
@@ -46,7 +51,7 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - **VU meters** can show only the level being played, rather than that plus the track's own.
 - VU beat indicator now follows the track's downbeat instead of the start of the track.
 - Track Properties edits no longer reach a loaded deck until you press Save.
-- Fixes: searching from a provider's root folder, cue/jump/beat-snap on a paused deck, unavailable drives in the folder browser, ARM Linux detection, and a busy indicator while a folder is being analyzed.
+- Fixes: a crossfader mapped to a controller now sweeps across its whole range instead of jumping between two positions; Diyokee says so in its log when it cannot open your controller, rather than doing nothing and looking broken; searching from a provider's root folder; cue/jump/beat-snap on a paused deck; unavailable drives in the folder browser; ARM Linux detection; and a busy indicator while a folder is being analyzed.
 
 ## Notable missing features and known bugs
 - Pitch/key adjustments don't seem to work on platforms other than Windows
@@ -55,7 +60,8 @@ A work in progress, DJ mixing webapp with streaming support, where the UI runs o
 - The settings dialog does not yet support streaming configuration
 - Searching is quite limited and a bit buggy
 - State preservation is only partially implemented and the way it works sucks
-- Making changes to the MIDI profiles or changing the MIDI controller requires restarting the application
+- Scratching with a hand on the platter is not yet reliable on every controller - some report the touch on and off again while you are still turning, which can drop the scratch mid-gesture
+- The MIDI section of the settings dialog is crowded and hard to read
 - ...and probably many more
   
 ## Latest Releases
