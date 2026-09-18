@@ -557,6 +557,13 @@
                         MidiControllerProfile.DecodeRelative(MidiValue(midiEvent), mapping.RelativeFormat),
                         mapping.TicksPerRevolution);
                     return;
+                case "JogBend":
+                    if(mapping.Mode != MidiControllerProfile.MappingModes.Relative) return;
+
+                    targetPlayer.JogBendByTicks(
+                        MidiControllerProfile.DecodeRelative(MidiValue(midiEvent), mapping.RelativeFormat),
+                        mapping.TicksPerRevolution);
+                    return;
                 case "Tempo":
                     double tempo = 1.0 - value;
                     InvokeAsync(() => targetPlayer.SetTempo(tempo));

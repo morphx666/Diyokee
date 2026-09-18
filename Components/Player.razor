@@ -407,6 +407,43 @@
         engine.SetGestureTarget(gestureOffsetSeconds);
     }
 
+    // The free platter - the rim pushed rather than the record held - and what it should do
+    // depends on whether the deck is running.
+    //
+    //   stopped   there is nothing to bend, and the obvious reading of turning the platter is to
+    //             scrub, which is what dragging the waveform does with a mouse. So it scrubs, by
+    //             the same path and with the same gearing as a scratch.
+    //   playing   the track keeps playing at its own tempo and is nudged along or held back, the
+    //             way leaning on a running record is - not grabbed, which is what the top plate
+    //             is for.
+    public void JogBendByTicks(int ticks, int ticksPerRevolution) {
+        if(engine == null || File == null || ticksPerRevolution <= 0) return;
+
+        if(!IsPlaying) {
+            ScratchByTicks(ticks, ticksPerRevolution);
+            return;
+        }
+
+        // Banked rather than applied here. At 731 ticks a revolution a hand on the platter is
+        // worth hundreds of messages a second, and a seek apiece is neither needed to feel smooth
+        // nor kind to the decoder - MonitorPlayback spends them at its own rate.
+        Interlocked.Add(ref pendingBendTicks, ticks);
+        pendingBendScale = ticksPerRevolution;
+    }
+
+    private int pendingBendTicks;
+    private int pendingBendScale;
+
+    private void ApplyPendingBend() {
+        if(engine == null || File == null || pendingBendScale <= 0 || !IsPlaying) return;
+
+        int ticks = Interlocked.Exchange(ref pendingBendTicks, 0);
+        if(ticks == 0) return;
+
+        double target = PositionSeconds + (double)ticks / pendingBendScale * VinylSecondsPerRevolution;
+        SeekSeconds(Math.Clamp(target, 0, LengthSeconds));
+    }
+
     // Called for both edges of the platter's touch sensor. A release is honoured only once the
     // platter has actually stopped, because on this hardware the sensor drops out mid-turn and
     // acting on that would cut a gesture the platter is still driving.
@@ -1629,6 +1666,7 @@
 
             UpdateWarp();
             ReleaseIdleJog();
+            ApplyPendingBend();
 
             // A braked release finishes on the audio thread; the deck is parked here.
             if(engine != null && engine.ConsumeBrakeCompleted()) {

@@ -379,6 +379,17 @@
         "Mode": 1,
         "RelativeFormat": 2,
         "TicksPerRevolution": 731
+      },
+      "JogBend": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 0,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33,
+        "Mode": 1,
+        "RelativeFormat": 2,
+        "TicksPerRevolution": 731
       }
     },
     {
@@ -665,6 +676,17 @@
         "Velocity": 65,
         "Parameter": 16675,
         "Controller": 35,
+        "Mode": 1,
+        "RelativeFormat": 2,
+        "TicksPerRevolution": 731
+      },
+      "JogBend": {
+        "EventType": 64,
+        "Note": 33,
+        "Channel": 1,
+        "Velocity": 65,
+        "Parameter": 16673,
+        "Controller": 33,
         "Mode": 1,
         "RelativeFormat": 2,
         "TicksPerRevolution": 731

@@ -92,6 +92,12 @@ namespace Diyokee {
             // dispatcher and by the settings UI by property name, like every other mapping.
             public MidiMapping JogTouch { get; set; } = new();
             public MidiMapping JogWheel { get; set; } = new();
+
+            // A platter reports its rotation on two different controls, and which one it uses says
+            // what the hand is doing. JogWheel is the one it sends while the top plate is held -
+            // the record has been grabbed. JogBend is the one it sends while the plate is free,
+            // which is the rim being pushed rather than the record being held.
+            public MidiMapping JogBend { get; set; } = new();
         }
 
         public class KeyboardMapping {
