@@ -19,6 +19,11 @@ namespace Diyokee {
         private MIDIINPROC midiProc = default!;
         private int midiStream = -1;
 
+        // Which device was actually opened, as opposed to which one the settings currently name.
+        // Those are the same thing right up until the moment they are not, which is precisely when
+        // this matters - see Stop().
+        private int openDeviceIndex = -1;
+
         // Dispatch used to walk the whole profile by reflection for every event that arrived:
         // General (8 properties), both players (25 each) and Keyboard (5), so roughly 63 GetValue
         // calls and four fresh GetProperties() arrays per event. That was sized for buttons. It is
@@ -195,7 +200,10 @@ namespace Diyokee {
                 return;
             }
 
-            if(midiDevices[deviceIndex].IsInitialized) return;
+            if(midiDevices[deviceIndex].IsInitialized) {
+                openDeviceIndex = deviceIndex;
+                return;
+            }
 
             if(!BassMidi.BASS_MIDI_InInit(deviceIndex, midiProc, IntPtr.Zero)) {
                 Program.Logger?.LogError($"Failed to open MIDI controller '{midiDevices[deviceIndex].name}': {Bass.BASS_ErrorGetCode()}");
@@ -206,6 +214,7 @@ namespace Diyokee {
                 return;
             }
 
+            openDeviceIndex = deviceIndex;
             Program.Logger?.LogInformation($"MIDI controller '{midiDevices[deviceIndex].name}' listening, using profile '{profile.Name}'");
         }
 
@@ -215,14 +224,16 @@ namespace Diyokee {
             Bass.BASS_StreamFree(midiStream);
             midiStream = -1;
 
-            BASS_MIDI_DEVICEINFO[] midiDevices = GetMidiDevices();
-            int deviceIndex = midiDevices.ToList().FindIndex(d => d.name == Program.Settings.MidiDeviceName);
-            if(deviceIndex != -1) {
-                if(midiDevices[deviceIndex].IsInitialized) {
-                    BassMidi.BASS_MIDI_InStop(deviceIndex);
-                    BassMidi.BASS_MIDI_InFree(deviceIndex);
-                }
-            }
+            // This used to look the device up by the name in settings, which is wrong in the one
+            // case that matters: switching controllers. By the time Stop runs the setting already
+            // names the new device, so the old one was never freed - left open, still delivering
+            // into a MIDIINPROC that Start was about to replace and the GC was then free to
+            // collect. Free the device that was actually opened.
+            if(openDeviceIndex == -1) return;
+
+            BassMidi.BASS_MIDI_InStop(openDeviceIndex);
+            BassMidi.BASS_MIDI_InFree(openDeviceIndex);
+            openDeviceIndex = -1;
         }
 
         internal static BASS_MIDI_DEVICEINFO[] GetMidiDevices() {

@@ -347,6 +347,13 @@
         Program.MidiControllersProfiles = midiProfiles;
         await Program.Settings.Save();
         await MidiControllerProfile.SaveAll(Program.MidiControllersProfiles);
+
+        // Re-open MIDI against what was just saved. Start() re-resolves the device by name and
+        // rebuilds the dispatch table from the selected profile, so a different controller, a
+        // different profile and an edited mapping all take effect here rather than at the next
+        // restart. It has to run after the two assignments above, since both are what it reads.
+        Program.MidiTools.Start();
+
         Close();
 
         await OnSave.InvokeAsync();
